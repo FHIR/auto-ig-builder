@@ -1,0 +1,14 @@
+FROM lambci/lambda:build
+MAINTAINER Josh Mandel
+
+RUN curl https://cache.ruby-lang.org/pub/ruby/2.3/ruby-2.3.1.tar.gz > ruby-2.3.1.tar.gz && \
+    tar -xzvf ruby-2.3.1.tar.gz && \
+    rm ruby-2.3.1.tar.gz && \
+    cd ruby-2.3.1 && \
+    ./configure --prefix=/var/task/ruby --disable-werror --disable-largefile --disable-install-doc --disable-install-rdoc --disable-install-capi --without-gmp --without-valgrind && \
+    make && \
+    make install && \
+    export PATH=$PATH:/var/task/ruby/bin && \
+    cd && \
+    rm -rf ruby-2.3.1 && \
+    gem install jekyll
