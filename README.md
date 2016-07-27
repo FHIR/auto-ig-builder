@@ -5,7 +5,7 @@
 # Build Jekyll for lambda
 
     docker build -t lambda_jekyll -f Dockerfile.jekyll .
-    docker run --rm -v $(pwd)/extras:/tmp  lambda_jekyll cp -r ruby /tmp
+    docker run --rm -v $(pwd)/extra:/tmp  lambda_jekyll cp -r ruby /tmp
     rm -rf extra/ruby/lib/ruby/gems/2.3.0/cache
     rm -rf extra/ruby/lib/ruby/gems/2.3.0/doc/
 
