@@ -12,3 +12,11 @@
 # Build lambda deployment artifact
 
     gradle clean  build
+
+# Upload to S3
+    aws s3 cp build/distributions/ig-er.zip  s3://fhir-ig-deps/lambda.zip --acl public-read
+
+# Configure lambda
+
+ * function from `https://s3.amazonaws.com/fhir-ig-deps/lambda.zip`
+

@@ -14,6 +14,8 @@ import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.CreateBucketRequest;
 import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.TransferManager;
+import org.eclipse.jgit.api.Git;
+
 
 public class Main {
 
@@ -31,8 +33,12 @@ public class Main {
 		String igClone = tempDir();
 		String buildDir = tempDir();
 
-		run("git", "clone", req.getSource(), igClone);
-		run("jekyll", "build", "-s", igClone, "-d", buildDir);
+		Git.cloneRepository()
+		  .setURI(req.getSource())
+		  .setDirectory(new File(igClone))
+		  .call();
+
+		run("/var/task/ruby/bin/jekyll", "build", "-s", igClone, "-d", buildDir);
 
 		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
 		AmazonS3 s3 = new AmazonS3Client(creds);
