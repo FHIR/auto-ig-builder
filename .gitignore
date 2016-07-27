@@ -6,3 +6,5 @@ bin
 .classpath
 .project
 .settings
+test-igs
+build-and-deploy.sh
