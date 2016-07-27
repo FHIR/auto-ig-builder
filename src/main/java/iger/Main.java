@@ -18,6 +18,8 @@ import org.eclipse.jgit.api.Git;
 
 
 public class Main {
+	
+	private static String DEFAULT_JEKYLL = "/var/task/ruby/bin/jekyll";
 
 	public static void run(String... args) throws Exception {
 		ProcessBuilder p = (new ProcessBuilder()).command(args).inheritIO();
@@ -32,13 +34,16 @@ public class Main {
 	public static String build(Req req, Context context) throws Exception {
 		String igClone = tempDir();
 		String buildDir = tempDir();
+		
+		String jekyll = System.getProperty("jekyll") != null ? 
+				System.getProperty("jekyll") : DEFAULT_JEKYLL;
 
 		Git.cloneRepository()
 		  .setURI(req.getSource())
 		  .setDirectory(new File(igClone))
 		  .call();
 
-		run("/var/task/ruby/bin/jekyll", "build", "-s", igClone, "-d", buildDir);
+		run(jekyll, "build", "-s", igClone, "-d", buildDir);
 
 		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
 		AmazonS3 s3 = new AmazonS3Client(creds);
@@ -80,7 +85,7 @@ public class Main {
 		System.out.println("Starting main");
 		Req req = new Req();
 		req.setSource("https://github.com/smart-on-fhir/smart-on-fhir.github.io");
-		req.setTarget("smart-docs");
+		req.setTarget("smart-docs.ig.fhir.org");
 		build(req, null);
 		System.out.println("Finishing main");
 	}

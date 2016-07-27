@@ -20,3 +20,43 @@
 
  * function from `https://s3.amazonaws.com/fhir-ig-deps/lambda.zip`
 
+# Configure lambda role policy
+
+Allow access to a limited set of S3 buckets
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:CreateBucket",
+                "s3:PutBucketWebsite",
+                "s3:PutBucketPolicy",
+                "s3:PutBucketAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::*.ig.fhir.org"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::*.ig.fhir.org/*"
+            ]
+        }
+    ]
+}
+```
+
+# Call the thing
+
+Example: build the SMART on FHIR docs site, and publish to an S3 bucket called `smart-5`:
+
+    curl -X POST "https://2rxzc1u4ji.execute-api.us-east-1.amazonaws.com/prod/publish?source=https%3A%2F%2Fgithub.com%2Fsmart-on-fhir%2Fsmart-on-fhir.github.io&target=smart-5"
+
