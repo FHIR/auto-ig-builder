@@ -1,38 +1,82 @@
 package iger;
 
 import java.io.File;
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.nio.file.Files;
+
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.BucketWebsiteConfiguration;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.CreateBucketRequest;
+import com.amazonaws.services.s3.transfer.MultipleFileUpload;
+import com.amazonaws.services.s3.transfer.TransferManager;
 
 public class Main {
 
-	public String build(String ig, Context context) throws Exception{
+	public static void run(String... args) throws Exception {
+		ProcessBuilder p = (new ProcessBuilder()).command(args).inheritIO();
+		p.environment().put("PATH", p.environment().get("PATH").concat(":/var/task/ruby/bin"));
+		p.start().waitFor();
+	}
 
-		System.out.println("Bashing!");
-		new ProcessBuilder().command("bash", "prepare.sh")
-		    .directory(new File("/var/task"))
-		    .inheritIO().start().waitFor();
+	public static String tempDir() throws IOException {
+		return Files.createTempDirectory("tempfiles").toAbsolutePath().toString();
+	}
 
-		String pwd = Paths.get(".").toAbsolutePath().normalize().toString();
-		System.out.println("PWD: " + pwd);
+	public static String build(Req req, Context context) throws Exception {
+		String igClone = tempDir();
+		String buildDir = tempDir();
 
-		String dir = "/var/task";
+		run("git", "clone", req.getSource(), igClone);
+		run("jekyll", "build", "-s", igClone, "-d", buildDir);
 
-		File directory = new File(dir);
-		// get all the files from a directory
-		File[] fList = directory.listFiles();
-		if (fList == null) {
-			System.out.println("no such dir as " + dir);
-		} else {
-			for (File file : fList) {
-				System.out.println(file.getName());
-			}
+		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
+		AmazonS3 s3 = new AmazonS3Client(creds);
+		TransferManager tx = new TransferManager(creds);
 
+		createBucketIfNeeded(req, s3);
+		uploadToBucket(req, buildDir, tx);
+
+		return "Done building jekyll project: " + req.getSource();
+	}
+
+	private static void uploadToBucket(Req req, String buildDir, TransferManager tx) throws InterruptedException {
+		MultipleFileUpload myUpload = tx.uploadDirectory(req.getTarget(), "", new File(buildDir), true);
+		myUpload.waitForCompletion();
+		tx.shutdownNow();
+	}
+
+	private static void createBucketIfNeeded(Req req, AmazonS3 s3) {
+		if (!s3.doesBucketExist(req.getTarget())) {
+			s3.createBucket(new CreateBucketRequest(req.getTarget()).withCannedAcl(CannedAccessControlList.PublicRead));
+			s3.setBucketWebsiteConfiguration(req.getTarget(),
+					new BucketWebsiteConfiguration("index.html", "error.html"));
+
+			String policyJSON = "{" + 
+					"\"Statement\": [{" + 
+					"\"Effect\":\"Allow\"" + 
+					",\"Action\":[\"s3:GetObject*\"]" +
+					",\"Principal\":\"*\"" +
+					",\"Resource\":\"arn:aws:s3:::" +
+					req.getTarget() + 
+					"/*\"" + 
+					"}]}";
+
+			s3.setBucketPolicy(req.getTarget(), policyJSON);
 		}
-		return dir;
 	}
 
 	public static void main(String[] args) throws Exception {
+		System.out.println("Starting main");
+		Req req = new Req();
+		req.setSource("https://github.com/smart-on-fhir/smart-on-fhir.github.io");
+		req.setTarget("smart-docs");
+		build(req, null);
+		System.out.println("Finishing main");
 	}
 
 }

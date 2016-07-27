@@ -1,3 +1,8 @@
 build/**
 extra/ruby/**
 .gradle
+gradle
+bin
+.classpath
+.project
+.settings
