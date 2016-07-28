@@ -3,11 +3,10 @@ MAINTAINER Josh Mandel
 
 # Install required packages
 RUN apt-get update
-RUN apt-get install -y jekyll
+RUN apt-get install -y  --force-yes jekyll
 
 RUN wget http://hl7-fhir.github.io/org.hl7.fhir.igpublisher.jar
 
 RUN git clone --depth 1 https://github.com/hl7-fhir/fhir-svn/ fhir
-RUN apt-get install -y x11-apps
 
 RUN java -jar org.hl7.fhir.igpublisher.jar -ig fhir/tests/ig/test-ig.json

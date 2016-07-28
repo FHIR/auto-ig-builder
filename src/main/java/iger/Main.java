@@ -35,10 +35,16 @@ public class Main {
 			throw new Exception(String.format("Please use a 'github.com' repo, not '%1$s'", req.getService()));
 		}
 		
+		System.out.println("cleanup");
+		run(new File("/tmp"), "/var/task/bin/cleanup.sh");
+
 		String cloneDir = tempDir();
+		String outputDir = new File(new File(cloneDir), "output").getAbsolutePath().toString();
 		String igPath = String.format("%1$s/%2$s", req.getOrg(), req.getRepo());
+		String igDebugPath = String.format("%1$s/debug", igPath);
+		
 		String gitRepoUrl = String.format("https://%1$s/%2$s", req.getService(), igPath);
-		File publisherJar = File.createTempFile("builder", "jar");
+		File publisherJar = File.createTempFile("lambdatemp-builder", "jar");
 
 		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
 		AmazonS3 s3 = new AmazonS3Client(creds);
@@ -56,9 +62,15 @@ public class Main {
 		System.out.println("Deleting existing objects");
 		clearBucket(req.getTarget(), igPath, s3);
 		
-		System.out.println("Uploading");
-		uploadToBucket(igPath, req.getTarget(), cloneDir, tx);
-
+		System.out.println("Uploading output");
+		uploadToBucket(outputDir, req.getTarget(), igPath, tx);
+		
+		System.out.println("Uploading debug");
+		run(new File(cloneDir), "rm", "-rf", "output");
+		run(new File(cloneDir), "/var/task/bin/build-index.sh");
+		uploadToBucket(cloneDir, req.getTarget(), igDebugPath, tx);
+		
+		tx.shutdownNow();
 		return "Published to: " + "https://"+req.getTarget()+".s3-website-us-east-1.amazonaws.com/" +igPath;
 	}
 	
@@ -69,7 +81,7 @@ public class Main {
 	}
 
 	public static String tempDir() throws IOException {
-		return Files.createTempDirectory("tempfiles").toAbsolutePath().toString();
+		return Files.createTempDirectory("lambdatemp-dir").toAbsolutePath().toString();
 	}
 
 	private static void downloadPublisher(File jarFile) throws MalformedURLException, IOException {
@@ -98,9 +110,7 @@ public class Main {
 		File logFile = new File(new File(System.getProperty("java.io.tmpdir")), "fhir-ig-publisher.log");
 
 		run(new File(igClone), "java", "-jar", jarFile.getAbsolutePath().toString(), "-ig", igJson, "-out", igClone);
-		run(new File(igClone), "mv", logFile.getAbsolutePath().toString(), ".");
-		run(new File(igClone), "/var/task/bin/build-index.sh");
-		
+		run(new File(igClone), "mv", logFile.getAbsolutePath().toString(), ".");		
 	}
 
 	private static void cloneRepo(String igClone, String source)
@@ -111,10 +121,9 @@ public class Main {
 		  .call();
 	}
 
-	private static void uploadToBucket(String path, String bucket, String buildDir, TransferManager tx) throws InterruptedException {
+	private static void uploadToBucket(String buildDir, String bucket, String path, TransferManager tx) throws InterruptedException {
 		MultipleFileUpload myUpload = tx.uploadDirectory(bucket, path, new File(buildDir), true);
 		myUpload.waitForCompletion();
-		tx.shutdownNow();
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -123,7 +132,7 @@ public class Main {
 		req.setService("github.com");
 		req.setOrg("test-igs");
 		req.setRepo("simple");
-		req.setTarget("ig.fhir.org");
+		req.setTarget("ig.fhir.me");
 		build(req, null);
 		System.out.println("Finishing main");
 	}
