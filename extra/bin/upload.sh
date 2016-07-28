@@ -5,11 +5,11 @@ aws s3 cp s3://$1/$2/$3/debug.tgz .
 
 mkdir prev && cd prev
 tar -xzf ../debug.tgz
+rm debug.tgz
 cd debug
 
 for i in `find output -type f`; do
     if [ -e "../../$i" ] && [ $(md5sum ../../$i | awk '{ print $1 }') = $(md5sum  $i | awk '{ print $1 }') ]; then
-        echo "cp -p $i ../../$i";
         cp -p $i ../../$i;
     fi;
 done
