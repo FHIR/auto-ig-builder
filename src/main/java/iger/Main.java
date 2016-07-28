@@ -91,7 +91,7 @@ public class Main {
 		Req req = new Req();
 		req.setService("github.com");
 		req.setOrg("test-igs");
-		req.setRepo("simple");
+		req.setRepo("daf");
 		req.setTarget("ig.fhir.me");
 		build(req, null);
 		System.out.println("Finishing main");
