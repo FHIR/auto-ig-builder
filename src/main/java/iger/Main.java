@@ -7,23 +7,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.TransportException;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.DeleteObjectsRequest;
-import com.amazonaws.services.s3.model.DeleteObjectsRequest.KeyVersion;
-import com.amazonaws.services.s3.transfer.MultipleFileUpload;
-import com.amazonaws.services.s3.transfer.TransferManager;
 
 public class Main {
 	
@@ -39,16 +29,10 @@ public class Main {
 		run(new File("/tmp"), "/var/task/bin/cleanup.sh");
 
 		String cloneDir = tempDir();
-		String outputDir = new File(new File(cloneDir), "output").getAbsolutePath().toString();
 		String igPath = String.format("%1$s/%2$s", req.getOrg(), req.getRepo());
-		String igDebugPath = String.format("%1$s/debug", igPath);
 		
 		String gitRepoUrl = String.format("https://%1$s/%2$s", req.getService(), igPath);
 		File publisherJar = File.createTempFile("lambdatemp-builder", "jar");
-
-		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
-		AmazonS3 s3 = new AmazonS3Client(creds);
-		TransferManager tx = new TransferManager(creds);
 		
 		System.out.println("Downloading publisher");
 		downloadPublisher(publisherJar);
@@ -59,19 +43,14 @@ public class Main {
 		System.out.println("Building docs");
 		buildDocs(publisherJar, cloneDir);
 		
-		System.out.println("Deleting existing objects");
-		clearBucket(req.getTarget(), igPath, s3);
-		
-		System.out.println("Uploading output");
-		uploadToBucket(outputDir, req.getTarget(), igPath, tx);
-		
 		System.out.println("Uploading debug");
-		run(new File(cloneDir), "rm", "-rf", "output");
-		run(new File(cloneDir), "/var/task/bin/build-index.sh");
-		uploadToBucket(cloneDir, req.getTarget(), igDebugPath, tx);
-		
-		tx.shutdownNow();
-		return "Published to: " + "https://"+req.getTarget()+".s3-website-us-east-1.amazonaws.com/" +igPath;
+		run(new File(cloneDir),
+				"/var/task/bin/upload.sh",
+				req.getTarget(),
+				req.getOrg(),
+				req.getRepo());
+
+		return "Published to: " + "https://"+req.getTarget()+"/" + igPath;
 	}
 	
 	public static void run(File fromDir, String... args) throws Exception {
@@ -91,20 +70,6 @@ public class Main {
 		}
 	}
 
-	private static void clearBucket(String bucket, String path, AmazonS3 s3) {
-		List<KeyVersion> keys = s3.listObjects(bucket, path)
-				.getObjectSummaries()
-				.stream()
-				.map(i -> new KeyVersion(i.getKey()))
-				.collect(Collectors.toList());
-		
-		if (keys.size() > 0) {
-			s3.deleteObjects(
-					new DeleteObjectsRequest(bucket)
-					.withKeys(keys));
-		}
-	}
-
 	private static void buildDocs(File jarFile, String igClone) throws Exception {
 		String igJson = new File(igClone, "ig.json").toPath().toAbsolutePath().toString();
 		File logFile = new File(new File(System.getProperty("java.io.tmpdir")), "fhir-ig-publisher.log");
@@ -119,11 +84,6 @@ public class Main {
 		  .setURI(source)
 		  .setDirectory(new File(igClone))
 		  .call();
-	}
-
-	private static void uploadToBucket(String buildDir, String bucket, String path, TransferManager tx) throws InterruptedException {
-		MultipleFileUpload myUpload = tx.uploadDirectory(bucket, path, new File(buildDir), true);
-		myUpload.waitForCompletion();
 	}
 
 	public static void main(String[] args) throws Exception {
