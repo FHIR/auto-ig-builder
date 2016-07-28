@@ -10,7 +10,7 @@ Now GitHub will automatically trigger a build whenever you commit changes.
 
 To manually trigger a build, just `POST` to the webhook URL yourself (e.g., via `curl -X POST`).
 
-*Note: a build takes 2-3 minutes.*
+*Note: a build takes 2-3 minutes to complete. Then you can...*
 
 ### Find your rendered IG automatically available at
 
