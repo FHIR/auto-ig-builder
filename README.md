@@ -1,6 +1,4 @@
-# FHIR IG Auto-Builder
-
-To use the auto-build infrastructure:
+# FHIR Implementation Guide Auto-Builder
 
 1. Create a github repo within your own organization, and inside the repo, create a file called `ig.json` containing the IG definition. 
 2. Click "Settings" then "Webhooks & Services", then "Add Webhook"
