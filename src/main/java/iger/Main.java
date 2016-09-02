@@ -91,7 +91,7 @@ public class Main {
 		}
 
 		for (String k : adds.keySet()) {
-			s3.putObject(req.getTarget(), k, new File(new File(outputDir), k));
+			s3.putObject(req.getTarget(), igPath + "/" + k, new File(new File(outputDir), k));
 		}
 	}
 
