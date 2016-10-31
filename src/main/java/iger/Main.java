@@ -37,7 +37,7 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 public class Main {
 
-	private static String FHIR_IG_BUILDER_URL = "http://hl7-fhir.github.io/org.hl7.fhir.igpublisher.jar";
+	private static String FHIR_IG_BUILDER_URL = "http://build.fhir.org/org.hl7.fhir.igpublisher.jar";
 
 	public static boolean isCurrent(Map<String, String> adds, String key, String md5) {
 		return adds.get(key).equals(md5);
