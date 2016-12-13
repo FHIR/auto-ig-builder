@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from os.path import normpath
 
-WAIT_SECOUNDS = 20
+WAIT_SECONDS = 20
 POLLS_PER_MINUTE = 60 / WAIT_SECONDS
 QUEUE_URL= os.environ.get('QUEUE_URL', 'https://sqs.us-east-1.amazonaws.com/515384486676/ig-build-queue')
 BUCKET_URL = os.environ.get('BUCKET_URL', 'ig-build.fhir.org')
@@ -24,6 +24,7 @@ is_head_commit = lambda d: d['commit'] == requests.get(GITHUB_COMMITS%d).json()[
 def publish(message):
   message.delete()
   details = json.loads(message.body)
+  print "Publishing", details
 
   if is_head_commit(details):
     temp_dir = tempfile.mkdtemp()
@@ -37,9 +38,13 @@ def publish(message):
     # First publishing a new IG, the path won't exist
     if os.path.exists(publication_path):
       shutil.rmtree(publication_path)
-    shutil.move(temp_dir, publication_path)
+    shutil.move(os.path.join(temp_dir, 'output'), publication_path)
+    shutil.move(os.path.join(temp_dir, 'debug.tgz'), publication_path)
+    subprocess.Popen(['chmod', '-R', 'u+rwX,go+rX,go-w', publication_path], cwd=temp_dir).wait()
+    print "Published"
 
 def poll_once():
+  print "Polling"
   [publish(m) for m in queue.receive_messages(WaitTimeSeconds=WAIT_SECONDS)]
 
 if __name__ == '__main__':
