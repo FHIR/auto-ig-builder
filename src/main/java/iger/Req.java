@@ -3,7 +3,6 @@ package iger;
 public class Req {
 	
 	private String service;
-	private String target;
 	private String org;
 	private String repo;
 	
@@ -27,15 +26,8 @@ public class Req {
 		this.service = t;
 	}
 
-	public void setTarget(String t) {
-		this.target = t;
-	}
-
 	public String getService() {
 		return this.service;
 	}
 
-	public String getTarget() {
-		return this.target;
-	}
 }

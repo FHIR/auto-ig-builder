@@ -9,6 +9,7 @@ dependencies {
         'com.amazonaws:aws-lambda-java-core:1.1.0',
         'com.amazonaws:aws-lambda-java-events:1.1.0',
         'com.amazonaws:aws-java-sdk-s3:1.11.20',
+        'com.amazonaws:aws-java-sdk-sqs:1.11.66',
         'org.eclipse.jgit:org.eclipse.jgit:4.4.1.201607150455-r',
         'org.slf4j:slf4j-api:1.7.5',
         'org.slf4j:slf4j-simple:1.6.4',

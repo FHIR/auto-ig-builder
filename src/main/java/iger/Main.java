@@ -35,9 +35,22 @@ import com.amazonaws.services.s3.model.ListNextBatchOfObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.AmazonSQSClient;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.amazonaws.services.sqs.model.SendMessageResult;
+
+
 public class Main {
 
-	private static String FHIR_IG_BUILDER_URL = "http://build.fhir.org/org.hl7.fhir.igpublisher.jar";
+	private static String FHIR_IG_BUILDER_URL = System.getenv()
+			.getOrDefault("FHIR_IG_BUILDER_URL", "http://build.fhir.org/org.hl7.fhir.igpublisher.jar");
+
+	private static String QUEUE_URL = System.getenv()
+			.getOrDefault("QUEUE_URL", "https://sqs.us-east-1.amazonaws.com/515384486676/ig-build-queue");
+	
+	private static String BUCKET_URL = System.getenv()
+			.getOrDefault("BUCKET_URL", "ig-build.fhir.org");
 
 	public static boolean isCurrent(Map<String, String> adds, String key, String md5) {
 		return adds.get(key).equals(md5);
@@ -61,12 +74,13 @@ public class Main {
 
 		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
 		AmazonS3 s3 = new AmazonS3Client(creds);
+	    AmazonSQS sqs = new AmazonSQSClient(creds);
 
 		System.out.println("Downloading publisher");
 		downloadPublisher(publisherJar);
 
 		System.out.println("Cloning repo " + gitRepoUrl);
-		cloneRepo(cloneDir, gitRepoUrl);
+		String commit = cloneRepo(cloneDir, gitRepoUrl);
 
 		System.out.println("Building docs");
 		buildDocs(publisherJar, cloneDir);
@@ -74,9 +88,16 @@ public class Main {
 		synchronize(req, outputDir, igPath, s3);
 
 		System.out.println("Uploading debug");
-		uploadDebug(req, cloneDir, igPath, s3);
+		uploadDebug(req, cloneDir, commit, igPath, s3);
 
-		return "Published to: " + "https://" + req.getTarget() + "/" + igPath;
+		//TODO: JSON library!
+		SendMessageResult enqueued = sqs.sendMessage(new SendMessageRequest(QUEUE_URL,
+		            String.format("{\"service\": \"%1$s\", \"org\": \"%2$s\", \"repo\": \"%3$s\", \"commit\": \"%4$s\"}",
+		               req.getService(), req.getOrg(), req.getRepo(), commit )));
+		
+		System.out.println(String.format("Enqueued notification: %1$s", enqueued.toString()));
+
+		return "Published to: " + "https://" + BUCKET_URL + "/" + igPath;
 	}
 
 	private static void synchronize(Req req, String outputDir, String igPath, AmazonS3 s3) throws IOException {
@@ -86,27 +107,28 @@ public class Main {
 
 		System.out.println(String.format("Sync will PUT %1$s and DELETE %2$s objects.", adds.size(), deletes.size()));
 		if (deletes.size() > 0) {
-			s3.deleteObjects(new DeleteObjectsRequest(req.getTarget()).withKeys(
+			s3.deleteObjects(new DeleteObjectsRequest(BUCKET_URL).withKeys(
 					deletes.stream().map(d -> new KeyVersion(igPath + "/" + d)).collect(Collectors.toList())));
 		}
 
 		for (String k : adds.keySet()) {
-			s3.putObject(req.getTarget(), igPath + "/" + k, new File(new File(outputDir), k));
+			s3.putObject(BUCKET_URL, igPath + "/" + k, new File(new File(outputDir), k));
 		}
 	}
 
-	private static void uploadDebug(Req req, String cloneDir, String igPath, AmazonS3 s3)
+	private static void uploadDebug(Req req, String cloneDir, String commit, String igPath, AmazonS3 s3)
 			throws IOException, Exception {
 		String debugDir = tempDir();
-		File debugFile = new File(new File(debugDir), "/debug.tgz");
+		String debugFilename = commit + ".debug.tgz";
+		File debugFile = new File(new File(debugDir), debugFilename);
 		run(new File(cloneDir), "tar", "-czf", debugFile.toString(), ".");
-		s3.putObject(req.getTarget(), igPath + "/debug.tgz", debugFile);
+		s3.putObject(BUCKET_URL, igPath + "/" + debugFilename, debugFile);
 	}
 
 	private static List<String> discoverDeletes(Req req, String igPath, AmazonS3 s3, Map<String, String> adds) {
 		List<String> deletes = new ArrayList<String>();
 
-		ObjectListing matches = s3.listObjects(req.getTarget(), igPath);
+		ObjectListing matches = s3.listObjects(BUCKET_URL, igPath);
 		while (true) {
 			for (S3ObjectSummary s : matches.getObjectSummaries()) {
 				String relativeKey = s.getKey().substring(igPath.length() + 1);
@@ -165,13 +187,20 @@ public class Main {
 		String igJson = new File(igClone, "ig.json").toPath().toAbsolutePath().toString();
 		File logFile = new File(new File(System.getProperty("java.io.tmpdir")), "fhir-ig-publisher.log");
 
-		run(new File(igClone), "java", "-jar", jarFile.getAbsolutePath().toString(), "-ig", igJson, "-out", igClone);
+		run(new File(igClone), "java",
+                "-jar", jarFile.getAbsolutePath().toString(),
+                "-ig", igJson,
+                "-out", igClone,
+                "-auto-ig-build");
+
 		run(new File(igClone), "mv", logFile.getAbsolutePath().toString(), ".");
 	}
 
-	private static void cloneRepo(String igClone, String source)
-			throws GitAPIException, InvalidRemoteException, TransportException {
-		Git.cloneRepository().setURI(source).setDirectory(new File(igClone)).call();
+	private static String cloneRepo(String igClone, String source)
+			throws GitAPIException, InvalidRemoteException, TransportException, IOException {
+		File igCloneDir = new File(igClone);
+		Git.cloneRepository().setURI(source).setDirectory(igCloneDir).call();
+		return Git.open(igCloneDir).log().call().iterator().next().getName();
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -180,7 +209,6 @@ public class Main {
 		req.setService("github.com");
 		req.setOrg("test-igs");
 		req.setRepo("daf");
-		req.setTarget("ig.fhir.me");
 		build(req, null);
 		System.out.println("Finishing main");
 	}
