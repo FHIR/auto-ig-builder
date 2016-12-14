@@ -2,7 +2,8 @@
 
 ## Quick start guide
 
-1. **Put your IG on GitHub**: create a GitHub repository within your own organization, and inside that repo, create a file called `ig.json` containing the IG definition, alongside any other content (`pages`, etc) that your IG requires.
+0. **Create an IG** in a new folder, including *a file called `ig.json`* containing the IG definition, alongside any other content (for example a `pages` folder) that your IG requires.
+1. **Put your IG on GitHub**: create a GitHub repository within your own organization, and push your content to GitHub.
 2. **Add a Webhook in GitHub**: click "Settings", then "Webhooks & Services", then "Add Webhook".
 3. **Configure the Webhook**: enter a URL like `https://icbe5lqbof.execute-api.us-east-1.amazonaws.com/prod/publish?org=:org&repo=:repo` where `:org` is the organization of your project, and `:repo` is your repository. For example, if your IG source code is at https://github.com/test-igs/simple, then your org is `test-igs` and your repo is `simple`, so your Webhook URL is `https://icbe5lqbof.execute-api.us-east-1.amazonaws.com/prod/publish?org=test-igs&repo=simple`. You can accept the default "secret" and choose "Just the push event" as your trigger, and then click "Add webhook".
 
