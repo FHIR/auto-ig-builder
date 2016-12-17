@@ -2,6 +2,7 @@ package iger;
 
 import java.io.File;
 import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +39,8 @@ import com.amazonaws.services.s3.model.DeleteObjectsRequest;
 import com.amazonaws.services.s3.model.DeleteObjectsRequest.KeyVersion;
 import com.amazonaws.services.s3.model.ListNextBatchOfObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 import com.amazonaws.services.sqs.AmazonSQS;
@@ -62,7 +65,7 @@ public class Main {
 	public static File allOutput ;
 	static {
 	    try {
-			allOutput = Files.createTempFile("ig-er-output", "txt").toFile();
+			allOutput = Files.createTempFile( String.valueOf(System.currentTimeMillis()), "txt").toFile();
 			System.setOut(
 					new PrintStream(
 							new TeeOutputStream(new FileOutputStream(allOutput.getAbsolutePath(), true),
@@ -120,9 +123,12 @@ public class Main {
 			System.out.println("Uploading full logs to S3");
 			System.out.flush();
 			for (String path : new String[] {
-					String.format("ig-build-output/%1$s/%2$s/%3$s.log", req.getOrg(), req.getRepo(), currentTime),
-					String.format("ig-build-output/%1$s/%2$s/latest-build.log", req.getOrg(), req.getRepo())}) {
-				s3.putObject(BUCKET_URL,path, allOutput);
+					String.format("logs/%1$s/%2$s/%3$s.log", req.getOrg(), req.getRepo(), currentTime),
+					String.format("logs/%1$s/%2$s/latest-build.log", req.getOrg(), req.getRepo())}) {
+				ObjectMetadata om = new ObjectMetadata();
+				om.setContentType("text/plain");
+				PutObjectRequest pr = new PutObjectRequest(BUCKET_URL, path, new FileInputStream(allOutput), om);
+				s3.putObject(pr);
 			}
 		}
 	}
