@@ -17,4 +17,8 @@ http://build.fhir.org/:org/:repo
 
 ### Find debugging info about the build
 
+For a text log of all console ouput from the build process, check out:
+http://ig-build.fhir.org.s3-website-us-east-1.amazonaws.com/logs/:org/:repo
+
+For a debug file including the fill input + output directory structure from the build process, see:
 http://build.fhir.org/:org/:repo/debug.tgz
