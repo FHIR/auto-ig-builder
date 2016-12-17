@@ -24,13 +24,13 @@ is_head_commit = lambda d: d['commit'] == requests.get(GITHUB_COMMITS%d).json()[
 def publish(message):
   message.delete()
   details = json.loads(message.body)
-  print "Publishing", details
+  print 'publishing', details
 
   if is_head_commit(details):
     temp_dir = tempfile.mkdtemp()
 
     bucket.download_file(Key=BUILT_IG_PATH%details, Filename=os.path.join(temp_dir, DEBUG_FILE))
-    subprocess.Popen(["tar", "-zxf", DEBUG_FILE], cwd=temp_dir).wait()
+    subprocess.Popen(['tar', '-zxf', DEBUG_FILE], cwd=temp_dir).wait()
 
     publication_path = normpath(os.path.join(WEBROOT, details['org'], details['repo']))
     assert publication_path.startswith(WEBROOT) # Safety check: ensure we're still in webroot
@@ -38,13 +38,16 @@ def publish(message):
     # First publishing a new IG, the path won't exist
     if os.path.exists(publication_path):
       shutil.rmtree(publication_path)
-    shutil.move(os.path.join(temp_dir, 'output'), publication_path)
-    shutil.move(os.path.join(temp_dir, 'debug.tgz'), publication_path)
-    subprocess.Popen(['chmod', '-R', 'u+rwX,go+rX,go-w', publication_path], cwd=temp_dir).wait()
-    print "Published"
+    if os.path.exists(os.path.join(temp_dir, 'output')):
+      shutil.move(os.path.join(temp_dir, 'output'), publication_path)
+      shutil.move(os.path.join(temp_dir, DEBUG_FILE), publication_path)
+    else:
+      shutil.move(temp_dir, publication_path)
+    subprocess.Popen(['chmod', '-R', 'u+rwX,go+rX,go-w', publication_path]).wait()
+    print 'Published'
 
 def poll_once():
-  print "Polling"
+  print 'Polling and waiting %s seconds'%(WAIT_SECONDS)
   [publish(m) for m in queue.receive_messages(WaitTimeSeconds=WAIT_SECONDS)]
 
 if __name__ == '__main__':

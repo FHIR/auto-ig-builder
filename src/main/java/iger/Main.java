@@ -56,6 +56,24 @@ public class Main {
 	private static String QUEUE_URL = System.getenv().getOrDefault("QUEUE_URL",
 			"https://sqs.us-east-1.amazonaws.com/515384486676/ig-build-queue");
 
+	private static String ZULIP_URL = System.getenv().getOrDefault("ZULIP_URL",
+			"https://chat.fhir.org/api/v1/messages");
+	
+	private static String ZULIP_BOT = System.getenv().getOrDefault("ZULIP_BOT",
+			"ig-build-bot@chat.fhir.org");
+
+	private static String ZULIP_KEY = System.getenv().getOrDefault("ZULIP_KEY",
+			"J5ItnMfucI1ccp5qGeYB216V3YgE4q1M");
+	
+
+	private static String ZULIP_STREAM = System.getenv().getOrDefault("ZULIP_STREAM",
+			"committers");
+
+	private static String ZULIP_TOPIC = System.getenv().getOrDefault("ZULIP_TOPIC",
+			"ig-build");
+	
+	private static ZulipClient zulip = new ZulipClient(ZULIP_URL, ZULIP_BOT, ZULIP_KEY);
+	
 	private static String BUCKET_URL = System.getenv().getOrDefault("BUCKET_URL", "ig-build.fhir.org");
 
 	public static boolean isCurrent(Map<String, String> adds, String key, String md5) {
@@ -63,10 +81,15 @@ public class Main {
 	}
 
 	public static File allOutput ;
-
 	
 	public static String build(Req req, Context context) throws Exception {
+		
+		System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out)));
+		run(new File("/tmp"), "/var/task/bin/cleanup.sh");
+
 		String currentTime = LocalDateTime.now().toString();
+		boolean buildSuccess = false;
+
 		allOutput = Files.createTempFile( String.valueOf(System.currentTimeMillis()), "txt").toFile();
 		System.setOut(
 				new PrintStream(
@@ -97,23 +120,22 @@ public class Main {
 			String commit = cloneRepo(cloneDir, gitRepoUrl);
 
 			System.out.println("Building docs");
-			buildDocs(publisherJar, cloneDir);
-
-			synchronize(req, outputDir, igPath, s3);
-
-			System.out.println("Uploading debug");
-			uploadDebug(req, cloneDir, commit, igPath, s3);
-
-			// TODO: JSON library!
-			SendMessageResult enqueued = sqs.sendMessage(new SendMessageRequest(QUEUE_URL,
-					String.format(
-							"{\"service\": \"%1$s\", \"org\": \"%2$s\", \"repo\": \"%3$s\", \"commit\": \"%4$s\"}",
-							req.getService(), req.getOrg(), req.getRepo(), commit)));
-
-			System.out.println(String.format("Enqueued notification: %1$s", enqueued.toString()));
-
-			return "Published to: " + "https://" + BUCKET_URL + "/" + igPath;
+			
+			if (buildDocs(publisherJar, cloneDir)) {
+				System.out.println("Uploading debug");
+				uploadDebug(req, cloneDir, commit, igPath, s3);
+	
+				// TODO: JSON library!
+				SendMessageResult enqueued = sqs.sendMessage(new SendMessageRequest(QUEUE_URL,
+						String.format(
+								"{\"service\": \"%1$s\", \"org\": \"%2$s\", \"repo\": \"%3$s\", \"commit\": \"%4$s\"}",
+								req.getService(), req.getOrg(), req.getRepo(), commit)));
+	
+				System.out.println(String.format("Enqueued notification: %1$s", enqueued.toString()));
+				buildSuccess = true;
+			}
 		} finally {
+			
 			System.out.println("Uploading full logs to S3");
 			System.out.flush();
 			for (String path : new String[] {
@@ -125,7 +147,25 @@ public class Main {
 				PutObjectRequest pr = new PutObjectRequest(BUCKET_URL, path, new FileInputStream(allOutput), om);
 				s3.putObject(pr);
 			}
+			
+			String message = String.format("**[%1$s/%2$s](%3$s)** rebuilt %4$s\nDetails: [logs](%5$s)",
+					req.getOrg(),
+					req.getRepo(),
+					"https://"+req.getService() + "/"+req.getOrg()+"/"+req.getRepo(),
+					buildSuccess ? ":thumbsup:" : ":thumbsdown:",
+					"http://ig-build.fhir.org.s3-website-us-east-1.amazonaws.com/logs/"+req.getOrg()+"/"+req.getRepo());
+			
+			if (buildSuccess){
+					message += String.format(" | [debug.tgz](%1$s) | [published guide](%2$s)",
+					"http://build.fhir.org/ig/"+req.getOrg()+"/"+req.getRepo()+"/debug.tgz",
+					"http://build.fhir.org/ig/"+req.getOrg()+"/"+req.getRepo()+"/");
+			}
+			zulip.sendMessage(ZULIP_STREAM, ZULIP_TOPIC, message);
+			
 		}
+				
+		return "Completed IG Publisher run";
+
 	}
 
 	private static void synchronize(Req req, String outputDir, String igPath, AmazonS3 s3) throws IOException {
@@ -194,14 +234,19 @@ public class Main {
 		return adds;
 	}
 
-	public static void run(File fromDir, String... args) throws Exception {
+	public static boolean run(File fromDir, String... args) throws Exception {
 		ProcessBuilder p = (new ProcessBuilder()).directory(fromDir).command(args)
-				.inheritIO()
-				.redirectError(Redirect.appendTo(allOutput))
-				.redirectOutput(Redirect.appendTo(allOutput));
+				.inheritIO();
+		
+		if (null != allOutput && allOutput.exists()){
+			p = p.redirectError(Redirect.appendTo(allOutput))
+				 .redirectOutput(Redirect.appendTo(allOutput));
+		}
 		
 		p.environment().put("PATH", p.environment().get("PATH").concat(":/var/task/bin:/var/task/ruby/bin"));
-		p.start().waitFor();
+		int exitCode = p.start().waitFor();
+		System.out.println(String.join(" ", args)+ ": exited with code " + exitCode);
+		return 0 == exitCode;
 	}
 
 	public static String tempDir() throws IOException {
@@ -215,14 +260,17 @@ public class Main {
 		}
 	}
 
-	private static void buildDocs(File jarFile, String igClone) throws Exception {
+	private static boolean buildDocs(File jarFile, String igClone) throws Exception {
 		String igJson = new File(igClone, "ig.json").toPath().toAbsolutePath().toString();
 		File logFile = new File(new File(System.getProperty("java.io.tmpdir")), "fhir-ig-publisher.log");
 
-		run(new File(igClone), "java", "-jar", jarFile.getAbsolutePath().toString(), "-ig", igJson, "-out", igClone,
-				"-auto-ig-build");
-
-		run(new File(igClone), "mv", logFile.getAbsolutePath().toString(), ".");
+		return
+				run(new File(igClone),
+					"java", "-jar", jarFile.getAbsolutePath().toString(),
+					"-ig", igJson,
+					"-out", igClone,
+					"-auto-ig-build")  &&
+				run(new File(igClone), "mv", logFile.getAbsolutePath().toString(), ".");
 	}
 
 	private static String cloneRepo(String igClone, String source)
@@ -233,13 +281,14 @@ public class Main {
 	}
 
 	public static void main(String[] args) throws Exception {
-		System.out.println("Starting main");
-		Req req = new Req();
-		req.setService("github.com");
-		req.setOrg("test-igs");
-		req.setRepo("daf");
-		build(req, null);
-		System.out.println("Finishing main");
+//		System.out.println("Starting main");
+//		Req req = new Req();
+//		req.setService("github.com");
+//		req.setOrg("test-igs");
+//		req.setRepo("daf");
+//		build(req, null);
+		System.out.println("Finishing main");		
+//		zulip.sendMessage(ZULIP_STREAM, ZULIP_TOPIC, "test message from IG build bot");
 	}
 
 }

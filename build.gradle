@@ -30,3 +30,7 @@ task buildZip(type: Zip) {
 }
 
 build.dependsOn buildZip
+
+
+apply plugin: 'application'
+mainClassName = "iger.Main"
