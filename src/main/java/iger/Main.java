@@ -63,20 +63,17 @@ public class Main {
 	}
 
 	public static File allOutput ;
-	static {
-	    try {
-			allOutput = Files.createTempFile( String.valueOf(System.currentTimeMillis()), "txt").toFile();
-			System.setOut(
-					new PrintStream(
-							new TeeOutputStream(new FileOutputStream(allOutput.getAbsolutePath(), true),
-							new FileOutputStream(FileDescriptor.out)),
-							true));
-	    } catch (Exception e) { }
-	}
+
 	
 	public static String build(Req req, Context context) throws Exception {
 		String currentTime = LocalDateTime.now().toString();
-		
+		allOutput = Files.createTempFile( String.valueOf(System.currentTimeMillis()), "txt").toFile();
+		System.setOut(
+				new PrintStream(
+						new TeeOutputStream(new FileOutputStream(allOutput.getAbsolutePath(), true),
+						new FileOutputStream(FileDescriptor.out)),
+						true));
+
 		AWSCredentials creds = new DefaultAWSCredentialsProviderChain().getCredentials();
 		AmazonS3 s3 = new AmazonS3Client(creds);
 		AmazonSQS sqs = new AmazonSQSClient(creds);
@@ -85,9 +82,6 @@ public class Main {
 			if (!req.getService().equals("github.com")) {
 				throw new Exception(String.format("Please use a 'github.com' repo, not '%1$s'", req.getService()));
 			}
-
-			System.out.println("cleanup");
-			run(new File("/tmp"), "/var/task/bin/cleanup.sh");
 
 			String cloneDir = tempDir();
 			String outputDir = new File(new File(cloneDir), "output").getAbsolutePath().toString();
@@ -127,6 +121,7 @@ public class Main {
 					String.format("logs/%1$s/%2$s/latest-build.log", req.getOrg(), req.getRepo())}) {
 				ObjectMetadata om = new ObjectMetadata();
 				om.setContentType("text/plain");
+				om.setContentLength(allOutput.length());
 				PutObjectRequest pr = new PutObjectRequest(BUCKET_URL, path, new FileInputStream(allOutput), om);
 				s3.putObject(pr);
 			}
