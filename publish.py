@@ -44,6 +44,8 @@ def publish(message):
     else:
       shutil.move(temp_dir, publication_path)
     subprocess.Popen(['chmod', '-R', 'u+rwX,go+rX,go-w', publication_path]).wait()
+    if os.path.exists(temp_dir):
+      shutil.rmtree(temp_dir)
     print 'Published'
 
 def poll_once():
