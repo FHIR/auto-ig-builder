@@ -33,10 +33,9 @@ def build(config):
   clone_dir = os.path.join(temp_dir, 'repo')
   logfile = os.path.join(temp_dir, 'build.log')
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
-
-  logging.warning('about to clone!')
+  logging.info('about to clone!')
   do(['git', 'clone', GITHUB%config, 'repo'], temp_dir)
-  do(['wget', 'http://build.fhir.org/org.hl7.fhir.igpublisher.jar',
+  do(['wget', '-q', 'http://build.fhir.org/org.hl7.fhir.igpublisher.jar',
         '-O', 'publisher.jar'], temp_dir)
 
   details = {
@@ -49,31 +48,28 @@ def build(config):
   built_exit = do(['java',
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
+         '-auto-ig-build',
          '-out', clone_dir], clone_dir)
   built = (0 == built_exit)
   print built, built_exit
 
   message = ["**[%(org)s/%(repo)s](https://github.com/%(org)s/%(repo)s)** rebuilt\n",
              "Commit: %(commit)s :%(emoji)s:\n",
-             "Details: [build logs](http://build.fhir.org/ig/%(org)s/%(repo)s/%(buildlog)s) | [publisher logs](http://build.fhir.org/ig/%(org)s/%(repo)s/%(log)s)"]
+             "Details: [build logs](http://build.fhir.org/ig/%(org)s/%(repo)s/%(buildlog)s)"]
 
 
   if not built:
     print "Build error occurred"
     details['emoji'] = 'thumbsdown'
     details['buildlog'] = 'failed/build.log'
-    details['log'] = 'failed/fhir-ig-publisher.log'
     message += [" | [debug](http://build.fhir.org/ig/%(org)s/%(repo)s/failed)"]
-    shutil.copy('/tmp/fhir-ig-publisher.log', clone_dir)
     shutil.copy(logfile, clone_dir)
     copy_build_failure(config, clone_dir)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
-    details['log'] = 'fhir-ig-publisher.log'
     message += [" | [published](http://build.fhir.org/ig/%(org)s/%(repo)s)"]
-    shutil.copy('/tmp/fhir-ig-publisher.log', os.path.join(clone_dir, 'output'))
     shutil.copy(logfile, os.path.join(clone_dir, 'output'))
     copy_build_success(config, os.path.join(clone_dir, 'output'))
 
@@ -86,4 +82,3 @@ if __name__ == '__main__':
     'org': os.environ.get('ORG', 'test-igs'),
     'repo': os.environ.get('REPO', 'simple'),
   })
-

@@ -15,8 +15,10 @@ def make_temp_dir(prefix='ig-build-temp-', N=6):
   return dirpath
 
 def do(args, cwd=SCRATCH_SPACE):
-  logging.debug('about to do %s'%" ".join(args))
-  return subprocess.Popen(args, cwd=cwd).wait()
+  logging.debug('running: %s'%" ".join(args))
+  logfile = logging.getLoggerClass().root.handlers[0].baseFilename
+  logopen = open(logfile, 'a')
+  return subprocess.Popen(args, cwd=cwd, stdout=logopen, stderr=logopen).wait()
 
 def send_zulip(stream, topic, content):
   logging.debug('zulip messaging: %s %s %s'%(stream, topic, content))
@@ -30,4 +32,3 @@ def send_zulip(stream, topic, content):
     'to': stream,
     'subject': topic
   })
-
