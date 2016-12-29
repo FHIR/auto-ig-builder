@@ -41,7 +41,7 @@ def build(config):
   details = {
     'org': config['org'],
     'repo': config['repo'],
-    'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B'], cwd=clone_dir).strip()
+    'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B (%an)'], cwd=clone_dir).strip()
   }
 
 
