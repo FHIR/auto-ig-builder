@@ -25,7 +25,10 @@ def copy_build_success(config, build_dir):
 def move(from_dir, to_dir):
   assert to_dir.startswith(WEBROOT) # Safety check: ensure we're still in webroot
   if os.path.exists(to_dir):
+  if os.path.exists(to_dir) and os.path.isdir(to_dir):
     shutil.rmtree(to_dir)
+  elif os.path.exists(to_dir) and not os.path.isdir(to_dir):
+    os.remove(to_dir)
   shutil.move(from_dir, to_dir)
 
 def build(config):
