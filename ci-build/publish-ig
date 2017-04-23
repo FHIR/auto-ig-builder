@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+function finish {
+  kill $KEEPALIVE_PID
+}
+trap finish EXIT
+
+
+IG_ORG=$1
+IG_REPO=$2
+TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
+
+mkdir -p ~/uploading/$TARGET
+cd ~/uploading/$TARGET
+
+while true; do sleep 5; du -hs .; done &
+KEEPALIVE_PID=$!
+tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
+
+mv ~/uploading/www/ig/$IG_PATH ~/uploading/$TARGET.old || true
+
+mkdir -p ~/uploading/www/ig/$IG_ORG
+mv ~/uploading/$TARGET ~/uploading/www/ig/${IG_ORG}/${IG_REPO}
+rm -rf ~/uploading/$TARGET.old || true
+
+echo "fin"

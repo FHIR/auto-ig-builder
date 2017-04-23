@@ -1,0 +1,30 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: svn-sync-deployment
+  namespace: fhir
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: svn-sync
+      namespace: fhir
+    spec:
+      containers:
+      - image: gcr.io/fhir-org-starter-project/svn-sync
+        name: svn-sync
+        volumeMounts:
+        - name: fhir-svn-sync-disk
+          mountPath: /svn/fhir
+        - name: ssh-key-volume
+          mountPath: /etc/github_keys
+      volumes:
+      - name: fhir-svn-sync-disk
+        gcePersistentDisk:
+          pdName: fhir-svn-sync-disk
+          fsType: ext4
+      - name: ssh-key-volume
+        secret:
+          secretName: github-fhir-svn
+          defaultMode: 256

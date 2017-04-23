@@ -1,0 +1,62 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ci-build-deployment
+  namespace: fhir
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: ci-build
+      namespace: fhir
+    spec:
+      initContainers:
+      - name: permissions
+        image: ubuntu:16.04
+        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www"]
+        volumeMounts:
+        - name: fhir-ci-build-disk
+          mountPath: /disk
+        - name: nginx-conf-volume
+          mountPath: /conf
+      containers:
+      - image: gcr.io/fhir-org-starter-project/ci-build
+        name: ci-build
+        env:
+        - name: BUILD_NUMBER
+          value: "0"
+        - name: SSH_AUTHORIZED_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: ci-build-config
+              key: ssh_authorized_key
+        volumeMounts:
+        - name: fhir-ci-build-disk
+          mountPath: /home/fhir_upload/uploading
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/sites-enabled/default
+          subPath: sites-enabled.conf
+      - image: nginx
+        name: nginx
+        volumeMounts:
+        - name: fhir-ci-build-disk
+          mountPath: /var/www
+          subPath: www
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/sites-enabled/default
+          subPath: sites-enabled.conf
+      volumes:
+      - name: fhir-ci-build-disk
+        gcePersistentDisk:
+          pdName: fhir-ci-build-disk
+          fsType: ext4
+      - name: nginx-conf-volume
+        configMap:
+          name: ci-build-config

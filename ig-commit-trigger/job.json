@@ -1,0 +1,50 @@
+
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "labels": { },
+    "namespace": "fhir",
+    "generateName": "ig-build"
+
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": { },
+        "name": "ig-build"
+      },
+      "spec": {
+        "volumes": [
+          {
+            "name": "keys",
+            "secret": {
+              "secretName": "ci-build-keys",
+              "defaultMode": 256
+            }
+          }
+        ],
+        "containers": [
+          {
+            "name": "ig-build",
+            "image": "gcr.io/fhir-org-starter-project/ig-build",
+            "env": [
+              {
+                "name": "IG_ORG",
+                "value": "HL7"
+              }, {
+                "name": "IG_REPO",
+                "value": "sdc"
+              }
+            ],
+            "volumeMounts": [{
+              "name": "keys",
+              "mountPath": "/etc/ci_build_keys"
+            }]
+          }
+        ],
+        "restartPolicy": "Never"
+      }
+    }
+  }
+}
