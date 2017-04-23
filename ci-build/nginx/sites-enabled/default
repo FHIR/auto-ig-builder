@@ -1,0 +1,36 @@
+server {
+    listen 80 default_server;
+
+    server_name build.fhir.org;
+
+    root /home/fhir_upload/uploading;
+
+    index index.html index.htm;
+
+    expires 5m;
+    include mime.types;
+    types {
+        application/fhir+json json;
+        application/fhir+xml xml;
+        application/json json;
+        application/xml xml;
+        text/plain log;
+        text/plain md;
+        application/json-ld jsonld;
+        text/turtle ttl;
+        text/shex shex;
+    }
+    add_header 'Access-Control-Allow-Origin' '*';
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+    add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type';
+    add_header Vary Accept;
+
+    try_files $uri $uri$fhir_suffix $uri/index.html   =404;
+    location ~ ^/ig/(?<org>[^/]+)\/(?<repo>[^/]+)$ {
+        rewrite [^/]$ $uri/ redirect;
+    }
+    location /ig {
+        root /var/www;
+        try_files $uri $uri$fhir_suffix $uri/index.html   =404;
+    }
+}
