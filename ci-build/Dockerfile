@@ -14,7 +14,9 @@ RUN chown -R fhir_upload. /home/fhir_upload/.ssh/
 VOLUME /home/fhir_upload/uploading
 
 ADD nginx/nginx.conf /etc/nginx/nginx.conf
-ADD nginx/sites-enabled/default /etc/nginx/sites-enabled/default
+ADD nginx/sites-enabled.conf /etc/nginx/sites-enabled/default
+ADD publish /home/fhir_upload/publish
+RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
