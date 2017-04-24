@@ -1,0 +1,37 @@
+
+{
+  "apiVersion": "batch/v1",
+  "kind": "Job",
+  "metadata": {
+    "labels": { },
+    "namespace": "fhir",
+    "generateName": "ig-build"
+
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": { },
+        "name": "ig-build"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "ig-build",
+            "image": "gcr.io/fhir-org-starter-project/ci-build",
+            "env": [
+              {
+                "name": "IG_ORG",
+                "value": "HL7"
+              }, {
+                "name": "IG_REPO",
+                "value": "sdc"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never"
+      }
+    }
+  }
+}
