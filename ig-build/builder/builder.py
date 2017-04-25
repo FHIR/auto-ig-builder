@@ -56,7 +56,7 @@ def build(config):
     print "Build succeeded"
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
-    message += [" | [published](%(root)s/%(org)s/%(repo)s)/index.html"]
+    message += [" | [published](%(root)s/%(org)s/%(repo)s/index.html)"]
     shutil.copy(logfile, os.path.join(clone_dir, 'output'))
     do(['gsutil', '-m', 'rsync', '-d', '-r', os.path.join(clone_dir, 'output'), TARGET_BUCKET%details], temp_dir)
 
