@@ -10,26 +10,9 @@ import sys
 from .util  import make_temp_dir, do, send_zulip
 from os.path import normpath
 
-GITHUB_COMMITS = 'https://api.github.com/repos/%(org)s/%(repo)s/commits'
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
-WEBROOT = normpath(os.environ.get('WEBROOT', '/var/www/ig'))
-
-def copy_build_failure(config, build_dir):
-  failure_publication_path = normpath(os.path.join(WEBROOT, config['org'], config['repo'], 'failed'))
-  move(build_dir, failure_publication_path)
-
-def copy_build_success(config, build_dir):
-  publication_path = normpath(os.path.join(WEBROOT, config['org'], config['repo']))
-  move(build_dir, publication_path)
-
-def move(from_dir, to_dir):
-  assert to_dir.startswith(WEBROOT) # Safety check: ensure we're still in webroot
-  if os.path.exists(to_dir):
-  if os.path.exists(to_dir) and os.path.isdir(to_dir):
-    shutil.rmtree(to_dir)
-  elif os.path.exists(to_dir) and not os.path.isdir(to_dir):
-    os.remove(to_dir)
-  shutil.move(from_dir, to_dir)
+TARGET_BUCKET = os.environ.get('TARGET_BUCKET', 'gs://fhir-igs') + '/%(org)s/%(repo)s'
+HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://storage.googleapis.com/fhir-igs')
 
 def build(config):
   temp_dir = make_temp_dir()
@@ -42,6 +25,7 @@ def build(config):
         '-O', 'publisher.jar'], temp_dir)
 
   details = {
+    'root': HOSTED_ROOT,
     'org': config['org'],
     'repo': config['repo'],
     'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B (%an)'], cwd=clone_dir).strip()
@@ -58,23 +42,23 @@ def build(config):
 
   message = ["**[%(org)s/%(repo)s](https://github.com/%(org)s/%(repo)s)** rebuilt\n",
              "Commit: %(commit)s :%(emoji)s:\n",
-             "Details: [build logs](http://build.fhir.org/ig/%(org)s/%(repo)s/%(buildlog)s)"]
+             "Details: [build logs](%(root)s/%(org)s/%(repo)s/%(buildlog)s)"]
 
 
   if not built:
     print "Build error occurred"
     details['emoji'] = 'thumbsdown'
     details['buildlog'] = 'failed/build.log'
-    message += [" | [debug](http://build.fhir.org/ig/%(org)s/%(repo)s/failed)"]
+    message += [" | [debug](%(root)s/ig/%(org)s/%(repo)s/failed)"]
     shutil.copy(logfile, clone_dir)
-    copy_build_failure(config, clone_dir)
+    do(['gsutil', 'cp', '-r', clone_dir, TARGET_BUCKET%details + '/failed'], temp_dir)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
-    message += [" | [published](http://build.fhir.org/ig/%(org)s/%(repo)s)"]
+    message += [" | [published](%(root)s/ig/%(org)s/%(repo)s)"]
     shutil.copy(logfile, os.path.join(clone_dir, 'output'))
-    copy_build_success(config, os.path.join(clone_dir, 'output'))
+    do(['gsutil', 'rsync', '-d', '-r', os.path.join(clone_dir, 'output'), TARGET_BUCKET%details], temp_dir)
 
   shutil.rmtree(temp_dir)
   send_zulip('committers', 'ig-build', "".join(message)%details)
@@ -82,6 +66,6 @@ def build(config):
 
 if __name__ == '__main__':
   build({
-    'org': os.environ.get('ORG', 'test-igs'),
-    'repo': os.environ.get('REPO', 'simple'),
+    'org': os.environ.get('IG_ORG', 'test-igs'),
+    'repo': os.environ.get('IG_REPO', 'simple'),
   })

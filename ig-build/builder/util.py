@@ -24,8 +24,8 @@ def send_zulip(stream, topic, content):
   logging.debug('zulip messaging: %s %s %s'%(stream, topic, content))
   zulip.Client(
     site=ZULIP_API,
-    api_key=os.environ['ZULIP_API_KEY'],
-    email=os.environ['ZULIP_EMAIL']
+    api_key=os.environ.get('ZULIP_API_KEY'),
+    email=os.environ.get('ZULIP_EMAIL')
   ).send_message({
     'type': 'stream',
     'content': content,
