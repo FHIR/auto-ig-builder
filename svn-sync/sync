@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd fhir
+git svn rebase
+git push

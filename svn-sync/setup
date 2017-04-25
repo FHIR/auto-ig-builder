@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ ! -d "fhir" ]; then
+ git svn clone http://gforge.hl7.org/svn/fhir/trunk/build -r 2403 fhir
+fi
+
+while true; do
+  ./sync;
+  sleep 30;
+done
