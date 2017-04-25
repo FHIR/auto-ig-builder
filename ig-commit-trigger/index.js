@@ -33,6 +33,8 @@ exports["ig-commit-trigger"] = function(req, res) {
 
     envorg.value = org;
     envrepo.value = repo;
+    env.push({name: 'ZULIP_EMAIL', value: secret.zulip_email});
+    env.push({name: 'ZULIP_API_KEY', value: secret.zulip_api_key});
 
     batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
       res.status(200).json({
