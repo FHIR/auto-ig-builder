@@ -49,14 +49,14 @@ def build(config):
     print "Build error occurred"
     details['emoji'] = 'thumbsdown'
     details['buildlog'] = 'failed/build.log'
-    message += [" | [debug](%(root)s/ig/%(org)s/%(repo)s/failed)"]
+    message += [" | [debug](%(root)s/%(org)s/%(repo)s/failed)"]
     shutil.copy(logfile, clone_dir)
     do(['gsutil', '-m', 'cp', '-r', clone_dir, TARGET_BUCKET%details + '/failed'], temp_dir)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
-    message += [" | [published](%(root)s/ig/%(org)s/%(repo)s)"]
+    message += [" | [published](%(root)s/%(org)s/%(repo)s)/index.html"]
     shutil.copy(logfile, os.path.join(clone_dir, 'output'))
     do(['gsutil', '-m', 'rsync', '-d', '-r', os.path.join(clone_dir, 'output'), TARGET_BUCKET%details], temp_dir)
 
