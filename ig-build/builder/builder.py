@@ -51,14 +51,14 @@ def build(config):
     details['buildlog'] = 'failed/build.log'
     message += [" | [debug](%(root)s/ig/%(org)s/%(repo)s/failed)"]
     shutil.copy(logfile, clone_dir)
-    do(['gsutil', 'cp', '-r', clone_dir, TARGET_BUCKET%details + '/failed'], temp_dir)
+    do(['gsutil', '-m', 'cp', '-r', clone_dir, TARGET_BUCKET%details + '/failed'], temp_dir)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
     message += [" | [published](%(root)s/ig/%(org)s/%(repo)s)"]
     shutil.copy(logfile, os.path.join(clone_dir, 'output'))
-    do(['gsutil', 'rsync', '-d', '-r', os.path.join(clone_dir, 'output'), TARGET_BUCKET%details], temp_dir)
+    do(['gsutil', '-m', 'rsync', '-d', '-r', os.path.join(clone_dir, 'output'), TARGET_BUCKET%details], temp_dir)
 
   shutil.rmtree(temp_dir)
   send_zulip('committers', 'ig-build', "".join(message)%details)
