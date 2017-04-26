@@ -11,12 +11,12 @@ from .util  import make_temp_dir, do, send_zulip
 from os.path import normpath
 
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
-TARGET_BUCKET = os.environ.get('TARGET_BUCKET', 'gs://fhir-igs') + '/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://storage.googleapis.com/fhir-igs')
 
 def build(config):
   temp_dir = make_temp_dir()
   clone_dir = os.path.join(temp_dir, 'repo')
+  build_dir = os.path.join(clone_dir, 'output')
   logfile = os.path.join(temp_dir, 'build.log')
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
   logging.info('about to clone!')
@@ -44,21 +44,20 @@ def build(config):
              "Commit: %(commit)s :%(emoji)s:\n",
              "Details: [build logs](%(root)s/%(org)s/%(repo)s/%(buildlog)s)"]
 
-
   if not built:
     print "Build error occurred"
     details['emoji'] = 'thumbsdown'
-    details['buildlog'] = 'failed/build.log'
-    message += [" | [debug](%(root)s/%(org)s/%(repo)s/failed)"]
+    details['buildlog'] = 'build.log'
+    message += [" | [debug](%(root)s/%(org)s/%(repo)s)"]
     shutil.copy(logfile, clone_dir)
-    do(['gsutil', '-m', 'cp', '-r', clone_dir, TARGET_BUCKET%details + '/failed'], temp_dir)
+    do(['upload', details['org'], details['repo'], clone_dir)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
     message += [" | [published](%(root)s/%(org)s/%(repo)s/index.html)"]
-    shutil.copy(logfile, os.path.join(clone_dir, 'output'))
-    do(['gsutil', '-m', 'rsync', '-d', '-r', os.path.join(clone_dir, 'output'), TARGET_BUCKET%details], temp_dir)
+    shutil.copy(logfile, build_dir)
+    do(['upload', details['org'], details['repo'], build_dir)
 
   shutil.rmtree(temp_dir)
   send_zulip('committers', 'ig-build', "".join(message)%details)

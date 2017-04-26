@@ -15,6 +15,15 @@
         "name": "ig-build"
       },
       "spec": {
+        "volumes": [
+          {
+            "name": "keys",
+            "secret": {
+              "secretName": "ci-build-keys",
+              "defaultMode": 256
+            }
+          }
+        ],
         "containers": [
           {
             "name": "ig-build",
@@ -27,7 +36,11 @@
                 "name": "IG_REPO",
                 "value": "sdc"
               }
-            ]
+            ],
+            "volumeMounts": [{
+              "name": "keys",
+              "mountPath": "/etc/ci_build_keys"
+            }]
           }
         ],
         "restartPolicy": "Never"
