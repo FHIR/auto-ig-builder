@@ -14,10 +14,12 @@ spec:
       initContainers:
       - name: permissions
         image: ubuntu:16.04
-        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www "]
+        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www && cat /conf/authorized_ssh_key >> /home/fhir_upload/.ssh/authorized_keys"]
         volumeMounts:
         - name: fhir-ci-build-disk
           mountPath: /disk
+        - name: nginx-conf-volume
+          mountPath: /conf
       containers:
       - image: gcr.io/fhir-org-starter-project/ci-build
         name: ci-build
