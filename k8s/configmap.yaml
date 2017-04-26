@@ -66,7 +66,7 @@ data:
 
         server_name build.fhir.org;
 
-        root /var/www
+        root /var/www/fhir;
 
         index index.html index.htm;
 
@@ -93,7 +93,7 @@ data:
             rewrite [^/]$ $uri/ redirect;
         }
         location /ig {
-            root /var/www;
+            root /var/www/ig;
             try_files $uri $uri$fhir_suffix $uri/index.html   =404;
         }
     }

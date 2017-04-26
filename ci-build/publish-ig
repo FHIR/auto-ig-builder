@@ -2,7 +2,6 @@
 
 set -e
 
-
 IG_PATH=$1
 TARGET="$RANDOM-$IG_PATH"
 
