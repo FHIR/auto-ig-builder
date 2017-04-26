@@ -13,7 +13,7 @@ RUN chown -R fhir_upload. /home/fhir_upload/.ssh/
 
 VOLUME /home/fhir_upload/uploading
 
-ADD publish /home/fhir_upload/publish
+ADD publish publish-ig /home/fhir_upload/
 RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
