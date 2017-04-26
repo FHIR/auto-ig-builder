@@ -11,6 +11,13 @@ spec:
         run: ci-build
       namespace: fhir
     spec:
+      initContainers:
+      - name: permissions
+        image: ubuntu:16.04
+        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www "]
+        volumeMounts:
+        - name: fhir-ci-build-disk
+          mountPath: /disk
       containers:
       - image: gcr.io/fhir-org-starter-project/ci-build
         name: ci-build
