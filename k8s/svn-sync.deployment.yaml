@@ -17,14 +17,14 @@ spec:
         volumeMounts:
         - name: fhir-svn-sync-disk
           mountPath: /svn/fhir
-        - name: deploy.build.fhir.org
-          mountPath: /etc/github-keys
+        - name: ssh-key-volume
+          mountPath: /etc/github_keys
       volumes:
-      - name: fhir-ci-build-disk
+      - name: fhir-svn-sync-disk
         gcePersistentDisk:
           pdName: fhir-svn-sync-disk
           fsType: ext4
-      - name: deploy.build.fhir.org
+      - name: ssh-key-volume
         secret:
-          secretName: deploy.build.fhir.org
+          secretName: github-fhir-svn
           defaultMode: 256
