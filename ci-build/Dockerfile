@@ -17,7 +17,6 @@ ADD publish publish-ig /home/fhir_upload/
 RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-RUN echo "chmod go+rwx /home/fhir_upload/uploading; /usr/bin/supervisord" > /usr/bin/setup && chmod +x /usr/bin/setup
 
 EXPOSE 22
-CMD setup
+CMD /usr/bin/supervisord
