@@ -1,5 +1,5 @@
 #!/bin/bash
 
 cd fhir/build
-git svn rebase
-git push
+git svn rebase --username anonymous
+git push origin
