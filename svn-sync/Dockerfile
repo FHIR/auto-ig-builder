@@ -9,8 +9,9 @@ WORKDIR /svn
 RUN mkdir -p /root/.ssh && echo "Host github.com\n\
   HostName github.com\n\
   User git\n\
-  IdentityFile /etc/github_keys/deploy.build.fhir.org\n\
-  IdentitiesOnly yes" > /root/.ssh/config && chmod go-wrx /root/.ssh/config
+  IdentityFile /etc/github_keys/deploy_fhir_svn\n\
+  IdentitiesOnly yes" > /root/.ssh/config && chmod go-wrx /root/.ssh/config && \
+  ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
 ADD setup sync /usr/local/bin/
 
