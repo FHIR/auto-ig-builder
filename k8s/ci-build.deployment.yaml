@@ -14,7 +14,7 @@ spec:
       initContainers:
       - name: permissions
         image: ubuntu:16.04
-        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www && cat /conf/authorized_ssh_key >> /home/fhir_upload/.ssh/authorized_keys"]
+        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www"]
         volumeMounts:
         - name: fhir-ci-build-disk
           mountPath: /disk
@@ -23,6 +23,14 @@ spec:
       containers:
       - image: gcr.io/fhir-org-starter-project/ci-build
         name: ci-build
+        env:
+        - name: BUILD_NUMBER
+          value: "0"
+        - name: SSH_AUTHORIZED_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: ci-build-config
+              key: ssh_authorized_key
         volumeMounts:
         - name: fhir-ci-build-disk
           mountPath: /home/fhir_upload/uploading
