@@ -9,7 +9,7 @@ trap finish EXIT
 
 
 IG_ORG=$1
-IG_REPO=$1
+IG_REPO=$2
 TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
 
 mkdir -p ~/uploading/$TARGET
