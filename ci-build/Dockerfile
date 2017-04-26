@@ -19,4 +19,4 @@ RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/pu
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 22
-CMD /usr/bin/supervisord
+CMD echo $SSH_AUTHORIZED_KEY >> /home/fhir_upload/.ssh/authorized_keys && /usr/bin/supervisord
