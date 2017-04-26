@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update
-RUN apt-get install -y openssh-server nginx supervisor
+RUN apt-get install -y openssh-server supervisor
 
 RUN mkdir /var/run/sshd
 RUN useradd -m -r -s /bin/bash fhir_upload
@@ -13,14 +13,11 @@ RUN chown -R fhir_upload. /home/fhir_upload/.ssh/
 
 VOLUME /home/fhir_upload/uploading
 
-ADD nginx/nginx.conf /etc/nginx/nginx.conf
-ADD nginx/sites-enabled.conf /etc/nginx/sites-enabled/default
 ADD publish /home/fhir_upload/publish
 RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+RUN echo "chmod go+rwx /home/fhir_upload/uploading; /usr/bin/supervisord" > /usr/bin/setup && chmod +x /usr/bin/setup
 
-RUN echo "chmod go+rwx /home/fhir_upload/uploading; /usr/bin/supervisord" > /run.sh && chmod +x /run.sh
-
-EXPOSE 22 80 443
-CMD /run.sh
+EXPOSE 22
+CMD setup

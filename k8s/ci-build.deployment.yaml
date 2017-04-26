@@ -23,6 +23,18 @@ spec:
         - name: nginx-conf-volume
           mountPath: /etc/nginx/sites-enabled/default
           subPath: sites-enabled.conf
+      - image: nginx
+        name: nginx
+        volumeMounts:
+        - name: fhir-ci-build-disk
+          mountPath: /var/www
+          subPath: www
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/sites-enabled/default
+          subPath: sites-enabled.conf
       volumes:
       - name: fhir-ci-build-disk
         gcePersistentDisk:

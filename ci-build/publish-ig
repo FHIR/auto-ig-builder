@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+
+
+IG_PATH=$1
+TARGET="$RANDOM-$IG_PATH"
+
+mkdir -p ~/uploading/$TARGET
+cd ~/uploading/$TARGET
+
+while true; do sleep 5; du -hs .; done &
+KEEPALIVE_PID=$!
+tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
+
+mv ~/uploading/www/ig/$IG_PATH ~/uploading/$TARGET.old
+mv ~/uploading/$TARGET ~/uploading/www/ig/$IG_PATH
+rm -rf ~/uploading/$TARGET.old
+
+echo "fin"
+kill $KEEPALIVE_PID
