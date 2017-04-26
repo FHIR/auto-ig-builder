@@ -1,10 +1,10 @@
 #!/bin/bash
 
-if [ ! -d "fhir" ]; then
- git svn clone http://gforge.hl7.org/svn/fhir/trunk/build -r 2403 fhir
+if [ ! -d "fhir/build" ]; then
+  echo "" | git svn clone http://gforge.hl7.org/svn/fhir/trunk/build -r 2403 fhir/build --username anonymous
 fi
 
 while true; do
-  ./sync;
+  sync;
   sleep 30;
 done
