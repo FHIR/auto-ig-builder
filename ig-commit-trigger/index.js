@@ -3,7 +3,7 @@ var job = require('./job.json');
 var decode = require('base-64').decode;
 
 var config = {
-  url: 'https://35.190.130.127',
+  url: 'https://' + secret.clusterIp,
   ca: decode(secret.data['ca.crt']),
   auth: {
     bearer: decode(secret.data.token)
@@ -35,9 +35,10 @@ exports["ig-commit-trigger"] = function(req, res) {
     envrepo.value = repo;
     env.push({name: 'ZULIP_EMAIL', value: secret.zulip_email});
     env.push({name: 'ZULIP_API_KEY', value: secret.zulip_api_key});
-
     batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
-      res.status(200).json({
+      console.log("ERR", JSON.stringify(err))
+      console.log("RES", JSON.stringify(submitted, null,2))
+      res && res.status(200).json({
         'org': org,
         'repo': repo,
         'submitted': submitted

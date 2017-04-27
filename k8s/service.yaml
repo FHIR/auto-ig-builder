@@ -6,8 +6,6 @@ metadata:
   namespace: fhir
   name: ci-build-service
 spec:
-  externalIPs:
-  - 10.142.0.4
   ports:
   - port: 80
     name: web
@@ -19,6 +17,5 @@ spec:
     targetPort: 22
   selector:
     run: ci-build
-  type: ClusterIP
-
-
+  type: LoadBalancer
+  loadBalancerIP: 35.190.153.146

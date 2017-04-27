@@ -10,5 +10,9 @@ kubectl  --namespace fhir create secret generic github-fhir-svn  \
   --from-file ~/Private/deploy_fhir_svn \
   --from-file ~/Private/deploy_fhir_svn.pub
 
+
+kubectl  --namespace fhir create secret generic ci-build-keys  --from-file=id=/home/jmandel/Private/deploy.build.fhir.org --from-file=id.pub=/home/jmandel/Private/deploy.build.fhir.org.pub 
+
+
 kubectl apply -f ci-build.deployment 
 kubectl apply -f svn-sync.deployment 
