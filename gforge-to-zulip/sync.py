@@ -22,7 +22,8 @@ def read_issues(s):
     reader = unicodecsv.reader(StringIO.StringIO(changes.text.encode("utf-8")), encoding='utf-8')
     reader.next()
     return {
-        int(row[0]): (int(row[0]), row[1], row[4], row[5]) for row in reader
+        int(row[0]): (int(row[0]), row[1], row[5]) for row in reader
+        #'TrackerItemID', 'Summary', 'Submitted By'
     }
 
 def post_issue(issue):
