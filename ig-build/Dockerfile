@@ -22,10 +22,11 @@ RUN pip install requests zulip
 RUN mkdir -p /root/.ssh && echo "Host ci-build\n\
   HostName ci-build-service.fhir.svc.cluster.local\n\
   User fhir_upload\n\
+  StrictHostKeyChecking no\n\
   Port 2222\n\
   IdentityFile /etc/ci_build_keys/id\n\
   IdentitiesOnly yes" > /root/.ssh/config && chmod go-wrx /root/.ssh/config
 
 ADD publish /usr/local/bin/publish
 
-ENTRYPOINT python2.7 -m builder.builder
+ENTRYPOINT python2.7 -m builder.builder || true
