@@ -5,11 +5,19 @@
 0. **Create an IG** in a new folder, including *a file called `ig.json`* containing the IG definition, alongside any other content (for example a `pages` folder) that your IG requires.
 1. **Put your IG on GitHub**: create a GitHub repository within your own organization, and push your content to GitHub.
 2. **Add a Webhook in GitHub**: click "Settings", then "Webhooks & Services", then "Add Webhook".
-3. **Configure the Webhook**: enter a URL like `https://icbe5lqbof.execute-api.us-east-1.amazonaws.com/prod/publish?org=:org&repo=:repo` where `:org` is the organization of your project, and `:repo` is your repository. For example, if your IG source code is at https://github.com/test-igs/simple, then your org is `test-igs` and your repo is `simple`, so your Webhook URL is `https://icbe5lqbof.execute-api.us-east-1.amazonaws.com/prod/publish?org=test-igs&repo=simple`. You can accept the default "secret" and choose "Just the push event" as your trigger, and then click "Add webhook".
+3. **Configure the Webhook**: enter a URL of `https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger`. Choose "Content type" of `application/json` and accept the default (blank) "secret". Choose "Just the push event" as your trigger, and then click "Add webhook".
 
-Now GitHub will automatically trigger a build whenever you commit changes. (To manually trigger a build, just `POST` to the Webhook URL yourself, for example via `curl -X POST`.)
+Now GitHub will automatically trigger a build whenever you commit changes. To manually trigger a build, you can `POST` to the Webhook URL yourself, for example:
 
-*Note: a build takes 2-3 minutes to complete. Then you can...*
+```
+curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger"
+  -H "Content-type: application/json"
+  --data '{"repository": {"full_name": "test-igs/simple"}}'
+```
+
+*Note: a build takes 2-3 minutes to complete. You should see a notification at https://chat.fhir.org/#narrow/stream/committers/topic/ig-build.
+
+## After the build is complete, you can...
 
 ### Find your rendered IG automatically available at
 
@@ -17,8 +25,5 @@ http://build.fhir.org/:org/:repo
 
 ### Find debugging info about the build
 
-For a text log of all console ouput from the build process, check out:  
-http://ig-build.fhir.org.s3-website-us-east-1.amazonaws.com/logs/:org/:repo
-
-For a debug file including the fill input + output directory structure from the build process, see:  
-http://build.fhir.org/:org/:repo/debug.tgz
+For a build log, see:
+http://build.fhir.org/:org/:repo/build.log
