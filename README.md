@@ -21,9 +21,9 @@ curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/i
 
 ### Find your rendered IG automatically available at
 
-http://build.fhir.org/:org/:repo
+http://build.fhir.org/ig/:org/:repo
 
 ### Find debugging info about the build
 
 For a build log, see:
-http://build.fhir.org/:org/:repo/build.log
+http://build.fhir.org/ig/:org/:repo/build.log
