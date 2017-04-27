@@ -11,7 +11,7 @@ from .util  import make_temp_dir, do, send_zulip
 from os.path import normpath
 
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
-HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://storage.googleapis.com/fhir-igs')
+HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'http://build.fhir.org/ig')
 
 def build(config):
   temp_dir = make_temp_dir()
