@@ -20,29 +20,35 @@ function print(err, result) {
 
 exports["ig-commit-trigger"] = function(req, res) {
 
-    console.log("BODY 2", req.body);
-    var target = req.body.repository.full_name.split('/');
-    var org = target[0];
-    var repo = target[1];
+  console.log("BODY 2", req.body);
+  var target = req.body.repository.full_name.split('/');
+  var org = target[0];
+  var repo = target[1];
 
-    console.log("JOB", job);
+  console.log("JOB", job);
 
-    var env = job.spec.template.spec.containers[0].env;
-    var envorg  = env[0];
-    var envrepo = env[1];
+  job.spec.template.spec.containers[0].env = [{
+      "name": "IG_ORG",
+      "value":org
+    }, {
+      "name": "IG_REPO",
+      "value": repo
+    }, {
+      "name": "ZULIP_EMAIL",
+      "value": secret.zulip_email
+    }, {
+      "name": "ZULIP_API_KEY",
+      "value": secret.zulip_api_key
+  }];
 
-    envorg.value = org;
-    envrepo.value = repo;
-    env.push({name: 'ZULIP_EMAIL', value: secret.zulip_email});
-    env.push({name: 'ZULIP_API_KEY', value: secret.zulip_api_key});
-    batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
-      console.log("ERR", JSON.stringify(err))
-      console.log("RES", JSON.stringify(submitted, null,2))
-      res && res.status(200).json({
-        'org': org,
-        'repo': repo,
-        'submitted': submitted
-      });
-    })
+  batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
+    console.log("ERR", JSON.stringify(err))
+    console.log("RES", JSON.stringify(submitted, null,2))
+    res && res.status(200).json({
+      'org': org,
+      'repo': repo,
+      'submitted': submitted
+    });
+  })
 
 };

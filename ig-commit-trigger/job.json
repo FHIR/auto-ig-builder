@@ -1,4 +1,3 @@
-
 {
   "apiVersion": "batch/v1",
   "kind": "Job",
@@ -29,15 +28,7 @@
           {
             "name": "ig-build",
             "image": "gcr.io/fhir-org-starter-project/ig-build",
-            "env": [
-              {
-                "name": "IG_ORG",
-                "value": "HL7"
-              }, {
-                "name": "IG_REPO",
-                "value": "sdc"
-              }
-            ],
+            "env": [ ],
             "volumeMounts": [{
               "name": "keys",
               "mountPath": "/etc/ci_build_keys"
