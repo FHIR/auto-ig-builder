@@ -11,8 +11,9 @@ kubectl  --namespace fhir create secret generic github-fhir-svn  \
   --from-file ~/Private/deploy_fhir_svn.pub
 
 
-kubectl  --namespace fhir create secret generic ci-build-keys  --from-file=id=/home/jmandel/Private/deploy.build.fhir.org --from-file=id.pub=/home/jmandel/Private/deploy.build.fhir.org.pub 
+kubectl  --namespace fhir create secret generic ci-build-keys  --from-file=id=/home/jmandel/Private/deploy.build.fhir.org --from-file=id.pub=/home/jmandel/Private/deploy.build.fhir.org.pub
+kubectl  --namespace fhir create secret generic gforge-secrets --from-literal=email=$ZULIP_EMAIL --from-literal=api_key=$ZULIP_API_KEY --from-literal=gforge_password=$GFORGE_PASSWORD
 
-
-kubectl apply -f ci-build.deployment 
-kubectl apply -f svn-sync.deployment 
+kubectl apply -f ci-build.deployment.yaml
+kubectl apply -f svn-sync.deployment.yaml
+kubectl apply -f gforge-to-zulip.deployment.yaml

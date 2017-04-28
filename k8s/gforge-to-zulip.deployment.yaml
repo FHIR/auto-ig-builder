@@ -1,0 +1,32 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gforge-to-zulip
+  namespace: fhir
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: gforge-to-zulip
+      namespace: fhir
+    spec:
+      containers:
+      - image: gcr.io/fhir-org-starter-project/gforge-to-zulip
+        name: gforge-to-zulip
+        env:
+        - name: ZULIP_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: gforge-secrets
+              key: email
+        - name: ZULIP_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gforge-secrets
+              key: api_key
+        - name: GFORGE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gforge-secrets
+              key: gforge_password
