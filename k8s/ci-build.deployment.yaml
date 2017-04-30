@@ -18,8 +18,6 @@ spec:
         volumeMounts:
         - name: fhir-ci-build-disk
           mountPath: /disk
-        - name: nginx-conf-volume
-          mountPath: /conf
       containers:
       - image: gcr.io/fhir-org-starter-project/ci-build
         name: ci-build
