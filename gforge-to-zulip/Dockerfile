@@ -4,4 +4,4 @@ MAINTAINER Josh Mandel
 RUN pip install requests zulip unicodecsv
 ADD sync.py /usr/local/bin/sync.py
 
-ENTRYPOINT sync.py
+ENTRYPOINT python -u /usr/local/bin/sync.py

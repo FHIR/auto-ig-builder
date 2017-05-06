@@ -8,7 +8,9 @@ import time
 import os
 
 login = {'username':'fhir_bot','password':os.environ['GFORGE_PASSWORD']}
+TIMEOUT = 10
 session = requests.Session()
+print "Boot"
 
 zulip_client = zulip.Client(
     site='https://chat.fhir.org',
@@ -17,10 +19,13 @@ zulip_client = zulip.Client(
 
 
 def read_issues(s):
-    s.post('http://gforge.hl7.org/gf/account/?action=LoginAction',data=login)
-    changes = s.get('http://gforge.hl7.org/gf/project/fhir/tracker/?action=TrackerQueryCSV&tracker_id=677&tracker_query_id=143')
+    print "login"
+    s.post('http://gforge.hl7.org/gf/account/?action=LoginAction',data=login, timeout=TIMEOUT)
+    print "get issues"
+    changes = s.get('http://gforge.hl7.org/gf/project/fhir/tracker/?action=TrackerQueryCSV&tracker_id=677&tracker_query_id=143', timeout=TIMEOUT)
     reader = unicodecsv.reader(StringIO.StringIO(changes.text.encode("utf-8")), encoding='utf-8')
     reader.next()
+    print "read all issues"
     return {
         int(row[0]): (int(row[0]), row[1], row[5]) for row in reader
         #'TrackerItemID', 'Summary', 'Submitted By'
@@ -38,10 +43,21 @@ def post_issue(issue):
     })
 
 posted_issues = read_issues(session)
+last_synced_issue = os.environ.get('LAST_SYNCED_ISSUE')
+if last_synced_issue:
+  last_synced_issue = int(last_synced_issue)
+  existing = list(posted_issues)
+  for p in existing:
+    if p > last_synced_issue:
+      del posted_issues[p]
+
 while True:
+    print "About to issues"
     issues = read_issues(session)
+    print "got issues: %s"%(len(posted_issues))
     for issue_number, issue in issues.iteritems():
         if issue_number > max(posted_issues.keys()):
             post_issue(issue)
     posted_issues.update(issues)
+    print "Max %s"%(max(posted_issues.keys()))
     time.sleep(60)
