@@ -70,6 +70,9 @@ data:
         ssl_certificate_key  /etc/ssl/tls.key;
         location / {
             proxy_pass http://reference-hapi-service;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
     }
 
@@ -104,9 +107,7 @@ data:
         add_header Vary Accept;
 
         try_files $uri $uri$fhir_suffix $uri/index.html   =404;
-        location /prepath {
-          proxy_pass http://ci-build-service/;
-        }
+
         location /ig {
             root /var/www;
             try_files $uri $uri$fhir_suffix $uri/index.html   =404;
