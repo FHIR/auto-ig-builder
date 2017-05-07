@@ -1,6 +1,7 @@
 var secret = require('./secret.json');
 var job = require('./job.json');
 var decode = require('base-64').decode;
+var Api = require('kubernetes-client');
 
 var config = {
   url: 'https://' + secret.clusterIp,
@@ -10,7 +11,6 @@ var config = {
   }
 };
 
-var Api = require('kubernetes-client');
 const core = new Api.Core(config);
 const batch = new Api.Batch(config);
 
