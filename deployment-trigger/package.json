@@ -1,0 +1,16 @@
+{
+  "name": "ig-commit-trigger",
+  "version": "1.0.0",
+  "description": "Handle a github commit for a FHIR IG",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Josh Mandel",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "base-64": "^0.1.0",
+    "kubernetes-client": "^3.10.1",
+    "request": "^2.81.0"
+  }
+}

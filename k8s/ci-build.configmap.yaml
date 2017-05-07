@@ -65,7 +65,7 @@ data:
     server {
         listen 80;
         listen 443 ssl;
-        server_name reference-hapi.fhir.org;
+        server_name reference-hapi.fhir.org hapi.test-servers.fhir.org;
         ssl_certificate /etc/ssl/tls.chained.crt;
         ssl_certificate_key  /etc/ssl/tls.key;
         location / {
