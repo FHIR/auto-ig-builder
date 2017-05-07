@@ -63,7 +63,21 @@ data:
     }
   sites-enabled.conf: |
     server {
+        listen 80;
+        listen 443 ssl;
+        server_name reference-hapi.fhir.org;
+        ssl_certificate /etc/ssl/tls.chained.crt;
+        ssl_certificate_key  /etc/ssl/tls.key;
+        location / {
+            proxy_pass http://reference-hapi-service;
+        }
+    }
+
+    server {
         listen 80 default_server;
+        listen 443 default_server ssl;
+        ssl_certificate /etc/ssl/tls.chained.crt;
+        ssl_certificate_key  /etc/ssl/tls.key;
 
         server_name build.fhir.org;
 
@@ -90,8 +104,8 @@ data:
         add_header Vary Accept;
 
         try_files $uri $uri$fhir_suffix $uri/index.html   =404;
-        location ~ ^/ig/(?<org>[^/]+)\/(?<repo>[^/]+)$ {
-            rewrite [^/]$ $uri/ redirect;
+        location /prepath {
+          proxy_pass http://ci-build-service/;
         }
         location /ig {
             root /var/www;

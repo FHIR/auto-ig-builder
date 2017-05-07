@@ -23,7 +23,7 @@ spec:
         name: ci-build
         env:
         - name: BUILD_NUMBER
-          value: "0"
+          value: "1"
         - name: SSH_AUTHORIZED_KEY
           valueFrom:
             configMapKeyRef:
@@ -41,6 +41,8 @@ spec:
       - image: nginx
         name: nginx
         volumeMounts:
+        - name: ssl-certs
+          mountPath: /etc/ssl
         - name: fhir-ci-build-disk
           mountPath: /var/www
           subPath: www
@@ -50,6 +52,8 @@ spec:
         - name: nginx-conf-volume
           mountPath: /etc/nginx/sites-enabled/default
           subPath: sites-enabled.conf
+        - name: nginx-conf-volume
+          mountPath: /etc/nginx/volume
       volumes:
       - name: fhir-ci-build-disk
         gcePersistentDisk:
@@ -58,3 +62,7 @@ spec:
       - name: nginx-conf-volume
         configMap:
           name: ci-build-config
+      - name: ssl-certs
+        secret:
+          secretName: fhir-org-ssl-keys
+          defaultMode: 256

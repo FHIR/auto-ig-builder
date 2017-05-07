@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: fhir
+  name: reference-hapi-service
+spec:
+  ports:
+  - port: 80
+    name: web
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    run: reference-hapi

@@ -7,6 +7,10 @@ metadata:
   name: ci-build-service
 spec:
   ports:
+  - port: 443
+    name: secureweb
+    protocol: TCP
+    targetPort: 443
   - port: 80
     name: web
     protocol: TCP
