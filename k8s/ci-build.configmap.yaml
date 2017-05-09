@@ -108,6 +108,10 @@ data:
 
         try_files $uri $uri$fhir_suffix $uri/index.html   =404;
 
+        location ~ ^/ig/(?<org>[^/]+)\/(?<repo>[^/]+)$ {
+            rewrite [^/]$ $uri/ redirect;
+        }
+
         location /ig {
             root /var/www;
             try_files $uri $uri$fhir_suffix $uri/index.html   =404;
