@@ -112,7 +112,7 @@ data:
             rewrite [^/]$ $uri/ redirect;
         }
 
-        location /ig {
+        location /ig/ {
             root /var/www;
             try_files $uri $uri$fhir_suffix $uri/index.html   =404;
         }
