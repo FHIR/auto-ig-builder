@@ -33,6 +33,7 @@ def build(config):
 
 
   built_exit = do(['java',
+         '-Xms2g', '-Xmx2g',
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
          '-auto-ig-build',
