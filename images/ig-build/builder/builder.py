@@ -31,9 +31,10 @@ def build(config):
     'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B (%an)'], cwd=clone_dir).strip()
   }
 
+  java_memory = os.environ.get('JAVA_MEMORY', '2g')
 
   built_exit = do(['java',
-         '-Xms2g', '-Xmx2g',
+         '-Xms%s'%java_memory, '-Xmx%s'%java_memory,
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
          '-auto-ig-build',
