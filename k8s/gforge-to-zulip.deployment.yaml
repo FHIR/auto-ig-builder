@@ -17,7 +17,7 @@ spec:
         env:
         - name: VERSION
           value: "0"
-        - name: LAST_SYNCED_ISSUE
+        - name: LAST_SYNCED_ISSUE_HIDDEN
           value: "13724"
         - name: ZULIP_EMAIL
           valueFrom:
