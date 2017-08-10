@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ ! -d "fhir/build" ]; then
-  echo "" | git svn clone http://gforge.hl7.org/svn/fhir/trunk/build -r 2403 fhir/build --username anonymous
+  echo "" | git svn clone https://gforge.hl7.org/svn/fhir/trunk/build -r 2403 fhir/build --username anonymous
   pushd fhir/build
   git config push.default simple
   git remote add origin git@github.com:hl7-fhir/fhir-svn.git

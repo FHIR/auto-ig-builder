@@ -20,9 +20,9 @@ zulip_client = zulip.Client(
 
 def read_issues(s):
     print "login"
-    s.post('http://gforge.hl7.org/gf/account/?action=LoginAction',data=login, timeout=TIMEOUT)
+    s.post('https://gforge.hl7.org/gf/account/?action=LoginAction',data=login, timeout=TIMEOUT)
     print "get issues"
-    changes = s.get('http://gforge.hl7.org/gf/project/fhir/tracker/?action=TrackerQueryCSV&tracker_id=677&tracker_query_id=143', timeout=TIMEOUT)
+    changes = s.get('https://gforge.hl7.org/gf/project/fhir/tracker/?action=TrackerQueryCSV&tracker_id=677&tracker_query_id=143', timeout=TIMEOUT)
     reader = unicodecsv.reader(StringIO.StringIO(changes.text.encode("utf-8")), encoding='utf-8')
     reader.next()
     print "read all issues"
