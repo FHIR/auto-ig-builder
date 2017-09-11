@@ -32,7 +32,12 @@
             "volumeMounts": [{
               "name": "keys",
               "mountPath": "/etc/ci_build_keys"
-            }]
+            }],
+            "resources": {
+              "limits": {
+                "memory": "2100Mi"
+              }
+            }
           }
         ],
         "restartPolicy": "Never"
