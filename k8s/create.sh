@@ -20,3 +20,5 @@ kubectl apply -f hapi.deployment.yaml  -f hapi.service.yaml
 kubectl apply -f ci-build.deployment.yaml
 kubectl apply -f svn-sync.deployment.yaml
 kubectl apply -f gforge-to-zulip.deployment.yaml
+
+kubectl apply -f lego
