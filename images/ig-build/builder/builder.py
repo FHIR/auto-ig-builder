@@ -67,7 +67,7 @@ def build(config):
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
     message += [" | [published](%(root)s/%(org)s/%(repo)s/index.html)"]
-    message += ["[qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/qa.html)"]
+    message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/qa.html)"]
     shutil.copy(logfile, build_dir)
     do(['publish', details['org'], details['repo']], build_dir, pipe=True)
 
