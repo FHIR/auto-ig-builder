@@ -13,6 +13,15 @@ from os.path import normpath
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'http://build.fhir.org/ig')
 
+def get_qa_score(build_dir):
+  qa_file = os.path.join(build_dir, 'qa.html')
+  with open(qa_file, 'r') as f:
+    f.readline()
+    f.readline()
+    report_line = f.readline()
+  return report_line.split("--")[1].strip()
+
+
 def build(config):
   temp_dir = make_temp_dir()
   clone_dir = os.path.join(temp_dir, 'repo')
@@ -58,6 +67,7 @@ def build(config):
     details['emoji'] = 'thumbsup'
     details['buildlog'] = 'build.log'
     message += [" | [published](%(root)s/%(org)s/%(repo)s/index.html)"]
+    message += ["[qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/qa.html)"]
     shutil.copy(logfile, build_dir)
     do(['publish', details['org'], details['repo']], build_dir, pipe=True)
 
