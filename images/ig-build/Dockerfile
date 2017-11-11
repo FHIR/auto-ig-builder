@@ -3,7 +3,8 @@ MAINTAINER Josh Mandel
 
 # Install required packages
 RUN apt-get update
-RUN apt-get install -y  --force-yes jekyll git python-pip
+RUN apt-get install -y  --force-yes jekyll git python-pip openssl
+
 RUN gem install jekyll-asciidoc
 
 RUN mkdir -p /app/builder && mkdir /ig && mkdir /scratch
