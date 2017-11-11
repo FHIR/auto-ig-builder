@@ -57,14 +57,14 @@ def build(config):
 
   if not built:
     print "Build error occurred"
-    details['emoji'] = 'thumbsdown'
+    details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'build.log'
     message += [" | [debug](%(root)s/%(org)s/%(repo)s)"]
     shutil.copy(logfile, clone_dir)
     do(['publish', details['org'], details['repo']], clone_dir, pipe=True)
   else:
     print "Build succeeded"
-    details['emoji'] = 'thumbsup'
+    details['emoji'] = 'thumbs_up'
     details['buildlog'] = 'build.log'
     message += [" | [published](%(root)s/%(org)s/%(repo)s/index.html)"]
     message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/qa.html)"]
