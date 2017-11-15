@@ -24,6 +24,7 @@
             }
           }
         ],
+        "imagePullPolicy": "Always",
         "containers": [
           {
             "name": "ig-build",
