@@ -29,7 +29,7 @@ def build(config):
   logfile = os.path.join(temp_dir, 'build.log')
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
   logging.info('about to clone!')
-  do(['git', 'clone', GITHUB%config, 'repo'], temp_dir)
+  do(['git', 'clone', '--recursive', GITHUB%config, 'repo'], temp_dir)
   do(['wget', '-q', 'http://build.fhir.org/org.hl7.fhir.igpublisher.jar',
         '-O', 'publisher.jar'], temp_dir)
 
