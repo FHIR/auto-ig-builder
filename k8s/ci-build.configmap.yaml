@@ -116,6 +116,12 @@ data:
             root /var/www;
             try_files $uri $uri$fhir_suffix $uri/index.html   =404;
         }
+
+        location /branches/ {
+            root /var/www;
+            try_files $uri $uri$fhir_suffix $uri/index.html   =404;
+        }
+
     }
 kind: ConfigMap
 metadata:

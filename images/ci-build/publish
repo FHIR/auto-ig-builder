@@ -7,6 +7,8 @@ function finish {
 }
 trap finish EXIT
 
+DEPLOY_TO_BRANCH=$1
+
 TARGET=$RANDOM
 
 mkdir -p ~/uploading/$TARGET
@@ -16,10 +18,17 @@ while true; do sleep 10; du -hs .; done &
 KEEPALIVE_PID=$!
 tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
 
-mv ~/uploading/www/fhir ~/uploading/fhir.$TARGET.old  || true
-
-mkdir -p ~/uploading/www
-mv ~/uploading/$TARGET/ ~/uploading/www/fhir
-rm -rf ~/uploading/fhir.$TARGET.old || true
+if [ ! -z "$DEPLOY_TO_BRANCH" ]
+then
+    mv ~/uploading/www/branches/$DEPLOY_TO_BRANCH ~/uploading/branch.$TARGET.old  || true
+    mkdir -p ~/uploading/www/branches
+    mv ~/uploading/$TARGET/ ~/uploading/www/branches/$DEPLOY_TO_BRANCH
+    rm -rf ~/uploading/branch.$TARGET.old || true
+else
+    mv ~/uploading/www/fhir ~/uploading/fhir.$TARGET.old  || true
+    mkdir -p ~/uploading/www
+    mv ~/uploading/$TARGET/ ~/uploading/www/fhir
+    rm -rf ~/uploading/fhir.$TARGET.old || true
+fi
 
 echo "fin"
