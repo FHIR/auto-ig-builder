@@ -31,4 +31,7 @@ else
     rm -rf ~/uploading/fhir.$TARGET.old || true
 fi
 
+cd ~/uploading/www/branches
+find . -path ./master -prune -o -type d -ctime +30  -path './*'  -exec rm -rf {} \;
+
 echo "fin"
