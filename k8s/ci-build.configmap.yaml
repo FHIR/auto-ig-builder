@@ -84,7 +84,7 @@ data:
 
         server_name build.fhir.org;
 
-        root /var/www/fhir;
+        root /var/www/branches/master;
 
         index index.html index.htm;
 
