@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update
-RUN apt-get install -y openssh-server supervisor
+RUN apt-get install -y openssh-server supervisor curl jq
 
 RUN mkdir /var/run/sshd
 RUN useradd -m -r -s /bin/bash fhir_upload && \

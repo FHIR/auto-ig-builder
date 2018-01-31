@@ -8,7 +8,6 @@ function finish {
 trap finish EXIT
 
 DEPLOY_TO_BRANCH=$1
-
 TARGET=$RANDOM
 
 mkdir -p ~/uploading/$TARGET
@@ -31,7 +30,22 @@ else
     rm -rf ~/uploading/fhir.$TARGET.old || true
 fi
 
+# Delete old branches
 cd ~/uploading/www/branches
 find . -path ./master -prune -o -type d -ctime +30  -path './*'  -exec rm -rf {} \;
+
+# Delete branches that are no longer active
+NAMES=$(curl -s  https://api.github.com/repos/hl7-fhir/fhir-svn/branches | jq '.[].name')
+if [ ! -z "$NAMES" ] && [[ $NAMES = *"\"master\""* ]] # Ensure GH response present and sane
+then
+    for i in $(ls -d */); do
+        DIR_TO_CHECK=${i%%/}
+        if [[ ! $NAMES = *\"$DIR_TO_CHECK\"* ]]
+        then
+            echo "Remove deleted branch: $DIR_TO_CHECK"
+            rm -rf $DIR_TO_CHECK
+        fi
+    done
+fi
 
 echo "fin"
