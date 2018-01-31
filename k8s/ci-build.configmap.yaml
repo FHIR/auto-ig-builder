@@ -88,6 +88,7 @@ data:
 
         index index.html index.htm;
 
+        autoindex on;
         expires 5m;
         include mime.types;
         types {
@@ -112,18 +113,22 @@ data:
             rewrite [^/]$ $uri/ redirect;
         }
 
-        location /ig/ {
-            root /var/www;
-            try_files $uri $uri$fhir_suffix $uri/index.html   =404;
-        }
-
         location ~ ^/branches/(?<branch>[^/]+)$ {
             rewrite [^/]$ $uri/ redirect;
         }
 
-        location /branches/ {
+        location /ig {
+            rewrite [^/]$ $uri/ redirect;
+        }
+
+        location /branches {
+            rewrite [^/]$ $uri/ redirect;
+        }
+
+        location ~ ^/(ig|branches)/ {
             root /var/www;
-            try_files $uri $uri$fhir_suffix $uri/index.html   =404;
+            autoindex on;
+            try_files $uri $uri$fhir_suffix $uri/index.html $uri/   =404;
         }
 
     }
