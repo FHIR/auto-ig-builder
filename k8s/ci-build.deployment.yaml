@@ -20,6 +20,7 @@ spec:
           mountPath: /disk
       containers:
       - image: gcr.io/fhir-org-starter-project/ci-build
+        imagePullPolicy: Always
         name: ci-build
         env:
         - name: BUILD_NUMBER
