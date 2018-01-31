@@ -22,12 +22,12 @@ if [ ! -z "$DEPLOY_TO_BRANCH" ]
 then
     mv ~/uploading/www/branches/$DEPLOY_TO_BRANCH ~/uploading/branch.$TARGET.old  || true
     mkdir -p ~/uploading/www/branches
-    mv ~/uploading/$TARGET/ ~/uploading/www/branches/$DEPLOY_TO_BRANCH
+    mv ~/uploading/$TARGET/ ~/var/www/branches/$DEPLOY_TO_BRANCH
     rm -rf ~/uploading/branch.$TARGET.old || true
 else
     mv ~/uploading/www/fhir ~/uploading/fhir.$TARGET.old  || true
     mkdir -p ~/uploading/www
-    mv ~/uploading/$TARGET/ ~/uploading/www/fhir
+    mv ~/uploading/$TARGET/ ~/var/www/fhir
     rm -rf ~/uploading/fhir.$TARGET.old || true
 fi
 
