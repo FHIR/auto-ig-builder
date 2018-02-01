@@ -53,7 +53,12 @@ if last_synced_issue:
 
 while True:
     print "About to issues"
-    issues = read_issues(session)
+    try:
+        issues = read_issues(session)
+    except:
+        print "GForge fetch failed; sleeping"
+        time.sleep(60)
+        continue
     print "got issues: %s"%(len(posted_issues))
     for issue_number, issue in issues.iteritems():
         if issue_number > max(posted_issues.keys()):
