@@ -13,12 +13,13 @@ spec:
     spec:
       containers:
       - image: gcr.io/fhir-org-starter-project/gforge-to-zulip
+        imagePullPolicy: Always
         name: gforge-to-zulip
         env:
         - name: VERSION
           value: "0"
         - name: LAST_SYNCED_ISSUE_HIDDEN
-          value: "13724"
+          value: "15115"
         - name: ZULIP_EMAIL
           valueFrom:
             secretKeyRef:
