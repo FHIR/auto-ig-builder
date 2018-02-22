@@ -117,11 +117,11 @@ data:
             rewrite [^/]$ $uri/ redirect;
         }
 
-        location /ig {
+        location = /ig {
             rewrite [^/]$ $uri/ redirect;
         }
 
-        location /branches {
+        location = /branches {
             rewrite [^/]$ $uri/ redirect;
         }
 
