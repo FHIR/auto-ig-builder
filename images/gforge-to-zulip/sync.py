@@ -8,7 +8,9 @@ import time
 import os
 
 login = {'username':'fhir_bot','password':os.environ['GFORGE_PASSWORD']}
-TIMEOUT = os.environ.get('GFORGE_TIMEOUT', 50)
+TIMEOUT = os.environ.get('GFORGE_TIMEOUT', '50')
+TIMEOUT = int(timeout)
+
 session = requests.Session()
 print "Boot"
 
