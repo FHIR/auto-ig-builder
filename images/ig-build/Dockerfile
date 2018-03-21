@@ -5,7 +5,7 @@ MAINTAINER Josh Mandel
 RUN apt-get update
 RUN apt-get install -y  --force-yes jekyll git python-pip openssl
 
-RUN gem install jekyll-asciidoc
+RUN gem install jekyll-asciidoc -v 1.1.2
 
 RUN mkdir -p /app/builder && mkdir /ig && mkdir /scratch
 ADD builder /app/builder
