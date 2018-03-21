@@ -36,7 +36,7 @@
             }],
             "resources": {
               "limits": {
-                "memory": "3200Mi"
+                "memory": "4Gi"
               }
             }
           }

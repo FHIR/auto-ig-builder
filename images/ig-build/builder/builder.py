@@ -15,11 +15,14 @@ HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'http://build.fhir.org/ig')
 
 def get_qa_score(build_dir):
   qa_file = os.path.join(build_dir, 'qa.html')
-  with open(qa_file, 'r') as f:
-    f.readline()
-    f.readline()
-    report_line = f.readline()
-  return report_line.split("--")[1].strip()
+  try:
+    with open(qa_file, 'r') as f:
+      f.readline()
+      f.readline()
+      report_line = f.readline()
+    return report_line.split("--")[1].strip()
+  except:
+    return "No QA File"
 
 
 def build(config):
@@ -68,10 +71,14 @@ def build(config):
     details['buildlog'] = 'build.log'
     message += [" | [published](%(root)s/%(org)s/%(repo)s/index.html)"]
     message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/qa.html)"]
+    print "Copying logfile"
     shutil.copy(logfile, build_dir)
+    print "publishing"
     do(['publish', details['org'], details['repo']], build_dir, pipe=True)
+    print "published"
 
   shutil.rmtree(temp_dir)
+  print "cleaned up"
   send_zulip('committers', 'ig-build', "".join(message)%details)
   # sys.exit(0 if built else 1)
 
