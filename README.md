@@ -10,8 +10,8 @@
 Now GitHub will automatically trigger a build whenever you commit changes. To manually trigger a build, you can `POST` to the Webhook URL yourself, for example:
 
 ```
-curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger"
-  -H "Content-type: application/json"
+curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger" \
+  -H "Content-type: application/json" \
   --data '{"repository": {"full_name": "test-igs/simple"}}'
 ```
 
