@@ -6,22 +6,131 @@
   </head>
   <body>
     <h2>Builds</h2>
-    <div id="build"></div>
-    <h2>QA Results</h2>
-    <div id="qa"></div>
+    <table id="builds"></table>
   </body>
   <script>
+    var state = {
+      builds: [],
+      qas: []
+    };
+
     fetch("https://build.fhir.org/ig/builds.json")
       .then(r => r.json())
-      .then(renderBuild);
+      .then(fetchBuilds)
+      .then(renderBuilds);
+
     fetch("https://build.fhir.org/ig/qa.json")
       .then(r => r.json())
-      .then(renderQa);
-    function renderBuild(builds) {
-      console.log("builds", builds);
+      .then(fetchQas)
+      .then(renderQas);
+
+    function renderBuilds(builds) {
+      state.builds = builds;
+      render(state);
     }
-    function renderQa(qas) {
-      console.log("qas", qas);
+
+    function fetchBuilds(builds) {
+      return Promise.all(builds.map(repo =>
+        fetch("https://build.fhir.org/ig/"+repo)
+          .then(b => b.text())
+        .then(b => {
+          var date = b.match(/ @ (.*)\n/),
+              version = b.match(/Definitions (\S+)/);
+
+          date = date && new Date(date[1]) || null;
+          version = version && version[1] || null;
+
+          return {
+            repo: repo.replace("/build.log",""),
+            date: date,
+            version: version
+          }})));
     }
+
+    function fetchQas(qas) {
+      return Promise.all(qas.map(repo =>
+        fetch("https://build.fhir.org/ig/"+repo)
+          .then(b => b.text())
+        .then(b => {
+          var date = b.match(/Generated (.*?)\./),
+              version = b.match(/FHIR version (.*)\</);
+
+          date = date && new Date(date[1]) || null;
+          version = version && version[1] || null;
+
+          return {
+            repo: repo.replace("/qa.html", ""),
+            date: date,
+            version: version
+          }})));
+    }
+
+    function renderQas(qas) {
+      state.qas = qas;
+      render(state);
+
+    }
+
+    function rebuild(repo) {
+      fetch("https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger", {
+        body: JSON.stringify({"repository": {"full_name": repo}}),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        method: 'POST',
+        referrer: 'no-referrer',
+        mode: 'cors'
+      })
+      document.getElementById(repo).setAttribute("disabled", "true")
+    }
+
+ 
+  function render({builds, qas}){
+
+    var table = state.builds.map(e=>e.repo)
+      .reduce((acc, entry) => {
+        acc[entry] = {
+          build: builds.filter(b=>b.repo === entry)[0],
+          qa: qas.filter(b=>b.repo === entry)[0]
+        };
+        return acc
+    }, {})
+
+    rows = Object.keys(table)
+      .sort((a, b) => a.toLocaleLowerCase() < b.toLocaleLowerCase() ? -1 : 1)
+      .map(r => table[r])
+      .map(r => [
+        r.build.repo.split("/")[0],
+        r.build.repo.split("/")[1],
+        r.build.date && r.build.date.toISOString(),
+        r.build.version,
+        r.qa && r.qa.date.toISOString(),
+        r.qa && r.qa.version,
+        !!r.qa
+      ])
+
+    var tbody = `<thead>
+        <th>org</th>
+        <th>repo</th>
+        <th>buildVersion</th>
+        <th>buildDate</th>
+        <th>qaVersion</th>
+        <th>qaDate</th>
+        <th>success</th>
+        <th>Rebuild</th>
+      </thead><tr>` + rows.map(row => {
+      [org, repo, buildDate, buildVersion, qaDate, qaVersion, success] = row
+      return `<td>${org}</td>
+        <td>${repo}</td>
+        <td>${buildVersion}</td>
+        <td>${buildDate}</td>
+        <td>${qaVersion}</td>
+        <td>${qaDate}</td>
+        <td>${success}</td>
+        <td><button id="${org}/${repo}" onClick="rebuild('${org}/${repo}')">Rebuild</td>`
+    }).join(`</tr><tr>`)
+
+    document.getElementById("builds").innerHTML = tbody;
+  }
   </script>
 </html>
