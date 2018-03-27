@@ -1,0 +1,26 @@
+<!doctype html>
+  <html lang=en>
+  <head>
+    <meta charset=utf-8>
+    <title>blah</title>
+  </head>
+  <body>
+    <h2>Builds</h2>
+    <div id="build"></div>
+    <div id="qa"></div>
+  </body>
+  <script>
+    fetch("https://build.fhir.org/ig/builds.json")
+      .then(r => r.json())
+      .then(renderBuild);
+    fetch("https://build.fhir.org/ig/qas.json")
+      .then(r => r.json())
+      .then(renderQa);
+    function renderBuild(builds) {
+      console.log("builds", builds);
+    }
+    function renderQa(qas) {
+      console.log("qas", qas);
+    }
+  </script>
+</html>
