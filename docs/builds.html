@@ -13,7 +13,7 @@
     fetch("https://build.fhir.org/ig/builds.json")
       .then(r => r.json())
       .then(renderBuild);
-    fetch("https://build.fhir.org/ig/qas.json")
+    fetch("https://build.fhir.org/ig/qa.json")
       .then(r => r.json())
       .then(renderQa);
     function renderBuild(builds) {
