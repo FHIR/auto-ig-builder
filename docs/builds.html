@@ -5,6 +5,7 @@
     <title>FHIR IG Builds</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <script src="timeago.js"></script>
+    <script src="sortable.js"></script>
   </head>
   <body>
     <div class="container">
@@ -17,7 +18,8 @@
       builds: [],
       qas: []
     },
-    timeFormatter = timeago();
+    timeFormatter = timeago(),
+    buildsTable = document.getElementById("builds");
 
     fetch("https://build.fhir.org/ig/builds.json")
       .then(r => r.json())
@@ -113,11 +115,11 @@
       }})
 
     var tbody = `<thead>
-        <th>IG</th>
+        <th>ig</th>
         <th>qaVersion</th>
         <th>qaDate</th>
         <th>success</th>
-        <th>Rebuild</th>
+        <th>links</th>
       </thead><tr>` + rows.map(({org, repo, qaDate, qaVersion, success}) =>
         `<td>
         <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}">
@@ -132,7 +134,8 @@
         </td>`
     ).join(`</tr><tr>`)
 
-    document.getElementById("builds").innerHTML = tbody;
+    buildsTable.innerHTML = tbody;
+    sorttable.makeSortable(buildsTable);
   }
   </script>
 </html>
