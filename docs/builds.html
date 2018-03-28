@@ -126,7 +126,7 @@
       </thead><tr>` + rows.map(({org, repo, qaDate, qaVersion, success}) =>
         `<td>
         <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}">
-        ${org}/<strong>${repo}</strong></a>
+        ${org} / <strong>${repo}</strong></a>
         </td>
         <td>${qaVersion}</td>
         <td sorttable_customkey="${qaDate.toISOString()}">
