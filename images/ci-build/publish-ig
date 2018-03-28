@@ -25,4 +25,8 @@ mkdir -p ~/uploading/www/ig/$IG_ORG
 mv ~/uploading/$TARGET ~/uploading/www/ig/${IG_ORG}/${IG_REPO}
 rm -rf ~/uploading/$TARGET.old || true
 
+cd ~/uploading/www/ig
+find . -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json
+find . -name qa.html | sed 's|^./||'  | jq --raw-input . | jq -s . > qa.json
+
 echo "fin"

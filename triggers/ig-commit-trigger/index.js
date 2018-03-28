@@ -20,6 +20,16 @@ function print(err, result) {
 
 exports["ig-commit-trigger"] = function(req, res) {
 
+  res.header("Access-Control-Allow-Method", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Origin", "*");
+
+  if (req.method === 'OPTIONS') {
+    res.status(200);
+    res.json({})
+    return;
+  }
+
   console.log("BODY 2", req.body);
   var target = req.body.repository.full_name.split('/');
   var org = target[0];
