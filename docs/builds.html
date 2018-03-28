@@ -107,7 +107,6 @@
     }, {})
 
     rows = Object.keys(table)
-      .sort((a, b) => a.toLocaleLowerCase() < b.toLocaleLowerCase() ? -1 : 1)
       .map(r => table[r])
       .map(r => {return {
         org: r.qa.repo.split("/")[0],
@@ -116,6 +115,7 @@
         qaVersion: r.qa && r.qa.version,
         success: !!r.qa
       }})
+      .sort((a, b) => a.qaDate < b. qaDate ? 1 : -1)
 
     var tbody = `<thead>
         <th>ig</th>
