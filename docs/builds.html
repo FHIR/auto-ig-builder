@@ -3,16 +3,21 @@
   <head>
     <meta charset=utf-8>
     <title>FHIR IG Builds</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="timeago.js"></script>
   </head>
   <body>
-    <h2>Builds</h2>
-    <table id="builds"></table>
+    <div class="container">
+    <h2>FHIR IG Builds</h2>
+    <table id="builds" class="table table-striped"></table>
+  </div>
   </body>
   <script>
     var state = {
       builds: [],
       qas: []
-    };
+    },
+    timeFormatter = timeago();
 
     fetch("https://build.fhir.org/ig/builds.json")
       .then(r => r.json())
@@ -87,7 +92,7 @@
  
   function render({builds, qas}){
 
-    var table = state.builds.map(e=>e.repo)
+    var table = state.qas.map(e=>e.repo)
       .reduce((acc, entry) => {
         acc[entry] = {
           build: builds.filter(b=>b.repo === entry)[0],
@@ -99,36 +104,33 @@
     rows = Object.keys(table)
       .sort((a, b) => a.toLocaleLowerCase() < b.toLocaleLowerCase() ? -1 : 1)
       .map(r => table[r])
-      .map(r => [
-        r.build.repo.split("/")[0],
-        r.build.repo.split("/")[1],
-        r.build.date && r.build.date.toISOString(),
-        r.build.version,
-        r.qa && r.qa.date.toISOString(),
-        r.qa && r.qa.version,
-        !!r.qa
-      ])
+      .map(r => {return {
+        org: r.qa.repo.split("/")[0],
+        repo: r.qa.repo.split("/")[1],
+        qaDate: r.qa.date,
+        qaVersion: r.qa && r.qa.version,
+        success: !!r.qa
+      }})
 
     var tbody = `<thead>
-        <th>org</th>
         <th>repo</th>
-        <th>buildVersion</th>
-        <th>buildDate</th>
         <th>qaVersion</th>
         <th>qaDate</th>
         <th>success</th>
         <th>Rebuild</th>
-      </thead><tr>` + rows.map(row => {
-      [org, repo, buildDate, buildVersion, qaDate, qaVersion, success] = row
-      return `<td>${org}</td>
-        <td>${repo}</td>
-        <td>${buildVersion}</td>
-        <td>${buildDate}</td>
+      </thead><tr>` + rows.map(({org, repo, qaDate, qaVersion, success}) =>
+        `<td>
+        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}">
+        ${org}/<strong>${repo}</strong></a>
+        </td>
         <td>${qaVersion}</td>
-        <td>${qaDate}</td>
+        <td><a data-toggle="tooltip" title="${qaDate && qaDate.toISOString()}">${timeFormatter.format(qaDate)}</td>
         <td>${success}</td>
-        <td><button id="${org}/${repo}" onClick="rebuild('${org}/${repo}')">Rebuild</td>`
-    }).join(`</tr><tr>`)
+        <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/build.log">log</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}">gh</a>
+        </td>`
+    ).join(`</tr><tr>`)
 
     document.getElementById("builds").innerHTML = tbody;
   }
