@@ -129,7 +129,8 @@
         ${org}/<strong>${repo}</strong></a>
         </td>
         <td>${qaVersion}</td>
-        <td><a data-toggle="tooltip" title="${qaDate && qaDate.toISOString()}">${timeFormatter.format(qaDate)}</td>
+        <td sorttable_customkey="${qaDate.toISOString()}">
+        <a data-toggle="tooltip" title="${qaDate && qaDate.toISOString()}">${timeFormatter.format(qaDate)}</td>
         <td>${success}</td>
         <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/build.log">log</a>
