@@ -106,7 +106,7 @@
         repo: r.repo.split("/")[1],
         date: r.date,
         version: r.version,
-        success: !!(r.qa && !r.qa.err),
+        success: !!(r.qa && !r.qa.exception),
         debug: {build: r.build, qa: r.qa}
       }})
       .sort((a, b) => a.date < b. date ? 1 : -1)
@@ -115,7 +115,7 @@
         <th>ig</th>
         <th>version</th>
         <th>date</th>
-        <th>success</th>
+        <th>status</th>
         <th>links</th>
       </thead><tr>` + rows.map(({org, repo, date, version, success, debug}) =>
         `<td>
@@ -125,7 +125,7 @@
         <td>${version}</td>
         <td sorttable_customkey="${date && date.toISOString() || '1900'}">
         <a data-toggle="tooltip" title="${date && date.toISOString()}">${date ? timeFormatter.format(date) : "???"}</td>
-        <td>${success}</td>
+	<td><span class="badge pill-badge badge-${success ? "success" : "danger"}">${success ? "success" : "failure"}</span></td>
         <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/build.log">log</a>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}">gh</a>
