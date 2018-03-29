@@ -30,9 +30,12 @@
       .then(fetchBuilds)
       .then(renderBuilds);
 
-    fetch("https://build.fhir.org/ig/qa.json")
+    fetch("https://build.fhir.org/ig/qas.json")
       .then(r => r.json())
-      .then(fetchQas)
+      .then(r => r.map(qa => {
+        qa.date = new Date(qa.date)
+	return qa
+      }))
       .then(renderQas);
 
     function renderBuilds(builds) {
@@ -48,7 +51,7 @@
           var date = b.match(/ @ (.*)\n/),
               version = b.match(/Definitions (\S+)/);
 
-          date = date && new Date(date[1]) || null;
+          date = date && new Date(date[1] + " UTC") || null;
           version = version && version[1] || null;
 
           return {
@@ -58,28 +61,9 @@
           }})));
     }
 
-    function fetchQas(qas) {
-      return Promise.all(qas.map(repo =>
-        fetch("https://build.fhir.org/ig/"+repo)
-          .then(b => b.text())
-        .then(b => {
-          var date = b.match(/Generated (.*?)\./),
-              version = b.match(/FHIR version (.*)\</);
-
-          date = date && new Date(date[1]) || null;
-          version = version && version[1] || null;
-
-          return {
-            repo: repo.replace("/qa.html", ""),
-            date: date,
-            version: version
-          }})));
-    }
-
     function renderQas(qas) {
       state.qas = qas;
       render(state);
-
     }
 
     function rebuild(repo) {
@@ -99,39 +83,48 @@
   function render({builds, qas}){
 
     var table = state.qas.map(e=>e.repo)
+      .concat(state.builds.map(e=>e.repo))
       .reduce((acc, entry) => {
+        var build = builds.filter(b=>b.repo === entry)[0],
+	    qa = qas.filter(b=>b.repo === entry)[0]
+
         acc[entry] = {
-          build: builds.filter(b=>b.repo === entry)[0],
-          qa: qas.filter(b=>b.repo === entry)[0]
+          build: build,
+	  date: qa && qa.date || build.date,
+	  version: (qa && qa.version) || build.version,
+          qa: qa,
+	  repo: entry,
         };
         return acc
     }, {})
+	  console.log("t", table)
 
     rows = Object.keys(table)
       .map(r => table[r])
       .map(r => {return {
-        org: r.qa.repo.split("/")[0],
-        repo: r.qa.repo.split("/")[1],
-        qaDate: r.qa.date,
-        qaVersion: r.qa && r.qa.version,
-        success: !!r.qa
+        org: r.repo.split("/")[0],
+        repo: r.repo.split("/")[1],
+        date: r.date,
+        version: r.version,
+        success: !!(r.qa && !r.qa.err),
+        debug: {build: r.build, qa: r.qa}
       }})
-      .sort((a, b) => a.qaDate < b. qaDate ? 1 : -1)
+      .sort((a, b) => a.date < b. date ? 1 : -1)
 
     var tbody = `<thead>
         <th>ig</th>
-        <th>qaVersion</th>
-        <th>qaDate</th>
+        <th>version</th>
+        <th>date</th>
         <th>success</th>
         <th>links</th>
-      </thead><tr>` + rows.map(({org, repo, qaDate, qaVersion, success}) =>
+      </thead><tr>` + rows.map(({org, repo, date, version, success, debug}) =>
         `<td>
-        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}">
+        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${JSON.stringify(debug, null, 2)}'>
         ${org} / <strong>${repo}</strong></a>
         </td>
-        <td>${qaVersion}</td>
-        <td sorttable_customkey="${qaDate.toISOString()}">
-        <a data-toggle="tooltip" title="${qaDate && qaDate.toISOString()}">${timeFormatter.format(qaDate)}</td>
+        <td>${version}</td>
+        <td sorttable_customkey="${date && date.toISOString() || '1900'}">
+        <a data-toggle="tooltip" title="${date && date.toISOString()}">${date ? timeFormatter.format(date) : "???"}</td>
         <td>${success}</td>
         <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/build.log">log</a>
