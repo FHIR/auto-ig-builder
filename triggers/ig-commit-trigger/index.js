@@ -51,7 +51,7 @@ exports["ig-commit-trigger"] = function(req, res) {
       "value": secret.zulip_api_key
   }, {
       "name": "JAVA_MEMORY",
-      "value": "3750m"
+      "value": "3550m"
   }];
 
   batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
