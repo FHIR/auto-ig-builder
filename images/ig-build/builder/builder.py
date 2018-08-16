@@ -50,6 +50,7 @@ def build(config):
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
          '-auto-ig-build',
+         '-target', 'https://build.fhir.org/ig/%s/%s/'%(details['org'], details['repo']),
          '-out', clone_dir], clone_dir)
   built = (0 == built_exit)
   print built, built_exit
