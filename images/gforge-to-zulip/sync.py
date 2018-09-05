@@ -41,7 +41,7 @@ def post_issue(issue):
                 issue[1],
                 issue[2]),
         "subject": "tracker-item",
-        "to": "committers",
+        "to": "committers/notification",
     })
 
 posted_issues = read_issues(session)

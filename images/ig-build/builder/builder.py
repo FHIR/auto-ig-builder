@@ -80,7 +80,7 @@ def build(config):
 
   shutil.rmtree(temp_dir)
   print "cleaned up"
-  send_zulip('committers', 'ig-build', "".join(message)%details)
+  send_zulip('committers/notification', 'ig-build', "".join(message)%details)
   # sys.exit(0 if built else 1)
 
 if __name__ == '__main__':
