@@ -18,7 +18,9 @@ kubectl  --namespace fhir create secret generic gforge-secrets --from-literal=em
 kubectl apply -f ci-build.configmap.yaml
 kubectl apply -f hapi.deployment.yaml  -f hapi.service.yaml
 kubectl apply -f ci-build.deployment.yaml
-kubectl apply -f svn-sync.deployment.yaml
 kubectl apply -f gforge-to-zulip.deployment.yaml
+
+# no longer needed -- transitioned to github
+# kubectl apply -f svn-sync.deployment.yaml
 
 kubectl apply -f lego
