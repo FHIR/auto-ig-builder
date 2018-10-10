@@ -9,11 +9,13 @@ echo debconf shared/accepted-oracle-license-v1-1 seen true | \
 
 sudo DEBIAN_FRONTEND=noninteractive add-apt-repository -y ppa:webupd8team/java
 sudo DEBIAN_FRONTEND=noninteractive apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq oracle-java8-installer ant python-pip
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq oracle-java8-installer ant python-pip ruby ruby2.5-dev
 
 pip install zulip
 cd
 wget https://vstsagentpackage.azureedge.net/agent/2.136.1/vsts-agent-linux-x64-2.136.1.tar.gz
+
+sudo gem install jekyll jekyll-asciidoc
 
 mkdir agents
 cd agents
