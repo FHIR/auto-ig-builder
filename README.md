@@ -15,7 +15,7 @@ curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/i
   --data '{"repository": {"full_name": "test-igs/simple"}}'
 ```
 
-*Note: a build takes 2-3 minutes to complete. You should see a notification at https://chat.fhir.org/#narrow/stream/committers/topic/ig-build.
+*Note: a build takes 2-3 minutes to complete. You should see a notification at https://chat.fhir.org/#narrow/stream/142-committers.2Fnotification.
 
 ## After the build is complete, you can...
 
