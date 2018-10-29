@@ -35,7 +35,7 @@ cd ~/uploading/www/branches
 find . -path ./master -prune -o -type d -ctime +30  -path './*'  -exec rm -rf {} \;
 
 # Delete branches that are no longer active
-NAMES=$(curl -s  https://api.github.com/repos/hl7-fhir/fhir-svn/branches | jq '.[].name')
+NAMES=$(curl -s  https://api.github.com/repos/HL7/fhir/branches | jq '.[].name')
 if [ ! -z "$NAMES" ] && [[ $NAMES = *"\"master\""* ]] # Ensure GH response present and sane
 then
     for i in $(ls -d */); do
