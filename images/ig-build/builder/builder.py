@@ -66,7 +66,7 @@ def build(config):
     details['buildlog'] = 'build.log'
     message += [" | [debug](%(root)s/%(org)s/%(branch)s/%(repo)s)"]
     shutil.copy(logfile, clone_dir)
-    do(['publish', details['org'], details['repo']], clone_dir, pipe=True)
+    do(['publish', details['org'], details['repo'], details['branch']], clone_dir, pipe=True)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbs_up'
