@@ -136,6 +136,7 @@ data:
             root /var/www;
             try_files $uri $uri$fhir_suffix $uri/ =404;
             location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/(?<rest>.*) {
+                try_files $uri $uri$fhir_suffix $uri/ =404;
                 if ($rest !~ ^branches) {
                     rewrite ^ /ig/$org/$repo/branches/master/$rest;
                 }
