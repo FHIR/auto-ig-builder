@@ -64,7 +64,7 @@ def build(config):
     print "Build error occurred"
     details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'build.log'
-    message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/"]
+    message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/)"]
     shutil.copy(logfile, clone_dir)
     do(['publish', details['org'], details['repo'], details['branch']], clone_dir, pipe=True)
   else:
