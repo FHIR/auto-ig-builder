@@ -21,7 +21,7 @@ KEEPALIVE_PID=$!
 tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
 
     mv ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH ~/uploading/branch.$TARGET.old  || true
-    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
+    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/
     mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
     rm -rf ~/uploading/branch.$TARGET.old || true
 

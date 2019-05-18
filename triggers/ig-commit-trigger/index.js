@@ -34,7 +34,13 @@ exports["ig-commit-trigger"] = function(req, res) {
   var target = req.body.repository.full_name.split('/');
   var org = target[0];
   var repo = target[1];
-  var branch = req.body.ref.split('/').slice(-1)[0];
+  var branch;
+  try {
+    branch = req.body.ref.split('/').slice(-1)[0];
+  } catch(error) {
+    console.log("No branch; using master");
+    branch = 'master';
+  }
 
   console.log("JOB", job);
 
@@ -64,6 +70,7 @@ exports["ig-commit-trigger"] = function(req, res) {
     res && res.status(200).json({
       'org': org,
       'repo': repo //,
+      'branch': branch
       // 'submitted': submitted
     });
   })
