@@ -108,28 +108,37 @@ data:
         add_header Vary Accept;
 
         try_files $uri $uri$fhir_suffix $uri/index.html   =404;
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)$ {
+            rewrite ^ $uri/ redirect;
+        }
 
-        location ~ ^/ig/(?<org>[^/]+)\/(?<repo>[^/]+)$ {
-            rewrite [^/]$ $uri/ redirect;
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/(?<branch>[^/]+)$ {
+            rewrite ^ $uri/ redirect;
         }
 
         location ~ ^/branches/(?<branch>[^/]+)$ {
-            rewrite [^/]$ $uri/ redirect;
+            rewrite ^ $uri/ redirect;
         }
 
         location = /ig {
-            rewrite [^/]$ $uri/ redirect;
+            rewrite ^ $uri/ redirect;
         }
 
         location = /branches {
-            rewrite [^/]$ $uri/ redirect;
+            rewrite ^ $uri/ redirect;
         }
 
-        location ~ ^/(ig|branches)/ {
+        location  ~ /(ig|branches)/ {
             root /var/www;
-            autoindex on;
-            try_files $uri $uri$fhir_suffix $uri/index.html $uri/   =404;
+            try_files $uri $uri$fhir_suffix $uri/ =404;
+            location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/(?<rest>.*) {
+                if ($rest !~ ^branches) {
+                    rewrite ^ /ig/$org/$repo/branches/master/$rest;
+                }
+            }
         }
+
+
 
     }
 kind: ConfigMap

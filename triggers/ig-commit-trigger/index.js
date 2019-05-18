@@ -34,6 +34,7 @@ exports["ig-commit-trigger"] = function(req, res) {
   var target = req.body.repository.full_name.split('/');
   var org = target[0];
   var repo = target[1];
+  var branch = req.body.ref.split('/').slice(-1)[0];
 
   console.log("JOB", job);
 
@@ -43,6 +44,9 @@ exports["ig-commit-trigger"] = function(req, res) {
     }, {
       "name": "IG_REPO",
       "value": repo
+    }, {
+      "name": "IG_BRANCH",
+      "value": branch
     }, {
       "name": "ZULIP_EMAIL",
       "value": secret.zulip_email
