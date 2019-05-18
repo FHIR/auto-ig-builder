@@ -12,7 +12,7 @@ Now GitHub will automatically trigger a build whenever you commit changes. To ma
 ```
 curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger" \
   -H "Content-type: application/json" \
-  --data '{"repository": {"full_name": "test-igs/simple"}}'
+  --data '{"ref": "refs/heads/master", "repository": {"full_name": "test-igs/simple"}}'
 ```
 
 *Note: a build takes 2-3 minutes to complete. You should see a notification at https://chat.fhir.org/#narrow/stream/committers/topic/ig-build.
