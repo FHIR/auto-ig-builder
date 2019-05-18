@@ -12,15 +12,10 @@ By following the instructions below, you can configure your GitHub repository to
 2. **Add a Webhook in GitHub**: click "Settings", then "Webhooks & Services", then "Add Webhook".
 3. **Configure the Webhook**: enter a URL of `https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger`. Choose "Content type" of `application/json` and accept the default (blank) "secret". Choose "Just the push event" as your trigger, and then click "Add webhook".
 
-Now GitHub will automatically trigger a build whenever you commit changes. To manually trigger a build, you can `POST` to the Webhook URL yourself, for example:
-
-```
-curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger" \
-  -H "Content-type: application/json" \
-  --data '{"ref": "refs/heads/master", "repository": {"full_name": "test-igs/simple"}}'
-```
+Now GitHub will automatically trigger a build whenever you commit changes. 
 
 *Note: a build takes 2-3 minutes to complete. You should see a notification at https://chat.fhir.org/#narrow/stream/179297-committers.2Fnotification/topic/ig-build .*
+
 
 ## After the build is complete, you can...
 
@@ -36,3 +31,16 @@ For a build log, see:
 https://build.fhir.org/ig/:org/:repo/branches/:branch/build.log
 
 (Logs for the master branch will also be available directly at https://build.fhir.org/ig/:org/:repo/build.log .)
+
+#### If you want to manually trigger a build
+
+You can always push a new commit to your repo. But if you want to re-trigger a build for an existing commit, you have a couple of options. You can navigate through the GitHub UI within your repo to "Settings > Webhooks > ig-commit-trigger", scroll down to "Recent Deliveries," click the top one, and click "Redeliver.
+
+Or if you want to trigger a build programatically, you can `POST` to the Webhook URL yourself, for example:
+
+```
+curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger" \
+  -H "Content-type: application/json" \
+  --data '{"ref": "refs/heads/master", "repository": {"full_name": "test-igs/simple"}}'
+```
+
