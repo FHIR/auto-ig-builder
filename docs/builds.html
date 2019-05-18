@@ -69,7 +69,7 @@
 
     function rebuild(repo) {
       fetch("https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger", {
-        body: JSON.stringify({"repository": {"full_name": repo}}),
+        body: JSON.stringify({"ref": "refs/heads/master", "repository": {"full_name": repo}}),
         headers: {
           'Content-Type': 'application/json'
         },
