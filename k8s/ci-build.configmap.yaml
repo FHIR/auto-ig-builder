@@ -112,7 +112,11 @@ data:
             rewrite ^ $uri/ redirect;
         }
 
-        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/(?<branch>[^/]+)$ {
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/branches$ {
+            rewrite ^ $uri/ redirect;
+        }
+
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/branches/(?<branch>[^/]+)$ {
             rewrite ^ $uri/ redirect;
         }
 
