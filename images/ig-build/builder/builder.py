@@ -58,21 +58,21 @@ def build(config):
 
   message = ["**[%(org)s/%(repo)s: %(branch)s](https://github.com/%(org)s/%(repo)s/tree/%(branch)s)** rebuilt\n",
              "Commit: %(commit)s :%(emoji)s:\n",
-             "Details: [build logs](%(root)s/%(org)s/%(repo)s/%(branch)s/%(buildlog)s)"]
+             "Details: [build logs](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/%(buildlog)s)"]
 
   if not built:
     print "Build error occurred"
     details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'build.log'
-    message += [" | [debug](%(root)s/%(org)s/%(branch)s/%(repo)s)"]
+    message += [" | [debug](%(rhttp://build.fhir.org/ig/HL7/davinci-deqm/master/build.logoot)s/%(org)s/%(branch)s/%(repo)s)"]
     shutil.copy(logfile, clone_dir)
     do(['publish', details['org'], details['repo'], details['branch']], clone_dir, pipe=True)
   else:
     print "Build succeeded"
     details['emoji'] = 'thumbs_up'
     details['buildlog'] = 'build.log'
-    message += [" | [published](%(root)s/%(org)s/%(repo)s/%(branch)s/index.html)"]
-    message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/%(branch)s/qa.html)"]
+    message += [" | [published](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/index.html)"]
+    message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/branches/%(branch)s/qa.html)"]
     print "Copying logfile"
     shutil.copy(logfile, build_dir)
     print "publishing"
