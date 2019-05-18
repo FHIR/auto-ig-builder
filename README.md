@@ -26,13 +26,13 @@ curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/i
 
 ### Find your rendered IG automatically available at
 
-http://build.fhir.org/ig/:org/:repo/branches/:branch
+https://build.fhir.org/ig/:org/:repo/branches/:branch
 
-(The master branch will also be available directly at http://build.fhir.org/ig/:org/:repo .)
+(The master branch will also be available directly at https://build.fhir.org/ig/:org/:repo .)
 
 ### Find debugging info about the build
 
 For a build log, see:
-http://build.fhir.org/ig/:org/:repo/branches/:branch/build.log
+https://build.fhir.org/ig/:org/:repo/branches/:branch/build.log
 
-(Logs for the master branch will also be available directly at http://build.fhir.org/ig/:org/:repo/build.log .)
+(Logs for the master branch will also be available directly at https://build.fhir.org/ig/:org/:repo/build.log .)
