@@ -62,19 +62,6 @@ data:
         include /etc/nginx/sites-enabled/*;
     }
   sites-enabled.conf: |
-    server {
-        listen 80;
-        listen 443 ssl;
-        server_name reference-hapi.fhir.org hapi.test-servers.fhir.org;
-        ssl_certificate /etc/ssl/tls.chained.crt;
-        ssl_certificate_key  /etc/ssl/tls.key;
-        location / {
-            proxy_pass http://reference-hapi-service;
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-For $remote_addr;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
 
     server {
         listen 80 default_server;

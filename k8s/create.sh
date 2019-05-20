@@ -11,7 +11,6 @@ kubectl  --namespace fhir create secret generic gforge-secrets --from-literal=em
  kubectl  --namespace fhir create secret generic fhir-org-ssl-keys --from-file=tls.crt=/home/jmandel/Private/certs/fhir.org.cert.pem  --from-file=ca.crt=/home/jmandel/Private/certs/fhir.org.intermediate.cert.pem  --from-file=tls.key=/home/jmandel/Private/certs/fhir.org.key.pem --from-file=tls.chained.crt=/home/jmandel/Private/certs/fhir.org.chained.pem
 
 kubectl apply -f ci-build.configmap.yaml
-kubectl apply -f hapi.deployment.yaml  -f hapi.service.yaml
 kubectl apply -f ci-build.deployment.yaml
 kubectl apply -f gforge-to-zulip.deployment.yaml
 
