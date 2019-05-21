@@ -12,7 +12,7 @@ from os.path import normpath
 
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'http://build.fhir.org/ig')
-PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=org.hl7.fhir.publisher&a=org.hl7.fhir.publisher.cli&v=LATEST&e=jar')
+PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/FHIR/latest-ig-publisher/raw/master/org.hl7.fhir.publisher.jar')
 
 def get_qa_score(build_dir):
   qa_file = os.path.join(build_dir, 'qa.html')
