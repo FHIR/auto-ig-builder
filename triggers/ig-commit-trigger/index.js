@@ -73,7 +73,7 @@ exports["ig-commit-trigger"] = function(req, res) {
     console.log("RES", JSON.stringify(submitted, null,2))
     res && res.status(200).json({
       'org': org,
-      'repo': repo //,
+      'repo': repo,
       'branch': branch
       // 'submitted': submitted
     });
