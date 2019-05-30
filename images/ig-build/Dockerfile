@@ -19,7 +19,7 @@ ADD builder /app/builder
 WORKDIR /app
 RUN pip3.6 install requests zulip
 
-RUN mkdir -p /root/.ssh && echo "Host ci-build\n\
+RUN mkdir -p /root/.ssh && echo -e "Host ci-build\n\
   HostName ci-build-service.fhir.svc.cluster.local\n\
   User fhir_upload\n\
   StrictHostKeyChecking no\n\
