@@ -41,7 +41,7 @@ def build(config):
     'org': config['org'],
     'repo': config['repo'],
     'branch': config['branch'],
-    'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B (%an)'], cwd=clone_dir).strip()
+    'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B (%an)'], cwd=clone_dir, text=True).strip()
   }
 
   java_memory = os.environ.get('JAVA_MEMORY', '2g')
