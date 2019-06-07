@@ -32,20 +32,20 @@ fi
 
 # Delete old branches
 cd ~/uploading/www/branches
-find . -path ./master -prune -o -type d -ctime +2  -path './*'  -exec rm -rf {} \;
+find . -path ./master -prune -o -type d -ctime +21  -path './*'  -exec rm -rf {} \;
 
 # Delete branches that are no longer active
-NAMES=$(curl -s  https://api.github.com/repos/HL7/fhir/branches | jq '.[].name')
-if [ ! -z "$NAMES" ] && [[ $NAMES = *"\"master\""* ]] # Ensure GH response present and sane
-then
-    for i in $(ls -d */); do
-        DIR_TO_CHECK=${i%%/}
-        if [[ ! $NAMES = *\"$DIR_TO_CHECK\"* ]]
-        then
-            echo "Remove deleted branch: $DIR_TO_CHECK"
-            rm -rf $DIR_TO_CHECK
-        fi
-    done
-fi
+#NAMES=$(curl -s  https://api.github.com/repos/HL7/fhir/branches | jq '.[].name')
+#if [ ! -z "$NAMES" ] && [[ $NAMES = *"\"master\""* ]] # Ensure GH response present and sane
+#then
+#    for i in $(ls -d */); do
+#        DIR_TO_CHECK=${i%%/}
+#        if [[ ! $NAMES = *\"$DIR_TO_CHECK\"* ]]
+#        then
+#            echo "Remove deleted branch: $DIR_TO_CHECK"
+#            rm -rf $DIR_TO_CHECK
+#        fi
+#    done
+#fi
 
 echo "fin"
