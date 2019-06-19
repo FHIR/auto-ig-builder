@@ -34,7 +34,7 @@ find . -name build.log -path '*master*' | sed 's|^./||'  | jq --raw-input . | jq
 find . -name qa.html -path '*master*' | sed 's|^./||'  | jq --raw-input . | jq -s . > qa.json
 
 # 24 == len(/branches/master/qa.json)
-for f in `find . -mindepth 2  -name qa.json `; do
+for f in `find . -mindepth 2  -name qa.json | grep branches/master`; do
     jq '. + {repo: input_filename[2:-24]}' $f;
 done | jq --slurp  '.' > qas.json
 
