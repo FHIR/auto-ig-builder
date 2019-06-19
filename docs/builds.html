@@ -54,6 +54,10 @@
               version = b.match(/Definitions (\S+)/);
 
           date = date && new Date(date[1] + " UTC") || null;
+	  if (!date || date == "Invalid Date") {
+	    date = null;
+	  }
+	      
           version = version && version[1] || null;
 
           return {
