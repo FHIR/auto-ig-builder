@@ -63,7 +63,8 @@
     }
 
     function renderQas(qas) {
-      state.qas = qas;
+      state.qas = qas.filter(r => !r.repo.match(/branches\//))
+;
       render(state);
     }
 
