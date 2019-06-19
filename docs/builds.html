@@ -32,6 +32,7 @@
 
     fetch("https://build.fhir.org/ig/qas.json")
       .then(r => r.json())
+      .then(r => r.filter(entry => !entry.repo.match(/branches\//)))
       .then(r => r.map(qa => {
         qa.date = new Date(qa.date)
 	qa.repo = qa.repo.split("/").slice(0,2).join("/")
@@ -63,7 +64,7 @@
     }
 
     function renderQas(qas) {
-      state.qas = qas.filter(r => !r.repo.match(/branches\//))
+      state.qas = qas
 ;
       render(state);
     }
