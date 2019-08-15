@@ -50,7 +50,7 @@
         fetch("https://build.fhir.org/ig/"+repo)
           .then(b => b.text())
         .then(b => {
-          var date = b.match(/ @ (.*?)\)/),
+          var date = b.match(/ @ (.*?)\S*\)/),
               version = b.match(/Definitions (\S+)/);
 
           date = date && new Date(date[1]) || null;
