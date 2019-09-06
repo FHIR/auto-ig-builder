@@ -63,7 +63,10 @@ exports["ig-commit-trigger"] = function(req, res) {
     }, {
       "name": "ZULIP_API_KEY",
       "value": secret.zulip_api_key
-  }, {
+    }, {
+      "name": "DEADLINE_SECONDS",
+      "value": "3600",
+    }, {
       "name": "JAVA_MEMORY",
       "value": "4550m"
   }];
