@@ -18,5 +18,4 @@ Add secrets.json
 
 
 #  Deploy
-
-    gcloud beta functions deploy ig-commit-trigger  --stage-bucket ig-build --trigger-http
+    gcloud functions deploy ig-commit-trigger --runtime nodejs8 --trigger-http
