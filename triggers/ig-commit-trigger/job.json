@@ -36,10 +36,10 @@
             }],
             "resources": {
               "requests": {
-                "memory": "20Gi"
+                "memory": "15Gi"
               },
               "limits": {
-                "memory": "30Gi"
+                "memory": "15Gi"
               }
             }
           }

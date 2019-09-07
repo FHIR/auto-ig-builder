@@ -68,7 +68,7 @@ exports["ig-commit-trigger"] = function(req, res) {
       "value": "3600",
     }, {
       "name": "JAVA_MEMORY",
-      "value": "19000m"
+      "value": "14000m"
   }];
 
   batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
