@@ -35,8 +35,11 @@
               "mountPath": "/etc/ci_build_keys"
             }],
             "resources": {
+              "requests": {
+                "memory": "20Gi"
+              },
               "limits": {
-                "memory": "5Gi"
+                "memory": "30Gi"
               }
             }
           }
