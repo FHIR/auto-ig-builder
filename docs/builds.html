@@ -18,6 +18,18 @@
   </div>
   </body>
   <script>
+	  
+    function quoteattr(s) { // from https://stackoverflow.com/a/9756789/318206
+      return ('' + s) /* Forces the conversion to string. */
+        .replace(/&/g, '&amp;') /* This MUST be the 1st replacement. */
+        .replace(/'/g, '&apos;') /* The 4 other predefined entities, required. */
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\r\n/g, '\n') /* Must be before the next replacement. */
+        .replace(/[\r\n]/g, '\n');
+    }
+
     var state = {
       builds: [],
       qas: []
@@ -126,7 +138,7 @@
         <th>links</th>
       </thead><tr>` + rows.map(({org, repo, date, version, success, debug}) =>
         `<td>
-        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${JSON.stringify(debug, null, 2)}'>
+        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${quoteattr(JSON.stringify(debug, null, 2))}'>
         ${org} / <strong>${repo}</strong></a>
         </td>
         <td>${version}</td>
