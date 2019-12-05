@@ -62,7 +62,7 @@
         fetch("https://build.fhir.org/ig/"+repo)
           .then(b => b.text())
         .then(b => {
-	  var date = b.match(/Coordinated Universal Time \(.*?\)/),
+	  var date = b.match(/Coordinated Universal Time \((.*?)\)/),
               version = b.match(/Definitions (\S+)/);
 
           date = date && new Date(date[1]) || null;
