@@ -32,4 +32,5 @@ do
 done
 
 # Manually add deploy key (should encrypt with passphrasae, and a protected env var if VSTS supports
-echo -e "Host build.fhir.org\n  Compression yes\n  StrictHostKeyChecking no\n  User fhir_upload" > ~/.ssh/config
+echo -e "Host build.fhir.org\n  Compression yes\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null
+\n  User fhir_upload" > ~/.ssh/config
