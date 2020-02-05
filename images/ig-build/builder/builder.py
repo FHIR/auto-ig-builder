@@ -63,7 +63,7 @@ def build(config):
   if not built:
     print("Build error occurred")
     details['emoji'] = 'thumbs_down'
-    details['buildlog'] = 'build.log'
+    details['buildlog'] = 'failure/build.log'
     message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/failure)"]
     shutil.copy(logfile, clone_dir)
     do(['publish', details['org'], details['repo'], details['branch'], 'failure'], clone_dir, pipe=True)
