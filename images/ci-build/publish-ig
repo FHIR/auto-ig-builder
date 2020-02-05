@@ -11,7 +11,7 @@ trap finish EXIT
 IG_ORG=$1
 IG_REPO=$2
 DEPLOY_TO_BRANCH=${3:-master}
-FAILURE_FLAG=${5:-success}
+FAILURE_FLAG=${4:-success}
 
 TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
 
