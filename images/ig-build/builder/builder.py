@@ -64,9 +64,9 @@ def build(config):
     print("Build error occurred")
     details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'build.log'
-    message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/)"]
+    message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/failure)"]
     shutil.copy(logfile, clone_dir)
-    do(['publish', details['org'], details['repo'], details['branch']], clone_dir, pipe=True)
+    do(['publish', details['org'], details['repo'], details['branch'], 'failure'], clone_dir, pipe=True)
   else:
     print("Build succeeded")
     details['emoji'] = 'thumbs_up'
@@ -76,7 +76,7 @@ def build(config):
     print("Copying logfile")
     shutil.copy(logfile, build_dir)
     print("publishing")
-    do(['publish', details['org'], details['repo'], details['branch']], build_dir, pipe=True)
+    do(['publish', details['org'], details['repo'], details['branch'], 'success'], build_dir, pipe=True)
     print("published")
 
   send_zulip('committers/notification', 'ig-build', "".join(message)%details)
