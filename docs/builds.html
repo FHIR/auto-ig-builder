@@ -146,9 +146,9 @@
         <a data-toggle="tooltip" title="${date && date.toISOString()}">${date ? timeFormatter.format(date) : "???"}</td>
 	<td><span class="badge pill-badge badge-${success ? "success" : "danger"}">${success ? "success" : "failure"}</span></td>
         <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/build.log">log</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/"}build.log">log</a>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}/tree/master">gh</a>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/qa.html">qa</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/output/"}qa.html">qa</a>
         </td>`
     ).join(`</tr><tr>`)
 
