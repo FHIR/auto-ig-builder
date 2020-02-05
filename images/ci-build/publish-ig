@@ -11,6 +11,8 @@ trap finish EXIT
 IG_ORG=$1
 IG_REPO=$2
 DEPLOY_TO_BRANCH=${3:-master}
+FAILURE_FLAG=${5:-success}
+
 TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
 
 mkdir -p ~/uploading/$TARGET
@@ -20,10 +22,16 @@ while true; do sleep 5; du -hs .; done &
 KEEPALIVE_PID=$!
 tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
 
+if [ "$FAILURE_FLAG" == "failure" ]; then
+    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
+    rm -rf ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH/failure || true
+    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH/failure
+else
     mv ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH ~/uploading/branch.$TARGET.old  || true
     mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/
     mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
     rm -rf ~/uploading/branch.$TARGET.old || true
+fi
 
 set +e
 
