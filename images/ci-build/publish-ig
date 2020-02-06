@@ -38,7 +38,7 @@ set +e
 cd ~/uploading/www/ig
 find . -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json
 
-for f in `find . -mindepth 2  -name qa.json`; do
+for f in `find . -mindepth 5  -maxdepth 5 -name qa.json`; do
     jq '. + {repo: input_filename[2:]}' $f;
 done | jq --slurp  '.' > qas.json
 
