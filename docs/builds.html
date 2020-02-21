@@ -154,7 +154,7 @@
         repo: r.repo.split("/")[1],
         date: r.date,
         version: r.version,
-        success: !!(r.qa && !r.qa.exception),
+        success: !(r.build && r.build.failure) && (r.qa && !r.qa.exception),
         debug: {build: r.build, qa: r.qa}
       }})
       .sort((a, b) => a.date < b. date ? 1 : -1)
