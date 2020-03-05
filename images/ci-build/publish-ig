@@ -10,6 +10,9 @@ trap finish EXIT
 
 IG_ORG=$1
 IG_REPO=$2
+DEPLOY_TO_BRANCH=${3:-master}
+FAILURE_FLAG=${4:-success}
+
 TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
 
 mkdir -p ~/uploading/$TARGET
@@ -19,20 +22,24 @@ while true; do sleep 5; du -hs .; done &
 KEEPALIVE_PID=$!
 tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
 
-mv ~/uploading/www/ig/$IG_ORG/$IG_REPO ~/uploading/$TARGET.old || true
-
-mkdir -p ~/uploading/www/ig/$IG_ORG
-mv ~/uploading/$TARGET ~/uploading/www/ig/${IG_ORG}/${IG_REPO}
-rm -rf ~/uploading/$TARGET.old || true
+if [ "$FAILURE_FLAG" == "failure" ]; then
+    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
+    rm -rf ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH/failure || true
+    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH/failure
+else
+    mv ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH ~/uploading/branch.$TARGET.old  || true
+    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/
+    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
+    rm -rf ~/uploading/branch.$TARGET.old || true
+fi
 
 set +e
 
 cd ~/uploading/www/ig
 find . -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json
-find . -name qa.html | sed 's|^./||'  | jq --raw-input . | jq -s . > qa.json
 
-for f in `find . -mindepth 2  -name qa.json `; do
-  jq '. + {repo: input_filename[2:-8]}' $f;
+for f in `find . -mindepth 5  -maxdepth 5 -name qa.json`; do
+    jq '. + {repo: input_filename[2:]}' $f;
 done | jq --slurp  '.' > qas.json
 
 echo "fin"

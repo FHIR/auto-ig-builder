@@ -1,12 +1,14 @@
-FROM java:8
+FROM openjdk:12
 MAINTAINER Josh Mandel
 
 # Install required packages
-RUN apt-get update
-RUN apt-get install -y  --force-yes git python-pip openssl
+
+RUN yum install -y python36 python36-pip git openssl which wget
+
+RUN pip3.6 install --upgrade  requests zulip
 
 ENV PATH="/usr/local/rvm/bin:/usr/local/rvm/rubies/ruby-2.5.1/bin:${PATH}"
-RUN gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
+RUN gpg --keyserver keyserver.ubuntu.com --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
     curl -L get.rvm.io | bash -s stable  && \
     rvm install 2.5.1 && \
     gem install jekyll jekyll-asciidoc
@@ -15,9 +17,9 @@ RUN mkdir -p /app/builder && mkdir /ig && mkdir /scratch
 ADD builder /app/builder
 
 WORKDIR /app
-RUN pip install requests zulip
+RUN pip3.6 install requests zulip
 
-RUN mkdir -p /root/.ssh && echo "Host ci-build\n\
+RUN mkdir -p /root/.ssh && echo -e "Host ci-build\n\
   HostName ci-build-service.fhir.svc.cluster.local\n\
   User fhir_upload\n\
   StrictHostKeyChecking no\n\
@@ -27,4 +29,4 @@ RUN mkdir -p /root/.ssh && echo "Host ci-build\n\
 
 ADD publish /usr/local/bin/publish
 
-ENTRYPOINT python2.7 -m builder.builder || true
+ENTRYPOINT python36 -m builder.builder || true

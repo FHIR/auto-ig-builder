@@ -34,24 +34,41 @@ exports["ig-commit-trigger"] = function(req, res) {
   var target = req.body.repository.full_name.split('/');
   var org = target[0];
   var repo = target[1];
+  var branch;
+  try {
+    branch = req.body.ref.split('/').slice(-1)[0];
+  } catch(error) {
+    console.log("No branch; using master");
+    branch = 'master';
+  }
 
   console.log("JOB", job);
 
   job.spec.template.spec.containers[0].env = [{
+      "name": "PUBLISHER_JAR_URL",
+      "value": "https://github.com/FHIR/latest-ig-publisher/raw/master/org.hl7.fhir.publisher.jar"
+    },
+    {
       "name": "IG_ORG",
       "value":org
     }, {
       "name": "IG_REPO",
       "value": repo
     }, {
+      "name": "IG_BRANCH",
+      "value": branch
+    }, {
       "name": "ZULIP_EMAIL",
       "value": secret.zulip_email
     }, {
       "name": "ZULIP_API_KEY",
       "value": secret.zulip_api_key
-  }, {
+    }, {
+      "name": "DEADLINE_SECONDS",
+      "value": "3600",
+    }, {
       "name": "JAVA_MEMORY",
-      "value": "4550m"
+      "value": "14000m"
   }];
 
   batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
@@ -59,7 +76,8 @@ exports["ig-commit-trigger"] = function(req, res) {
     console.log("RES", JSON.stringify(submitted, null,2))
     res && res.status(200).json({
       'org': org,
-      'repo': repo //,
+      'repo': repo,
+      'branch': branch
       // 'submitted': submitted
     });
   })

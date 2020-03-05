@@ -16,3 +16,15 @@ $ az group deployment create \
   
 ```
 
+VSTS also requires environment variables: `deploy_key_encrypted` and `deploy_key_passphrase`.
+
+```
+export DEPLOY_KEY_PASSPHRASE=$(openssl rand -hex 256)
+export DEPLOY_KEY_ENCRYPTED=$(cat deploy.build.fhir.org | openssl enc -aes-256-cbc -pass pass:$DEPLOY_KEY_PASSPHRASE -base64 -A)
+```
+
+Later in VSTS to decrypt:
+
+```
+echo $DEPLOY_KEY_ENCRYPTED | openssl enc -aes-256-cbc -d -pass pass:$DEPLOY_KEY_PASSPHRASE -base64 -A > ${BUILD_REPOSITORY_LOCALPATH}/deploy.rsa
+```

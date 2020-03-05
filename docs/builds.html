@@ -18,6 +18,18 @@
   </div>
   </body>
   <script>
+	  
+    function quoteattr(s) { // from https://stackoverflow.com/a/9756789/318206
+      return ('' + s) /* Forces the conversion to string. */
+        .replace(/&/g, '&amp;') /* This MUST be the 1st replacement. */
+        .replace(/'/g, '&apos;') /* The 4 other predefined entities, required. */
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\r\n/g, '\n') /* Must be before the next replacement. */
+        .replace(/[\r\n]/g, '\n');
+    }
+
     var state = {
       builds: [],
       qas: []
@@ -34,8 +46,10 @@
       .then(r => r.json())
       .then(r => r.map(qa => {
         qa.date = new Date(qa.date)
-	qa.repo = qa.repo.split("/").slice(0,2).join("/")
-	return qa
+        qa.master = /\/master\//.test(qa.repo)
+        qa.failure = /\/failure\//.test(qa.repo)
+        qa.repo = qa.repo.split("/").slice(0,2).join("/")
+        return qa
       }))
       .then(renderQas);
 
@@ -46,30 +60,36 @@
 
     function fetchBuilds(builds) {
       return Promise.all(builds.map(repo =>
-        fetch("https://build.fhir.org/ig/"+repo)
+        fetch("https://build.fhir.org/ig/"+repo.replace("#", "%23"))
           .then(b => b.text())
         .then(b => {
-          var date = b.match(/ @ (.*)\n/),
+          var date = b.match(/Coordinated Universal Time \((.*?)\)/),
               version = b.match(/Definitions (\S+)/);
 
-          date = date && new Date(date[1] + " UTC") || null;
+          date = date && new Date(date[1]) || null;
+          if (!date || date == "Invalid Date") {
+            date = null;
+          }
           version = version && version[1] || null;
 
           return {
-            repo: repo.replace("/build.log",""),
+            repo: repo.split("/").slice(0, 2).join("/"),
+            master: /\/master\//.test(repo),
+            failure: /\/failure\//.test(repo),
             date: date,
             version: version
           }})));
     }
 
     function renderQas(qas) {
-      state.qas = qas;
+      state.qas = qas
+;
       render(state);
     }
 
     function rebuild(repo) {
       fetch("https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger", {
-        body: JSON.stringify({"repository": {"full_name": repo}}),
+        body: JSON.stringify({"ref": "refs/heads/master", "repository": {"full_name": repo}}),
         headers: {
           'Content-Type': 'application/json'
         },
@@ -82,12 +102,39 @@
 
  
   function render({builds, qas}){
+    const sorter = (a, b) => {
+      if (a.repo < b.repo) {
+        return -1;
+      } else if (a.repo > b.repo) {
+        return 1;
+      } else {
+        if (a.master && !b.master) {
+          return -1;
+        } else if (b.master && !a.master) {
+          return 1;
+        } else {
+          if (a.failure && !b.failure) {
+            return -1
+          } else if (b.failure && !a.failure) {
+            return 1;
+          } else {
+            return 0;
+          }
+        }
+      }
+    }
+    builds.sort(sorter);
+    qas.sort(sorter);
 
-    var table = state.qas.map(e=>e.repo)
-      .concat(state.builds.map(e=>e.repo))
+    console.log("Builds", builds.filter(e=>e.master));
+    console.log("Qas", qas);
+
+    var table = state.qas.filter(e=>e.master).map(e=>e.repo)
+      .concat(state.builds.filter(e=>e.master).map(e=>e.repo))
       .reduce((acc, entry) => {
+
         var build = builds.filter(b=>b.repo === entry)[0],
-	    qa = qas.filter(b=>b.repo === entry)[0]
+            qa = qas.filter(b=>b.repo === entry)[0]
 
         acc[entry] = {
           build: build,
@@ -107,7 +154,7 @@
         repo: r.repo.split("/")[1],
         date: r.date,
         version: r.version,
-        success: !!(r.qa && !r.qa.exception),
+        success: !(r.build && r.build.failure) && (r.qa && !r.qa.exception),
         debug: {build: r.build, qa: r.qa}
       }})
       .sort((a, b) => a.date < b. date ? 1 : -1)
@@ -120,7 +167,7 @@
         <th>links</th>
       </thead><tr>` + rows.map(({org, repo, date, version, success, debug}) =>
         `<td>
-        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${JSON.stringify(debug, null, 2)}'>
+        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${quoteattr(JSON.stringify(debug, null, 2))}'>
         ${org} / <strong>${repo}</strong></a>
         </td>
         <td>${version}</td>
@@ -128,8 +175,9 @@
         <a data-toggle="tooltip" title="${date && date.toISOString()}">${date ? timeFormatter.format(date) : "???"}</td>
 	<td><span class="badge pill-badge badge-${success ? "success" : "danger"}">${success ? "success" : "failure"}</span></td>
         <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/build.log">log</a>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}">gh</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/"}build.log">log</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}/tree/master">gh</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/output/"}qa.html">qa</a>
         </td>`
     ).join(`</tr><tr>`)
 

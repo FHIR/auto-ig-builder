@@ -8,7 +8,7 @@
 
   },
   "spec": {
-    "activeDeadlineSeconds": 1800,
+    "activeDeadlineSeconds": 3600,
     "template": {
       "metadata": {
         "labels": { },
@@ -35,8 +35,11 @@
               "mountPath": "/etc/ci_build_keys"
             }],
             "resources": {
+              "requests": {
+                "memory": "15Gi"
+              },
               "limits": {
-                "memory": "5Gi"
+                "memory": "15Gi"
               }
             }
           }

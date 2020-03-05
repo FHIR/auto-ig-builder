@@ -62,19 +62,6 @@ data:
         include /etc/nginx/sites-enabled/*;
     }
   sites-enabled.conf: |
-    server {
-        listen 80;
-        listen 443 ssl;
-        server_name reference-hapi.fhir.org hapi.test-servers.fhir.org;
-        ssl_certificate /etc/ssl/tls.chained.crt;
-        ssl_certificate_key  /etc/ssl/tls.key;
-        location / {
-            proxy_pass http://reference-hapi-service;
-            proxy_set_header Host $host;
-            proxy_set_header X-Forwarded-For $remote_addr;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
 
     server {
         listen 80 default_server;
@@ -108,28 +95,42 @@ data:
         add_header Vary Accept;
 
         try_files $uri $uri$fhir_suffix $uri/index.html   =404;
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)$ {
+            rewrite ^ $uri/ redirect;
+        }
 
-        location ~ ^/ig/(?<org>[^/]+)\/(?<repo>[^/]+)$ {
-            rewrite [^/]$ $uri/ redirect;
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/branches$ {
+            rewrite ^ $uri/ redirect;
+        }
+
+        location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/branches/(?<branch>[^/]+)$ {
+            rewrite ^ $uri/ redirect;
         }
 
         location ~ ^/branches/(?<branch>[^/]+)$ {
-            rewrite [^/]$ $uri/ redirect;
+            rewrite ^ $uri/ redirect;
         }
 
         location = /ig {
-            rewrite [^/]$ $uri/ redirect;
+            rewrite ^ $uri/ redirect;
         }
 
         location = /branches {
-            rewrite [^/]$ $uri/ redirect;
+            rewrite ^ $uri/ redirect;
         }
 
-        location ~ ^/(ig|branches)/ {
+        location  ~ /(ig|branches)/ {
             root /var/www;
-            autoindex on;
-            try_files $uri $uri$fhir_suffix $uri/index.html $uri/   =404;
+            try_files $uri $uri$fhir_suffix $uri/ =404;
+            location ~ ^/ig/(?<org>[^/]+)/(?<repo>[^/]+)/(?<rest>.*) {
+                try_files $uri $uri$fhir_suffix $uri/ =404;
+                if ($rest !~ ^branches) {
+                    rewrite ^ /ig/$org/$repo/branches/master/$rest;
+                }
+            }
         }
+
+
 
     }
 kind: ConfigMap
