@@ -7,7 +7,7 @@ By following the instructions below, you can configure your GitHub repository to
 
 ## Quick start guide
 
-0. **Create an IG** in a new folder, including *a file called `ig.json` or `ig.ini`* containing the IG definition, alongside any other content (for example a `pages` folder) that your IG requires. See https://wiki.hl7.org/IG_Publisher_Documentation for full documentation. (*Note*: if you are using `ig.json`, you must not change the value of `paths.output` in your `ig.json` from `"output"` if you want to maintain compatibility with the auto-builder.)
+0. **Create an IG** in a new folder, including *a file called `ig.json` or `ig.ini`* containing the IG definition, alongside any other content (for example a `pages` folder) that your IG requires. See https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation for full documentation. (*Note*: if you are using `ig.json`, you must not change the value of `paths.output` in your `ig.json` from `"output"` if you want to maintain compatibility with the auto-builder.)
 1. **Put your IG on GitHub**: create a GitHub repository within your own organization, and push your content to GitHub.
 2. **Add a Webhook in GitHub**: click "Settings", then "Webhooks & Services", then "Add Webhook".
 3. **Configure the Webhook**: enter a URL of `https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger`. Choose "Content type" of `application/json` and accept the default (blank) "secret". Choose "Just the push event" as your trigger, and then click "Add webhook".
