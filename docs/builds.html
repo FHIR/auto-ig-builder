@@ -138,7 +138,7 @@
 
         acc[entry] = {
           build: build,
-	  date: qa && qa.date || build.date,
+	  date: new Date(Math.max(qa && qa.date || 0, build && build.date || 0)),
 	  version: (qa && qa.version) || build.version,
           qa: qa,
 	  repo: entry,
