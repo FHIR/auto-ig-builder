@@ -1,4 +1,4 @@
-FROM openjdk:12
+FROM openjdk:15
 MAINTAINER Josh Mandel
 
 # Install required packages
@@ -18,6 +18,12 @@ ADD builder /app/builder
 
 WORKDIR /app
 RUN pip3.6 install requests zulip
+
+RUN  cd /tmp && \
+     wget --quiet https://nodejs.org/dist/v12.16.1/node-v12.16.1-linux-x64.tar.xz && \
+     cd /usr/local && \
+     tar --strip-components 1 -xf /tmp/node-v12.16.1-linux-x64.tar.xz && \
+     npm install -g fsh-sushi
 
 RUN mkdir -p /root/.ssh && echo -e "Host ci-build\n\
   HostName ci-build-service.fhir.svc.cluster.local\n\
