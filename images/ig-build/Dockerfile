@@ -35,4 +35,4 @@ RUN mkdir -p /root/.ssh && echo -e "Host ci-build\n\
 
 ADD publish /usr/local/bin/publish
 
-ENTRYPOINT python36 -m builder.builder || true
+ENTRYPOINT python3.6 -m builder.builder || true
