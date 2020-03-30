@@ -35,6 +35,7 @@ def build(config):
   logging.info('about to clone!')
   do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
   do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
+  do(['npm', '-g', 'install', 'fsh-sushi'], temp_dir, deadline=True)
 
   details = {
     'root': HOSTED_ROOT,
