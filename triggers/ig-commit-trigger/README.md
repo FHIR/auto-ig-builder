@@ -7,7 +7,7 @@ export SECRET=$(kubectl get serviceaccount igbuild --namespace fhir --output jso
 kubectl get secrets $SECRET --namespace fhir --output json > secret.json
 ```
 
-Add secret.json[clusterIp] =  kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+Add secret.json[clusterIp] =  kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' -- just the IP, not 'https'
 Add secrets.json
 
 ```

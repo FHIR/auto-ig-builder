@@ -46,7 +46,7 @@ exports["ig-commit-trigger"] = function(req, res) {
 
   job.spec.template.spec.containers[0].env = [{
       "name": "PUBLISHER_JAR_URL",
-      "value": "https://storage.googleapis.com/ig-build/org.hl7.fhir.publisher.jar"
+      "value": "https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
     },
     {
       "name": "IG_ORG",
