@@ -16,3 +16,25 @@ RUN  cd /tmp && \
      cd /usr/local && \
      tar --strip-components 1 -xf /tmp/node-v12.16.1-linux-x64.tar.xz && \
      npm install -g fsh-sushi
+
+RUN useradd -u 1000 -d /home/publisher -m publisher
+
+USER publisher
+RUN mkdir /home/publisher/ig
+ENV PATH="/home/publisher/bin:/home/publisher/.node/bin:/home/publisher/.node/lib/node_modules/fsh-sushi/dist/ig/files:${PATH}"
+ENV NODE_PATH="/home/publisher/.node/lib/node_modules:${PATH}"
+
+RUN mkdir /home/publisher/.node && \
+    mkdir /home/publisher/bin && \
+    echo "prefix = /home/publisher/.node" > /home/publisher/.npmrc
+
+
+RUN printf "#!/bin/sh\n\
+            npm install -g fsh-sushi;\n\
+            /bin/bash" >>  /home/publisher/bin/with-latest-sushi.sh
+
+RUN chmod +x /home/publisher/bin/with-latest-sushi.sh
+
+WORKDIR /home/publisher/ig
+
+ENTRYPOINT ["/home/publisher/bin/with-latest-sushi.sh"]
