@@ -20,6 +20,4 @@ fi
 
 
 gosu publisher "/home/publisher/bin/with-latest-sushi.sh"
-
-echo "Executed suhshi left $@"
 exec gosu publisher "$@"
