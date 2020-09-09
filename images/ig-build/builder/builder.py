@@ -27,6 +27,10 @@ def get_qa_score(build_dir):
 
 
 def build(config):
+
+  if config['branch'] == 'gh-pages':
+    sys.exit(0)
+
   temp_dir = make_temp_dir()
   clone_dir = os.path.join(temp_dir, 'repo')
   build_dir = os.path.join(clone_dir, 'output')
