@@ -37,6 +37,15 @@ def build(config):
   logfile = os.path.join(temp_dir, 'build.log')
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
   logging.info('about to clone!')
+
+  def run_git_cmd(cmds):
+    return subprocess.check_output(cmds, cwd=clone_dir, universal_newlines=True).strip()
+  
+  def is_default_branch():
+    default_branch_full = run_git_cmd(['git', 'symbolic-ref', 'refs/remotes/origin/HEAD'])
+    default_branch = default_branch_full.split('/')[-1]
+    return bool(default_branch == config['branch']) 
+
   do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
   do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
   do(['npm', '-g', 'install', 'fsh-sushi'], temp_dir, deadline=True)
@@ -46,7 +55,8 @@ def build(config):
     'org': config['org'],
     'repo': config['repo'],
     'branch': config['branch'],
-    'commit': subprocess.check_output(['git', 'log', '-1', '--pretty=%B (%an)'], cwd=clone_dir, universal_newlines=True).strip()
+    'default': 'default' if is_default_branch() else 'nondefault',
+    'commit': run_git_cmd(['git', 'log', '-1', '--pretty=%B (%an)'])
   }
 
   java_memory = os.environ.get('JAVA_MEMORY', '2g')
@@ -71,7 +81,7 @@ def build(config):
     details['buildlog'] = 'failure/build.log'
     message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/failure)"]
     shutil.copy(logfile, clone_dir)
-    do(['publish', details['org'], details['repo'], details['branch'], 'failure'], clone_dir, pipe=True)
+    do(['publish', details['org'], details['repo'], details['branch'], 'failure', details['default']], clone_dir, pipe=True)
   else:
     print("Build succeeded")
     details['emoji'] = 'thumbs_up'
@@ -81,7 +91,7 @@ def build(config):
     print("Copying logfile")
     shutil.copy(logfile, build_dir)
     print("publishing")
-    do(['publish', details['org'], details['repo'], details['branch'], 'success'], build_dir, pipe=True)
+    do(['publish', details['org'], details['repo'], details['branch'], 'success', details['default']], build_dir, pipe=True)
     print("published")
 
   send_zulip('committers/notification', 'ig-build', "".join(message)%details)
