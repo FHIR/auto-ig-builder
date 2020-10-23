@@ -8,7 +8,7 @@
 
   },
   "spec": {
-    "activeDeadlineSeconds": 3600,
+    "activeDeadlineSeconds": 7200,
     "template": {
       "metadata": {
         "labels": { },
@@ -36,10 +36,10 @@
             }],
             "resources": {
               "requests": {
-                "memory": "18Gi"
+                "memory": "22Gi"
               },
               "limits": {
-                "memory": "24Gi"
+                "memory": "30Gi"
               }
             }
           }
