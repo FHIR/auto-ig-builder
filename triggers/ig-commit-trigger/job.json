@@ -24,15 +24,19 @@
             }
           }
         ],
-        "imagePullPolicy": "Always",
         "containers": [
           {
             "name": "ig-build",
             "image": "gcr.io/fhir-org-starter-project/ig-build",
+            "imagePullPolicy": "Always",
             "env": [ ],
             "volumeMounts": [{
               "name": "keys",
               "mountPath": "/etc/ci_build_keys"
+            },{
+              "name": "keys",
+              "subPath": "ig.builder.keyfile.ini",
+              "mountPath": "/etc/ig.builder.keyfile.ini"
             }],
             "resources": {
               "requests": {
