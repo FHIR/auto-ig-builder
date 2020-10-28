@@ -65,6 +65,7 @@ def build(config):
          '-Xms%s'%java_memory, '-Xmx%s'%java_memory,
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
+         '-api-key-file', '/etc/ig.builder.keyfile.ini',
          '-auto-ig-build',
          '-target', 'https://build.fhir.org/ig/%s/%s/'%(details['org'], details['repo']),
          '-out', clone_dir], clone_dir, deadline=True)
