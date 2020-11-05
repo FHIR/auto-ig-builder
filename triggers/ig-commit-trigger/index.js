@@ -38,8 +38,8 @@ exports["ig-commit-trigger"] = function(req, res) {
   try {
     branch = req.body.ref.split('/').slice(-1)[0];
   } catch(error) {
-    console.log("No branch; using master");
-    branch = 'master';
+    console.err("No branch specified in trigger!");
+    throw(error);
   }
 
   console.log("JOB", job);
