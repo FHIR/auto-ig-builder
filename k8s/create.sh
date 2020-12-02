@@ -6,9 +6,9 @@ gcloud compute disks create fhir-ci-build-disk --size 20GB
 # kubectl run --namespace fhir  ci-build  --image=gcr.io/fhir-org-starter-project/ci-build
 
 
-kubectl  --namespace fhir create secret generic ci-build-keys  --from-file=id=/home/jmandel/Private/deploy.build.fhir.org --from-file=id.pub=/home/jmandel/Private/deploy.build.fhir.org.pub --from-file=ig.builder.keyfile.ini=/home/jmandelPrivate/ig.builder.keyfile.ini
+kubectl  --namespace fhir create secret generic ci-build-keys  --from-file=id=~/Private/deploy.build.fhir.org --from-file=id.pub=~/Private/deploy.build.fhir.org.pub --from-file=ig.builder.keyfile.ini=~/Private/ig.builder.keyfile.ini
 kubectl  --namespace fhir create secret generic gforge-secrets --from-literal=email=$ZULIP_EMAIL --from-literal=api_key=$ZULIP_API_KEY --from-literal=gforge_password=$GFORGE_PASSWORD
- kubectl  --namespace fhir create secret generic fhir-org-ssl-keys --from-file=tls.crt=/home/jmandel/Private/certs/fhir.org.cert.pem  --from-file=ca.crt=/home/jmandel/Private/certs/fhir.org.intermediate.cert.pem  --from-file=tls.key=/home/jmandel/Private/certs/fhir.org.key.pem --from-file=tls.chained.crt=/home/jmandel/Private/certs/fhir.org.chained.pem
+kubectl  --namespace fhir create secret generic fhir-org-ssl-keys  --from-file=tls.key=~/Private/certs/fhir.org.key.pem --from-file=tls.chained.crt=~/Private/certs/fhir.org.chained.pem
 
 kubectl apply -f ci-build.configmap.yaml
 kubectl apply -f ci-build.deployment.yaml
