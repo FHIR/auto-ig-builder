@@ -1,7 +1,7 @@
 FROM openjdk:11-jdk-buster
 MAINTAINER Josh Mandel
 
-RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget
+RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz
 RUN pip3 install --upgrade  requests zulip
 
 ENV PATH="/usr/local/rvm/bin:/usr/local/rvm/rubies/ruby-2.5.1/bin:${PATH}"
