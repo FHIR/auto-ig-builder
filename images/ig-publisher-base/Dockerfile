@@ -1,7 +1,7 @@
 FROM openjdk:11-jdk-buster
 MAINTAINER Josh Mandel
 
-RUN apt-get update && apt-get -y install python3 python3-pip gosu
+RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz
 
 ENV PATH="/usr/local/rvm/bin:/usr/local/rvm/rubies/ruby-2.5.1/bin:${PATH}"
 RUN gpg --keyserver keyserver.ubuntu.com --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
