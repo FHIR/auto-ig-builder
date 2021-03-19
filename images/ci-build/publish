@@ -32,7 +32,7 @@ fi
 
 # Delete old branches
 cd ~/uploading/www/branches
-find . -path ./master -prune -o -type d -ctime +21  -path './*'  -exec rm -rf {} \;
+find . -maxdepth 1 -path ./master -prune -o -type d -ctime +21  -path './*'  -exec rm -rf {} \;
 
 # Delete branches that are no longer active
 #NAMES=$(curl -s  https://api.github.com/repos/HL7/fhir/branches | jq '.[].name')
