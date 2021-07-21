@@ -13,6 +13,7 @@ from os.path import normpath
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'http://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
+TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org/r4')
 
 def get_qa_score(build_dir):
   qa_file = os.path.join(build_dir, 'qa.html')
@@ -40,11 +41,11 @@ def build(config):
 
   def run_git_cmd(cmds):
     return subprocess.check_output(cmds, cwd=clone_dir, universal_newlines=True).strip()
-  
+
   def is_default_branch():
     default_branch_full = run_git_cmd(['git', 'symbolic-ref', 'refs/remotes/origin/HEAD'])
     default_branch = default_branch_full.split('/')[-1]
-    return bool(default_branch == config['branch']) 
+    return bool(default_branch == config['branch'])
 
   do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
   do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
@@ -67,6 +68,7 @@ def build(config):
          '-ig', 'ig.json',
          '-api-key-file', '/etc/ig.builder.keyfile.ini',
          '-auto-ig-build',
+         '-tx', TX_SERVER_URL
          '-target', 'https://build.fhir.org/ig/%s/%s/'%(details['org'], details['repo']),
          '-out', clone_dir], clone_dir, deadline=True)
   built = (0 == built_exit)
