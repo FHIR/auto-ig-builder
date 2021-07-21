@@ -68,7 +68,7 @@ def build(config):
          '-ig', 'ig.json',
          '-api-key-file', '/etc/ig.builder.keyfile.ini',
          '-auto-ig-build',
-         '-tx', TX_SERVER_URL
+         '-tx', TX_SERVER_URL,
          '-target', 'https://build.fhir.org/ig/%s/%s/'%(details['org'], details['repo']),
          '-out', clone_dir], clone_dir, deadline=True)
   built = (0 == built_exit)

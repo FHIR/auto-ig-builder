@@ -58,6 +58,9 @@ exports["ig-commit-trigger"] = function(req, res) {
       "name": "IG_BRANCH",
       "value": branch
     }, {
+      "name": "TX_SERVER_URL",
+      "value": "https://r4.ontoserver.csiro.au/fhir"
+    }, {
       "name": "ZULIP_EMAIL",
       "value": secret.zulip_email
     }, {
@@ -65,7 +68,7 @@ exports["ig-commit-trigger"] = function(req, res) {
       "value": secret.zulip_api_key
     }, {
       "name": "DEADLINE_SECONDS",
-      "value": "3600",
+      "value": "36000",
     }, {
       "name": "JAVA_MEMORY",
       "value": "19000m"
