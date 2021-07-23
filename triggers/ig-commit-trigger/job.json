@@ -8,7 +8,7 @@
 
   },
   "spec": {
-    "activeDeadlineSeconds": 7200,
+    "activeDeadlineSeconds": 36000,
     "template": {
       "metadata": {
         "labels": { },
