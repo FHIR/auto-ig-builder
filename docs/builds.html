@@ -59,7 +59,7 @@
       render(state);
     }
 
-    function asyncPool(fn = fetch, parallel = 8) {
+    function asyncPool(fn = fetch, parallel = 6) {
       let inFlight = 0;
       const pending = [];
       const tryProgress = () => {
@@ -67,25 +67,25 @@
           const next = pending.shift();
           if (!next) {break;}
           inFlight++;
-          fn(next.url).then(next.resolve).catch(next.reject).finally(() => {
+          fn(...(next.args)).then(next.resolve).catch(next.reject).finally(() => {
             inFlight--;
             tryProgress();
           });
         }
       }
 
-      return function pfetch(url) {
+      return function(...args) {
         return new Promise((resolve, reject) => {
-          pending.push({url, resolve, reject})
+          pending.push({args, resolve, reject})
           tryProgress();
         });
       }
     }
 
     function fetchBuilds(builds) {
-      const fetch8 = asyncPool();
+      const fetchPool = asyncPool(fetch, 24);
        return Promise.all(builds.map(repo =>
-        fetch8("https://build.fhir.org/ig/"+repo.replace("#", "%23"))
+        fetchPool("https://build.fhir.org/ig/"+repo.replace("#", "%23"))
           .then(b => b.text())
         .then(b => {
           var date = b.match(/Coordinated Universal Time \((.*?)\)/),
