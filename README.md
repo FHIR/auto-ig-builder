@@ -45,3 +45,5 @@ curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/i
   --data '{"ref": "refs/heads/master", "repository": {"full_name": "test-igs/simple"}}'
 ```
 
+### Summary/stats of current ci builds
+Latest summary/stats of the ci ig builds are available at [https://fhir.github.io/auto-ig-builder/builds.html](https://fhir.github.io/auto-ig-builder/builds.html)
