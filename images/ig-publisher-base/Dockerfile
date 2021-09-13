@@ -18,15 +18,21 @@ RUN useradd -d /home/publisher -m publisher
 
 USER publisher
 RUN mkdir /home/publisher/ig
-ENV PATH="/home/publisher/bin:/home/publisher/.node/bin:/home/publisher/.node/lib/node_modules/fsh-sushi/dist/ig/files:${PATH}"
+ENV PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}"
 ENV NODE_PATH="/home/publisher/.node/lib/node_modules:${PATH}"
 
 RUN mkdir /home/publisher/.node && \
     echo "prefix = /home/publisher/.node" > /home/publisher/.npmrc
 
+
+# Latest fsh and ig-publisher-scripts each time we start
 RUN mkdir /home/publisher/bin && \
+    cd /home/publisher/bin && \
+    git clone https://github.com/HL7/ig-publisher-scripts && \
     printf "#!/bin/sh\n\
-            npm install -g fsh-sushi" >>  /home/publisher/bin/with-latest-sushi.sh && \
+    npm install -g fsh-sushi\n\
+    cd /home/publisher/bin/ig-publisher-scripts && git pull\n\
+    " >>  /home/publisher/bin/with-latest-sushi.sh && \
     chmod +x /home/publisher/bin/with-latest-sushi.sh && \
     /home/publisher/bin/with-latest-sushi.sh
 
