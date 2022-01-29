@@ -36,6 +36,7 @@ fi
 set +e
 
 cd ~/uploading/www/ig
+find . -maxdepth 4 -mindepth 4  -type d -ctime +120  -exec rm -rf {} \;
 find . -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json
 
 for f in `find . -mindepth 5  -maxdepth 5 -name qa.json`; do
