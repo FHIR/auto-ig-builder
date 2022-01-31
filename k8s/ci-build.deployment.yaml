@@ -25,6 +25,8 @@ spec:
         env:
         - name: BUILD_NUMBER
           value: "1"
+        - name: AUTOCLEAN_EXEMPTION_REGEX
+          value: ./\(HL7\|FHIR\|IHE\)/[^/]*/branches/\(main\|master\)
         - name: SSH_AUTHORIZED_KEY
           valueFrom:
             configMapKeyRef:
