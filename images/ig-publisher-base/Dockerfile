@@ -30,8 +30,8 @@ RUN mkdir /home/publisher/bin && \
     cd /home/publisher/bin && \
     git clone https://github.com/HL7/ig-publisher-scripts && \
     printf "#!/bin/sh\n\
-    npm install -g fsh-sushi\n\
-    cd /home/publisher/bin/ig-publisher-scripts && git pull\n\
+    which sushi > /dev/null || (npm install -g fsh-sushi\n\
+    cd /home/publisher/bin/ig-publisher-scripts && git pull)\
     " >>  /home/publisher/bin/with-latest-sushi.sh && \
     chmod +x /home/publisher/bin/with-latest-sushi.sh && \
     /home/publisher/bin/with-latest-sushi.sh
