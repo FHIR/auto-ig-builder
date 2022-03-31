@@ -10,9 +10,9 @@ RUN gpg --keyserver keyserver.ubuntu.com --recv-keys 409B6B1796C275462A170311380
     gem install jekyll jekyll-asciidoc
 
 RUN  cd /tmp && \
-     wget --quiet https://nodejs.org/dist/v12.16.1/node-v12.16.1-linux-x64.tar.xz && \
+     wget --quiet https://nodejs.org/dist/v16.4.2/node-v16.4.2-linux-x64.tar.xz && \
      cd /usr/local && \
-     tar --strip-components 1 -xf /tmp/node-v12.16.1-linux-x64.tar.xz
+     tar --strip-components 1 -xf /tmp/node-v16.4.2-linux-x64.tar.xz
 
 RUN useradd -d /home/publisher -m publisher
 
@@ -30,8 +30,8 @@ RUN mkdir /home/publisher/bin && \
     cd /home/publisher/bin && \
     git clone https://github.com/HL7/ig-publisher-scripts && \
     printf "#!/bin/sh\n\
-    npm install -g fsh-sushi\n\
-    cd /home/publisher/bin/ig-publisher-scripts && git pull\n\
+    which sushi > /dev/null || (npm install -g fsh-sushi\n\
+    cd /home/publisher/bin/ig-publisher-scripts && git pull)\
     " >>  /home/publisher/bin/with-latest-sushi.sh && \
     chmod +x /home/publisher/bin/with-latest-sushi.sh && \
     /home/publisher/bin/with-latest-sushi.sh
