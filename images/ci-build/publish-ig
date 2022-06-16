@@ -20,7 +20,7 @@ cd ~/uploading/$TARGET
 
 while true; do sleep 5; du -hs .; done &
 KEEPALIVE_PID=$!
-tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
+tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt || false
 
 if [ "$FAILURE_FLAG" == "failure" ]; then
     mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH

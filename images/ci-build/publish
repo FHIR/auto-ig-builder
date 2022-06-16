@@ -15,7 +15,7 @@ cd ~/uploading/$TARGET
 
 while true; do sleep 10; du -hs .; done &
 KEEPALIVE_PID=$!
-tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt
+tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt || false
 
 if [ ! -z "$DEPLOY_TO_BRANCH" ]
 then
