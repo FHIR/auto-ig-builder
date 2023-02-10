@@ -38,7 +38,7 @@ set +e
 cd ~/uploading/www/ig
 
 AUTOCLEAN_AFTER_DAYS=${AUTOCLEAN_AFTER_DAYS:-"+90"}
-AUTOCLEAN_EXEMPTION_REGEX=${AUTOCLEAN_EXEMPTION_REGEX:-"./\(HL7\|FHIR\)/[^/]*/branches/\(main\|master\)"}
+AUTOCLEAN_EXEMPTION_REGEX=${AUTOCLEAN_EXEMPTION_REGEX:-"./\(HL7\|FHIR\|IHE\)/[^/]*/branches/\(main\|master\)"}
 find . -maxdepth 4 -mindepth 4  -type d -ctime "$AUTOCLEAN_AFTER_DAYS" -not -regex "$AUTOCLEAN_EXEMPTION_REGEX" -exec rm -rf {} \;
 find . -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json
 
