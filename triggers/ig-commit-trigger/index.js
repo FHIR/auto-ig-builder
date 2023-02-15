@@ -59,7 +59,7 @@ exports["ig-commit-trigger"] = function(req, res) {
       "value": branch
     }, {
       "name": "TX_SERVER_URL",
-      "value": "http://tx.fhir.org/r4"
+      "value": "http://tx.fhir.org"
     }, {
       "name": "ZULIP_EMAIL",
       "value": secret.zulip_email
