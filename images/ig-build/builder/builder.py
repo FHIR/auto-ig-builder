@@ -67,6 +67,7 @@ def build(config):
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
          '-api-key-file', '/etc/ig.builder.keyfile.ini',
+         '-fhir-settings', '/etc/fhir-settings.json',
          '-auto-ig-build',
          '-tx', TX_SERVER_URL,
          '-target', 'https://build.fhir.org/ig/%s/%s/'%(details['org'], details['repo']),

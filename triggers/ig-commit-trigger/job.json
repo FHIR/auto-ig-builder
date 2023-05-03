@@ -22,6 +22,13 @@
               "secretName": "ci-build-keys",
               "defaultMode": 256
             }
+          },
+          {
+            "name": "fhir-settings",
+            "secret": {
+              "secretName": "fhir-settings",
+              "defaultMode": 256
+            }
           }
         ],
         "containers": [
@@ -37,6 +44,11 @@
               "name": "keys",
               "subPath": "ig.builder.keyfile.ini",
               "mountPath": "/etc/ig.builder.keyfile.ini"
+            },
+            {
+              "name": "fhir-settings",
+              "subPath": "fhir-settings.json",
+              "mountPath": "/etc/fhir-settings.json"
             }],
             "resources": {
               "requests": {
