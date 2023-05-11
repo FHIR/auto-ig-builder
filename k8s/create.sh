@@ -15,3 +15,5 @@ kubectl apply -f ci-build.deployment.yaml
 kubectl apply -f gforge-to-zulip.deployment.yaml
 
 kubectl apply -f lego
+
+kubectl  -n fhir create configmap caddy-conf-volume --from-file Caddyfile

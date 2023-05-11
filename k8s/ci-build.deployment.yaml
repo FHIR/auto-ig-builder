@@ -1,73 +1,97 @@
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ci-build-deployment
   namespace: fhir
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      run: ci-build
   template:
     metadata:
       labels:
         run: ci-build
       namespace: fhir
     spec:
-      initContainers:
-      - name: permissions
-        image: ubuntu:16.04
-        command: ["sh", "-c", "mkdir -p /disk/www && chmod a+rwx /disk /disk/www"]
-        volumeMounts:
-        - name: fhir-ci-build-disk
-          mountPath: /disk
       containers:
-      - image: gcr.io/fhir-org-starter-project/ci-build
-        imagePullPolicy: Always
-        name: ci-build
-        env:
+      - env:
         - name: BUILD_NUMBER
           value: "1"
-        - name: AUTOCLEAN_AFTER_DAYS
-          value: "+90"
         - name: AUTOCLEAN_EXEMPTION_REGEX
           value: ./\(HL7\|FHIR\|IHE\)/[^/]*/branches/\(main\|master\)
         - name: SSH_AUTHORIZED_KEY
           valueFrom:
             configMapKeyRef:
-              name: ci-build-config
               key: ssh_authorized_key
+              name: ci-build-config
+        image: gcr.io/fhir-org-starter-project/ci-build
+        imagePullPolicy: Always
+        name: ci-build
         volumeMounts:
-        - name: fhir-ci-build-disk
-          mountPath: /home/fhir_upload/uploading
-        - name: nginx-conf-volume
-          mountPath: /etc/nginx/nginx.conf
+        - mountPath: /home/fhir_upload/uploading
+          name: fhir-ci-build-disk
+        - mountPath: /etc/nginx/nginx.conf
+          name: nginx-conf-volume
           subPath: nginx.conf
-        - name: nginx-conf-volume
-          mountPath: /etc/nginx/sites-enabled/default
+        - mountPath: /etc/nginx/sites-enabled/default
+          name: nginx-conf-volume
           subPath: sites-enabled.conf
       - image: nginx
+        imagePullPolicy: Always
         name: nginx
         volumeMounts:
-        - name: ssl-certs
-          mountPath: /etc/ssl
+        - mountPath: /etc/ssl
+          name: ssl-certs
+        - mountPath: /var/www
+          name: fhir-ci-build-disk
+          subPath: www
+        - mountPath: /etc/nginx/nginx.conf
+          name: nginx-conf-volume
+          subPath: nginx.conf
+        - mountPath: /etc/nginx/sites-enabled/default
+          name: nginx-conf-volume
+          subPath: sites-enabled.conf
+        - mountPath: /etc/nginx/volume
+          name: nginx-conf-volume
+      - image: caddy:2.6
+        name: caddy
+        volumeMounts:
         - name: fhir-ci-build-disk
           mountPath: /var/www
           subPath: www
-        - name: nginx-conf-volume
-          mountPath: /etc/nginx/nginx.conf
-          subPath: nginx.conf
-        - name: nginx-conf-volume
-          mountPath: /etc/nginx/sites-enabled/default
-          subPath: sites-enabled.conf
-        - name: nginx-conf-volume
-          mountPath: /etc/nginx/volume
+        - name: caddy-conf-volume
+          mountPath: /etc/caddy/Caddyfile
+          subPath: Caddyfile
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - mkdir -p /disk/www && chmod a+rwx /disk /disk/www
+        image: ubuntu:16.04
+        imagePullPolicy: IfNotPresent
+        name: permissions
+        volumeMounts:
+        - mountPath: /disk
+          name: fhir-ci-build-disk
+        - mountPath: /conf
+          name: nginx-conf-volume
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
       volumes:
-      - name: fhir-ci-build-disk
-        gcePersistentDisk:
-          pdName: fhir-ci-build-disk
+      - gcePersistentDisk:
           fsType: ext4
-      - name: nginx-conf-volume
-        configMap:
+          pdName: fhir-ci-build-disk
+        name: fhir-ci-build-disk
+      - configMap:
+          defaultMode: 420
           name: ci-build-config
+        name: nginx-conf-volume
+      - configMap:
+          defaultMode: 420
+          name: caddy-conf-volume
+        name: caddy-conf-volume
       - name: ssl-certs
         secret:
-          secretName: fhir-org-ssl-keys
           defaultMode: 256
+          secretName: fhir-org-ssl-keys
