@@ -40,7 +40,6 @@ if [ "$IS_DEFAUT_BRANCH" == "default" ]; then
 fi
 
 set +e
-finish_upload_keepalive
 
 cd ~/uploading/www/ig
 
