@@ -1,8 +1,3 @@
-{
-	http_port 80
-	https_port 443
-}
-
 (tryall) {
 	try_files {args.0}
 	try_files {args.0}{fextension}
@@ -20,9 +15,9 @@ build.fhir.org:80, build.fhir.org {
 	file_server browse
 
 	header {
-		Access-Control-Allow-Origin *
-		Access-Control-Allow-Methods GET, POST, OPTIONS
-		Access-Control-Allow-Headers DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type"
 	}
 
 	map {header.Accept} {fextension} {
@@ -49,7 +44,5 @@ build.fhir.org:80, build.fhir.org {
 
 	handle @ig {
 		import tryall /ig/{re.ig.org}/{re.ig.repo}/branches/__default/{re.ig.rest}
-		import tryall /ig/{re.ig.org}/{re.ig.repo}/branches/master/{re.ig.rest}
-		import tryall /ig/{re.ig.org}/{re.ig.repo}/branches/main/{re.ig.rest}
 	}
 }
