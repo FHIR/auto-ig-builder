@@ -7,3 +7,4 @@ kubectl apply -f ci-build.configmap.yaml
 kubectl apply -f ci-build.deployment.yaml
 kubectl apply -f ci-build.service.yaml
 
+kubectl create serviceaccount igbuild --namespace fhir

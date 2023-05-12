@@ -36,7 +36,35 @@
             "name": "ig-build",
             "image": "gcr.io/fhir-org-starter-project/ig-build",
             "imagePullPolicy": "Always",
-            "env": [ ],
+            "env": [{
+              "name": "PUBLISHER_JAR_URL",
+              "value": "https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
+            }, {
+              "name": "TX_SERVER_URL",
+              "value": "http://tx.fhir.org"
+            }, {
+              "name": "DEADLINE_SECONDS",
+              "value": "36000"
+            }, {
+              "name": "JAVA_MEMORY",
+              "value": "19000m"
+            }, {
+              "name": "ZULIP_EMAIL",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "name": "zulip-secrets",
+                  "key": "email"
+                }
+              }
+            }, {
+              "name": "ZULIP_API_KEY",
+              "valueFrom": {
+                "secretKeyRef": {
+                  "name": "zulip-secrets",
+                  "key": "api_key"
+                }
+              }
+            }],
             "volumeMounts": [{
               "name": "keys",
               "mountPath": "/etc/ci_build_keys"

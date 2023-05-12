@@ -44,11 +44,9 @@ exports["ig-commit-trigger"] = function(req, res) {
 
   console.log("JOB", job);
 
-  job.spec.template.spec.containers[0].env = [{
-      "name": "PUBLISHER_JAR_URL",
-      "value": "https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
-    },
-    {
+
+  var defaultEnv = job.spec.template.spec.containers[0].env;
+  job.spec.template.spec.containers[0].env = defaultEnv.concat([{
       "name": "IG_ORG",
       "value":org
     }, {
@@ -57,22 +55,7 @@ exports["ig-commit-trigger"] = function(req, res) {
     }, {
       "name": "IG_BRANCH",
       "value": branch
-    }, {
-      "name": "TX_SERVER_URL",
-      "value": "http://tx.fhir.org"
-    }, {
-      "name": "ZULIP_EMAIL",
-      "value": secret.zulip_email
-    }, {
-      "name": "ZULIP_API_KEY",
-      "value": secret.zulip_api_key
-    }, {
-      "name": "DEADLINE_SECONDS",
-      "value": "36000",
-    }, {
-      "name": "JAVA_MEMORY",
-      "value": "19000m"
-  }];
+  }]);
 
   batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
     console.log("ERR", JSON.stringify(err))
