@@ -2,10 +2,10 @@
 
 set -e
 
-function finish {
+function finish_upload_keepalive {
   kill $KEEPALIVE_PID
 }
-trap finish EXIT
+trap finish_upload_keepalive EXIT
 
 
 IG_ORG=$1
@@ -40,6 +40,7 @@ if [ "$IS_DEFAUT_BRANCH" == "default" ]; then
 fi
 
 set +e
+finish_upload_keepalive
 
 cd ~/uploading/www/ig
 

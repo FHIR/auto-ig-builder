@@ -11,7 +11,8 @@
 
 build.fhir.org:80, build.fhir.org {
 	log {
-		level debug
+		output stdout
+		level info
 	}
 
 	root * /var/www
@@ -47,6 +48,7 @@ build.fhir.org:80, build.fhir.org {
 	}
 
 	handle @ig {
+		import tryall /ig/{re.ig.org}/{re.ig.repo}/branches/__default/{re.ig.rest}
 		import tryall /ig/{re.ig.org}/{re.ig.repo}/branches/master/{re.ig.rest}
 		import tryall /ig/{re.ig.org}/{re.ig.repo}/branches/main/{re.ig.rest}
 	}
