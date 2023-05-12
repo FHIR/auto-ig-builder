@@ -12,6 +12,7 @@ IG_ORG=$1
 IG_REPO=$2
 DEPLOY_TO_BRANCH=${3:-master}
 FAILURE_FLAG=${4:-success}
+IS_DEFAUT_BRANCH=${5:-nondefault}
 
 TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
 
@@ -31,6 +32,11 @@ else
     mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/
     mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
     rm -rf ~/uploading/branch.$TARGET.old || true
+fi
+
+if [ "$IS_DEFAUT_BRANCH" == "default" ]; then
+    rm -f ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/__default
+    ln -s ./$DEPLOY_TO_BRANCH ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/__default
 fi
 
 set +e
