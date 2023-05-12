@@ -31,29 +31,6 @@ spec:
         volumeMounts:
         - mountPath: /home/fhir_upload/uploading
           name: fhir-ci-build-disk
-        - mountPath: /etc/nginx/nginx.conf
-          name: nginx-conf-volume
-          subPath: nginx.conf
-        - mountPath: /etc/nginx/sites-enabled/default
-          name: nginx-conf-volume
-          subPath: sites-enabled.conf
-      - image: nginx
-        imagePullPolicy: Always
-        name: nginx
-        volumeMounts:
-        - mountPath: /etc/ssl
-          name: ssl-certs
-        - mountPath: /var/www
-          name: fhir-ci-build-disk
-          subPath: www
-        - mountPath: /etc/nginx/nginx.conf
-          name: nginx-conf-volume
-          subPath: nginx.conf
-        - mountPath: /etc/nginx/sites-enabled/default
-          name: nginx-conf-volume
-          subPath: sites-enabled.conf
-        - mountPath: /etc/nginx/volume
-          name: nginx-conf-volume
       - image: caddy:2.6
         name: caddy
         volumeMounts:
@@ -74,8 +51,6 @@ spec:
         volumeMounts:
         - mountPath: /disk
           name: fhir-ci-build-disk
-        - mountPath: /conf
-          name: nginx-conf-volume
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       volumes:
@@ -85,13 +60,5 @@ spec:
         name: fhir-ci-build-disk
       - configMap:
           defaultMode: 420
-          name: ci-build-config
-        name: nginx-conf-volume
-      - configMap:
-          defaultMode: 420
           name: caddy-conf-volume
         name: caddy-conf-volume
-      - name: ssl-certs
-        secret:
-          defaultMode: 256
-          secretName: fhir-org-ssl-keys
