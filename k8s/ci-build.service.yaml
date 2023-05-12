@@ -15,10 +15,6 @@ spec:
     name: web
     protocol: TCP
     targetPort: 80
-  - port: 81
-    name: webcaddy
-    protocol: TCP
-    targetPort: 81
   - port: 2222
     name: ssh
     protocol: TCP
