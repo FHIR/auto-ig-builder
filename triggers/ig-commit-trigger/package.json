@@ -12,6 +12,6 @@
   "dependencies": {
     "@google-cloud/functions-framework": "^3.2.0",
     "base-64": "^0.1.0",
-    "kubernetes-client": "^3.10.1"
+    "@kubernetes/client-node": "^0.18.1"
   }
 }

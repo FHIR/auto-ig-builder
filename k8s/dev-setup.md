@@ -15,16 +15,7 @@ gcloud container clusters get-credentials fhir-k8s --zone us-east1-d
 ```
 git clone https://github.com/FHIR/auto-ig-builder/
 cd auto-ig-builder/triggers/ig-commit-trigger
-export SECRET=$(kubectl get serviceaccount igbuild --namespace fhir --output jsonpath={.secrets[0].name})
-export CLUSTER_IP=$(gcloud container clusters --zone us-east1-d describe fhir-k8s --format='value(endpoint)')
-kubectl get secrets $SECRET --namespace fhir --output json > secret.json
-
-
-# Manually edit secret.json to add
- * `clusterIp`
- * `zulip_email`
- * `zulip_api_key`
-
+./setup-secret.sh
 ```
 
 ## Recurring tasks
