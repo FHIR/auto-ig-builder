@@ -1,13 +1,12 @@
 import functions from '@google-cloud/functions-framework';
 import k8s from '@kubernetes/client-node';
-import job from "./job.json" assert {type: 'json'};
+import jobSource from "./job.json" assert {type: 'json'};
 
 const kc = new k8s.KubeConfig();
 kc.loadFromFile("sa.kubeconfig");
 const k8sBatch = kc.makeApiClient(k8s.BatchV1Api);
 
 functions.http("ig-commit-trigger", async function (req, res) {
-
   res.header("Access-Control-Allow-Method", "POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Origin", "*");
@@ -18,10 +17,11 @@ functions.http("ig-commit-trigger", async function (req, res) {
     return;
   }
 
-  let org, repo, branch;
+  let org, repo, branch, commitHash;
   try {
     [org, repo] = req.body.repository.full_name.split('/');
     branch = req.body.ref.split('/').slice(-1)[0];
+    commitHash = "" + req.body.after;
     if (!org || !repo || !branch) {
       throw ("Bad inputs");
     }
@@ -33,6 +33,7 @@ functions.http("ig-commit-trigger", async function (req, res) {
         ${req?.body?.ref}`);
   }
 
+  const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`.toLocaleLowerCase().slice(0, 63);
   const igIniUrl = `https://raw.githubusercontent.com/${org}/${repo}/${branch}/ig.ini`;
   const igIni = await fetch(igIniUrl);
 
@@ -40,6 +41,8 @@ functions.http("ig-commit-trigger", async function (req, res) {
     throw ("No ig.ini is present in " + igIniUrl);
   }
 
+  const job = JSON.parse(JSON.stringify(jobSource));
+  job.metadata.name = jobId;
   const container = job.spec.template.spec.containers[0];
   container.env = container.env.concat([{
     "name": "IG_ORG",
@@ -52,10 +55,20 @@ functions.http("ig-commit-trigger", async function (req, res) {
     "value": branch
   }]);
 
-  const created = await k8sBatch.createNamespacedJob("fhir", job);
-  return res.status(200).json({
-    'org': org,
-    'repo': repo,
-    'branch': branch
-  })
+  try {
+    const created = await k8sBatch.createNamespacedJob("fhir", job);
+    return res.status(200).json({
+      created: true,
+      'org': org,
+      'repo': repo,
+      'branch': branch,
+      'jobId': jobId,
+    })
+  } catch (e) {
+    if (e.body?.message?.includes("already exists")) {
+      return res.status(200).json({ "created": false, "reason": "Job already exists" });
+    } else {
+      throw (e);
+    }
+  }
 })

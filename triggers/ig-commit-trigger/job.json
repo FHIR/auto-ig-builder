@@ -3,13 +3,11 @@
   "kind": "Job",
   "metadata": {
     "labels": { },
-    "namespace": "fhir",
-    "generateName": "ig-build"
-
+    "namespace": "fhir"
   },
   "spec": {
     "activeDeadlineSeconds": 36000,
-    "ttlSecondsAfterFinished": 3600,
+    "ttlSecondsAfterFinished": 30,
     "template": {
       "metadata": {
         "labels": { },
