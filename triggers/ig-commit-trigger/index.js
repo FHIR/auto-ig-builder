@@ -1,6 +1,6 @@
-import functions from '@google-cloud/functions-framework';
-import k8s from '@kubernetes/client-node';
-import jobSource from "./job.json" assert {type: 'json'};
+import functions from "@google-cloud/functions-framework";
+import k8s from "@kubernetes/client-node";
+import jobSource from "./job.json" assert { type: "json" };
 
 const kc = new k8s.KubeConfig();
 kc.loadFromFile("sa.kubeconfig");
@@ -11,64 +11,75 @@ functions.http("ig-commit-trigger", async function (req, res) {
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Origin", "*");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     res.status(200);
-    res.json({})
+    res.json({});
     return;
   }
 
   let org, repo, branch, commitHash;
   try {
-    [org, repo] = req.body.repository.full_name.split('/');
-    branch = req.body.ref.split('/').slice(-1)[0];
+    [org, repo] = req.body.repository.full_name.split("/");
+    branch = req.body.ref.split("/").slice(-1)[0];
     commitHash = "" + req.body.after;
     if (!org || !repo || !branch) {
-      throw ("Bad inputs");
+      throw "Bad inputs";
     }
   } catch {
-    throw (`Could not get org, branch, and repo from
+    return res.json({
+      created: false,
+      reason: `Could not get org, branch, and repo from
       req.body.repository.full_name
         ${req?.body?.repository?.full_name}
       req.body.ref
-        ${req?.body?.ref}`);
+        ${req?.body?.ref}`,
+    });
   }
 
-  const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`.toLocaleLowerCase().slice(0, 63);
+  const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`
+    .toLocaleLowerCase()
+    .slice(0, 63);
   const igIniUrl = `https://raw.githubusercontent.com/${org}/${repo}/${branch}/ig.ini`;
   const igIni = await fetch(igIniUrl);
 
   if (igIni.status !== 200) {
-    throw ("No ig.ini is present in " + igIniUrl);
+    return res.json({ created: false, reason: "No ig.ini found" });
   }
 
   const job = JSON.parse(JSON.stringify(jobSource));
   job.metadata.name = jobId;
   const container = job.spec.template.spec.containers[0];
-  container.env = container.env.concat([{
-    "name": "IG_ORG",
-    "value": org
-  }, {
-    "name": "IG_REPO",
-    "value": repo
-  }, {
-    "name": "IG_BRANCH",
-    "value": branch
-  }]);
+  container.env = container.env.concat([
+    {
+      name: "IG_ORG",
+      value: org,
+    },
+    {
+      name: "IG_REPO",
+      value: repo,
+    },
+    {
+      name: "IG_BRANCH",
+      value: branch,
+    },
+  ]);
 
   try {
     const created = await k8sBatch.createNamespacedJob("fhir", job);
     return res.status(200).json({
       created: true,
-      'org': org,
-      'repo': repo,
-      'branch': branch,
-      'jobId': jobId,
-    })
+      org: org,
+      repo: repo,
+      branch: branch,
+      jobId: jobId,
+    });
   } catch (e) {
     if (e.body?.message?.includes("already exists")) {
-      return res.status(200).json({ "created": false, "reason": "Job already exists" });
+      return res
+        .status(200)
+        .json({ created: false, reason: "Job already exists" });
     } else {
-      throw (e);
+      throw e;
     }
   }
-})
+});
