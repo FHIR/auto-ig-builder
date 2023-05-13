@@ -1,24 +1,24 @@
-var secret = require('./secret.json');
-var job = require('./job.json');
-var decode = require('base-64').decode;
-var Api = require('kubernetes-client');
+import functions from '@google-cloud/functions-framework';
+import Api from "kubernetes-client";
 
-var config = {
+import secret from "./secret.json" assert {
+  type: 'json'
+};
+
+import job from "./job.json" assert {type: 'json'};
+
+const config = {
   url: 'https://' + secret.clusterIp,
-  ca: decode(secret.data['ca.crt']),
+  ca: atob(secret.data['ca.crt']),
   auth: {
-    bearer: decode(secret.data.token)
+    bearer: atob(secret.data.token)
   }
 };
 
 const core = new Api.Core(config);
 const batch = new Api.Batch(config);
 
-function print(err, result) {
-  console.log(JSON.stringify(err || result, null, 2));
-}
-
-exports["ig-commit-trigger"] = function(req, res) {
+functions.http("ig-commit-trigger", async function(req, res) {
 
   res.header("Access-Control-Allow-Method", "POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
@@ -30,23 +30,26 @@ exports["ig-commit-trigger"] = function(req, res) {
     return;
   }
 
-  console.log("BODY 2", req.body);
-  var target = req.body.repository.full_name.split('/');
-  var org = target[0];
-  var repo = target[1];
-  var branch;
+  let org, repo, branch;
   try {
+    [org, repo] = req.body.repository.full_name.split('/');
     branch = req.body.ref.split('/').slice(-1)[0];
-  } catch(error) {
-    console.err("No branch specified in trigger!");
-    throw(error);
+    if (!org || !repo || !branch) {
+      throw("Bad inputs");
+    }
+  } catch {
+    throw(`Could not get org, branch, and repo from req.body.repository.full_name ${req?.body?.repository?.full_name} and req.body.ref ${req?.body?.ref}`);
   }
 
-  console.log("JOB", job);
+  const igIniUrl = `https://raw.githubusercontent.com/${org}/${repo}/${branch}/ig.ini`;
+  const igIni = await fetch(igIniUrl);
 
+  if (igIni.status !== 200) {
+    throw("No ig.ini is present in " + igIniUrl);
+  }
 
-  var defaultEnv = job.spec.template.spec.containers[0].env;
-  job.spec.template.spec.containers[0].env = defaultEnv.concat([{
+  const container = job.spec.template.spec.containers[0];
+  container.env = container.env.concat([{
       "name": "IG_ORG",
       "value":org
     }, {
@@ -58,14 +61,14 @@ exports["ig-commit-trigger"] = function(req, res) {
   }]);
 
   batch.ns('fhir').jobs.post({body: job}, function(err, submitted){
-    console.log("ERR", JSON.stringify(err))
-    console.log("RES", JSON.stringify(submitted, null,2))
-    res && res.status(200).json({
+    if (err) {
+      console.log("Error submitting build job", JSON.stringify(err))
+      throw "Error submitting job";
+    }
+    return res.status(200).json({
       'org': org,
       'repo': repo,
       'branch': branch
-      // 'submitted': submitted
     });
   })
-
-};
+})

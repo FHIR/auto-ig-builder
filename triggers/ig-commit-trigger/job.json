@@ -9,6 +9,7 @@
   },
   "spec": {
     "activeDeadlineSeconds": 36000,
+    "ttlSecondsAfterFinished": 3600,
     "template": {
       "metadata": {
         "labels": { },
