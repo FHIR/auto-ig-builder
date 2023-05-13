@@ -52,6 +52,7 @@ for f in `find . -mindepth 5  -maxdepth 5 -name qa.json`; do
     jq '. + {repo: input_filename[2:]}' $f;
 done | jq --slurp  '.' > qas.json
 
+find . -name '__default' -type l ! -exec test -e {} \; -delete
 for i in {1..4}; do
     NUM=$(find . -type d -empty -delete | wc -l)
     if [ $NUM -eq 0 ]; then
