@@ -1,3 +1,6 @@
+{
+	email admin@fhir.org
+}
 (tryall) {
 	try_files {args.0}
 	try_files {args.0}{fextension}

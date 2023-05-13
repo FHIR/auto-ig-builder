@@ -37,6 +37,8 @@ spec:
         - name: fhir-ci-build-disk
           mountPath: /var/www
           subPath: www
+        - name: caddy-cert-disk
+          mountPath: /data
         - name: caddy-conf-volume
           mountPath: /etc/caddy/Caddyfile
           subPath: Caddyfile
@@ -52,8 +54,12 @@ spec:
         - mountPath: /disk
           name: fhir-ci-build-disk
       restartPolicy: Always
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 10
       volumes:
+      - gcePersistentDisk:
+          fsType: ext4
+          pdName: caddy-cert-disk
+        name: caddy-cert-disk
       - gcePersistentDisk:
           fsType: ext4
           pdName: fhir-ci-build-disk

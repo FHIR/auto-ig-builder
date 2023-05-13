@@ -1,6 +1,8 @@
 gcloud compute disks create fhir-ci-build-disk --size 100GB
 
 kubectl  -n fhir create secret generic zulip-secrets --from-literal=email=$ZULIP_EMAIL --from-literal=api_key=$ZULIP_API_KEY
+
+gcloud compute disks create caddy-cert-disk --size=10GB --zone=us-east1-d
 kubectl  -n fhir create configmap caddy-conf-volume --from-file Caddyfile
 
 kubectl apply -f ci-build.configmap.yaml
