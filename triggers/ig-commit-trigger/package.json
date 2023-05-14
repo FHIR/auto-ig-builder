@@ -11,7 +11,6 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@google-cloud/functions-framework": "^3.2.0",
-    "base-64": "^0.1.0",
     "@kubernetes/client-node": "^0.18.1"
   }
 }
