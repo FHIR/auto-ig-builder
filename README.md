@@ -2,9 +2,9 @@
 
 ## About Auto-Builder
 
-Use this tool if: If you're working on an FHIR Implementation Guide in a **public GitHub repository** and want your work-in-progress to be visible as part of the FHIR Continuous Integration (CI) build service at https://build.fhir.org.
+Use this tool if: If you're working on an FHIR Implementation Guide in a **public GitHub repository** and want your work-in-progress to be visible as part of the FHIR Continuous Integration (CI) build service at https://build.fhir.org/ig/.
 
-By following the instructions below, you can configure your GitHub repository to auto-build every time you make a commit (on any branch), and the resulting output (successful IG content, or debugging logs) will automatically be pushed to https://build.fhir.org.
+By following the instructions below, you can configure your GitHub repository to auto-build every time you make a commit (on any branch), and the resulting output (successful IG content, or debugging logs) will automatically be pushed to https://build.fhir.org/ig/.
 
 ## Quick start guide
 
@@ -12,12 +12,12 @@ By following the instructions below, you can configure your GitHub repository to
 1. **Put your IG on GitHub**: create a GitHub repository within your own organization, and push your content to GitHub.
 2. **Add FHIR IG Builder**: Install https://github.com/apps/fhir-ig-builder on your org or repo. 
 
-* *Now GitHub will automatically trigger a build whenever you commit changes. :-)*
+**Now GitHub will automatically trigger a build whenever you commit changes. :-)**
 
-* *Note: branch names containing characters other than alphanumerics, `_`, and `-` will **not work** with the auto-build infrastructure*
-
-* *Note: a build takes 2-3 minutes to complete. You should see a notification at https://chat.fhir.org/#narrow/stream/179297-committers.2Fnotification/topic/ig-build .*
-
+### Important Notes
+* branches are `[A-Za-z0-9_-]` only. Other characters such as **`/` not work in branch names**
+* build notifications at https://chat.fhir.org/#narrow/stream/179297-committers.2Fnotification/topic/ig-build
+* builds takes 2-3 minutes to complete
 
 <details>
   <summary>Click to show alternative method (manually configured webhook)</summary>
@@ -62,3 +62,12 @@ curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/i
 
 ### Summary/stats of current ci builds
 Latest summary/stats of the ci ig builds are available at [https://fhir.github.io/auto-ig-builder](https://fhir.github.io/auto-ig-builder/builds.html)
+
+
+---
+
+## Developer Overview
+
+* [Dev Setup](./k8s/dev-setup.md)
+* [Architecture Overview Slide](https://docs.google.com/presentation/d/12JykZwSdQ1pwSuzP2fGZSXr3jYMmvEcwVgNAy3dWr_U/present)
+* [Accompanying Video](https://youtu.be/VVbF1O4pgQA)
