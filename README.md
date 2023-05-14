@@ -15,19 +15,19 @@ By following the instructions below, you can configure your GitHub repository to
 **Now GitHub will automatically trigger a build whenever you commit changes. :-)**
 
 ### Important Notes
-* branches are `[A-Za-z0-9_-]` only. Other characters such as **`/` not work in branch names**
+* branches are `[A-Za-z0-9_-]` only. Other characters such as **`/` will not work in branch names**
 * build notifications at https://chat.fhir.org/#narrow/stream/179297-committers.2Fnotification/topic/ig-build
 * builds takes 2-3 minutes to complete
 
 <details>
   <summary>Click to show alternative method (manually configured webhook)</summary>
-* In your repo, click "Settings", then "Webhooks & Services", then "Add Webhook"
-* Enter a URL of `https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger`
-* Choose "Content type" of `application/json`
-* Accept the default (blank) "secret".
-* Choose "Just the push event" as your trigger
-* Click "Add webhook".
-* *Note: first webhook call will of type `ping` and will fail. That is (currently) OK. Once you make a commit and a push, a call of type `push` will be made and that should be successful if your setup is correct.
+In your repo, click "Settings", then "Webhooks & Services", then "Add Webhook"
+Enter a URL of `https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger`
+Choose "Content type" of `application/json`
+Accept the default (blank) "secret".
+Choose "Just the push event" as your trigger
+Click "Add webhook".
+Note: first webhook call will of type `ping` and will fail. That is (currently) OK. Once you make a commit and a push, a call of type `push` will be made and that should be successful if your setup is correct.
 
 </details>
 
