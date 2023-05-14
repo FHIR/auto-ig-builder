@@ -1,3 +1,0 @@
-#!/bin/bash
-echo "Publish $1/$2 to CI build from $(pwd)"
-tar czf - * | ssh ci-build ./publish-ig $1 $2
