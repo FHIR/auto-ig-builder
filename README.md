@@ -50,7 +50,11 @@ https://build.fhir.org/ig/:org/:repo/branches/:branch/build.log
 
 #### If you want to manually trigger a build
 
-You can always push a new commit to your repo. But if you want to re-trigger a build for an existing commit, you have a couple of options. You can navigate through the GitHub UI within your repo to "Settings > Webhooks > ig-commit-trigger", scroll down to "Recent Deliveries," click the top one, and click "Redeliver.
+You can always push a new commit to your repo. But if you want to re-trigger a build for an existing commit, you have a couple of options.
+
+You can use the dashboard at https://fhir.github.io/auto-ig-builder.
+
+Or if you're using web hooks, you can navigate through the GitHub UI within your repo to "Settings > Webhooks > ig-commit-trigger", scroll down to "Recent Deliveries," click the top one, and click "Redeliver.
 
 Or if you want to trigger a build programatically, you can `POST` to the Webhook URL yourself, specifying a branch, org, and repo. For example with the `test-igs` org, `simple` repo, and `master` branch:
 
