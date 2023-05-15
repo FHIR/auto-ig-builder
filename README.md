@@ -2,7 +2,7 @@
 
 ## About Auto-Builder
 
-Use this tool if: If you're working on an FHIR Implementation Guide in a **public GitHub repository** and want your work-in-progress to be visible as part of the FHIR Continuous Integration (CI) build service at https://build.fhir.org/ig/.
+Use this tool if you're working on an FHIR Implementation Guide in a **public GitHub repository** and want your work-in-progress to be visible as part of the FHIR Continuous Integration (CI) build service at https://build.fhir.org/ig/.
 
 By following the instructions below, you can configure your GitHub repository to auto-build every time you make a commit (on any branch), and the resulting output (successful IG content, or debugging logs) will automatically be pushed to https://build.fhir.org/ig/.
 
