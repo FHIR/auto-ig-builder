@@ -39,5 +39,5 @@ gcloud docker -- push gcr.io/fhir-org-starter-project/ci-build
 
 ```
 cd triggers/ig-commit-trigger
-gcloud functions deploy ig-commit-trigger --runtime nodejs16 --trigger-http
+gcloud functions deploy ig-commit-trigger --runtime nodejs18 --trigger-http
 ```
