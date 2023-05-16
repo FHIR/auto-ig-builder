@@ -25,7 +25,8 @@ functions.http("ig-commit-trigger", async function (req, res) {
     if (!org || !repo || !branch) {
       throw "Bad inputs";
     }
-  } catch {
+  } catch(e) {
+    console.error(e)
     return res.json({
       created: false,
       reason: `Could not get org, branch, and repo from
@@ -38,6 +39,7 @@ functions.http("ig-commit-trigger", async function (req, res) {
 
   const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`
     .toLocaleLowerCase()
+    .replace(/[^A-Za-z0-9]/g, "")
     .slice(0, 63);
   const igIniUrl = `https://raw.githubusercontent.com/${org}/${repo}/${branch}/ig.ini`;
   const igIni = await fetch(igIniUrl);
@@ -79,6 +81,7 @@ functions.http("ig-commit-trigger", async function (req, res) {
         .status(200)
         .json({ created: false, reason: "Job already exists" });
     } else {
+      console.error(e)
       throw e;
     }
   }

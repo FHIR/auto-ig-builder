@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npx functions-framework --target=ig-commit-trigger --signature-type=http"
   },
   "author": "Josh Mandel",
   "license": "Apache-2.0",
