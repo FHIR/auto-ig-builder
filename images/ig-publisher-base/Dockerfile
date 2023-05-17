@@ -25,10 +25,11 @@ RUN mkdir /home/publisher/.node && \
 # Latest fsh and ig-publisher-scripts each time we start
 RUN mkdir /home/publisher/bin && \
     cd /home/publisher/bin && \
+    git config --global pull.ff only && \
     git clone https://github.com/HL7/ig-publisher-scripts && \
     printf "#!/bin/sh\n\
-    which sushi > /dev/null || (npm install -g fsh-sushi\n\
-    cd /home/publisher/bin/ig-publisher-scripts && git pull)\
+    npm install -g fsh-sushi\n\
+    cd /home/publisher/bin/ig-publisher-scripts && git pull\
     " >>  /home/publisher/bin/with-latest-sushi.sh && \
     chmod +x /home/publisher/bin/with-latest-sushi.sh && \
     /home/publisher/bin/with-latest-sushi.sh
