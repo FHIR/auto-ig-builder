@@ -95,7 +95,7 @@ instance, to bring in the `.fhir` cache from your host machine home directory:
 
 ## Running on WSL2
 Using this image to build your IG using Docker on WSL2 is really slow due to a 
-known limitation when mounting the Windows filesystem. This can be circumvented
+known limitation when mounting the Windows filesystem. You can run the IG publisher without docker by following the instructions at https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation#IGPublisherDocumentation-Installing; or you can improve performance in WSL2
 by first copying your input-files inside WSL and mounting them from there
 
 For example, save this as `run.sh`:
