@@ -92,3 +92,29 @@ resources in your host filesystem, you can mount them from elsewhere. For
 instance, to bring in the `.fhir` cache from your host machine home directory:
 
     -v /home/$USER/.fhir:/home/publisher/.fhir
+
+## Running on WSL2
+Using this image to build your IG using Docker on WSL2 is really slow due to a 
+known limitation when mounting the Windows filesystem. This can be circumvented
+by first copying your input-files inside WSL and mounting them from there
+
+For example, save this as `run.sh`:
+
+```
+#!/bin/bash
+echo "Copying current folder over to WSL filesystem"
+mkdir -p ~/.fhir
+mkdir -p ~/ig-publisher
+cp ./* ~/ig-publisher
+cp -R ./input ~/ig-publisher
+cp -R ./input-cache ~/ig-publisher
+
+echo "Starting Docker"
+docker run --rm -it -v ~/ig-publisher:/home/publisher/ig -v ~/.fhir:/home/publisher/.fhir hl7fhir/ig-publisher-base "$@"
+
+echo "Copying back to Windows filesystem"
+cp -R ~/ig-publisher/output .
+
+#rm -r ~/ig-publisher
+```
+Then build your IG with `wsl ./run.sh _genonce.sh`
