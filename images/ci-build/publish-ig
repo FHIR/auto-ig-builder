@@ -14,7 +14,7 @@ DEPLOY_TO_BRANCH=${3:-master}
 FAILURE_FLAG=${4:-success}
 IS_DEFAUT_BRANCH=${5:-nondefault}
 
-TARGET="$RANDOM_${IG_ORG}_${IG_REPO}"
+TARGET="${RANDOM}_${IG_ORG}_${IG_REPO}"
 
 mkdir -p ~/uploading/$TARGET
 cd ~/uploading/$TARGET
