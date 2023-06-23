@@ -48,6 +48,8 @@ https://build.fhir.org/ig/:org/:repo/branches/:branch/build.log
 
 (Logs for the default branch will also be available directly at https://build.fhir.org/ig/:org/:repo/build.log .)
 
+In case the build failed, the log will be available in https://build.fhir.org/ig/:org/:repo/branches/:branch/failure/build.log
+
 #### If you want to manually trigger a build
 
 You can always push a new commit to your repo. But if you want to re-trigger a build for an existing commit, you have a couple of options.
