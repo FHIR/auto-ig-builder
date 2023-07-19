@@ -9,7 +9,7 @@ By following the instructions below, you can configure your GitHub repository to
 ## Quick start guide
 
 0. **Create an IG** in a new folder, including a file called `ig.ini` alongside any other content (for example a `pages` folder) that your IG requires. See https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation for full documentation.
-1. **Put your IG on GitHub**: create a GitHub repository within your own organization, and push your content to GitHub.
+1. **Put your IG on GitHub**: create a public GitHub repository within your own organization, and push your content to GitHub.
 2. **Add FHIR IG Builder**: Install https://github.com/apps/fhir-ig-builder on your org or repo. 
 
 **Now GitHub will automatically trigger a build whenever you commit changes. :-)**
