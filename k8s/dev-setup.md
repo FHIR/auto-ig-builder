@@ -41,3 +41,30 @@ gcloud docker -- push gcr.io/fhir-org-starter-project/ci-build
 cd triggers/ig-commit-trigger
 gcloud functions deploy ig-commit-trigger --runtime nodejs18 --trigger-http
 ```
+
+
+---
+
+## Testing locally with minikube
+
+```sh
+minikube config set memory 20000
+minikube start
+eval $(minikube -p minikube docker-env)
+
+kubectl  create ns fhir
+
+ssh-keygen -t rsa -f id
+kubectl  -n fhir create secret generic ci-build-keys --from-file=id --from-file=id.pub
+
+echo "" > keyfile.ini
+echo "{}" > fhir-settings.json
+kubectl  -n fhir create secret generic fhir-settings --from-file=keyfile.ini --from-file=fhir-settings.json
+
+kubectl  -n fhir create secret generic zulip-secrets --from-literal=email=bot@hsot --from-literal=api_key=zapi
+```
+
+Build the igbuild image as `igbuild` in minikube docker
+
+    kubectl apply -f example-job-for-minikube.yaml
+

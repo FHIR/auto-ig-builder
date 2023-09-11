@@ -1,13 +1,10 @@
 import logging
 import os
-import random
-import requests
 import shutil
 import string
 import subprocess
-import sys
 
-from .util  import make_temp_dir, do, send_zulip
+from .util  import do, SCRATCH_SPACE
 from os.path import normpath
 
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
@@ -26,18 +23,29 @@ def get_qa_score(build_dir):
   except:
     return "No QA File"
 
-
 def build(config):
-
-  if config['branch'] == 'gh-pages':
-    sys.exit(0)
-
-  temp_dir = make_temp_dir()
+  temp_dir = SCRATCH_SPACE
   clone_dir = os.path.join(temp_dir, 'repo')
   build_dir = os.path.join(clone_dir, 'output')
   logfile = os.path.join(temp_dir, 'build.log')
+  upload_dir = os.path.join(SCRATCH_SPACE, 'upload')
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
   logging.info('about to clone!')
+
+  def finalize(result_dir, message, pubargs):
+    os.rename(result_dir, upload_dir)
+    message_path = os.path.join(SCRATCH_SPACE, 'message')
+    with open(message_path, 'w') as f:
+      f.write(message)
+    
+    # Write each argument to a new line in a temporary file
+    done_path = os.path.join(SCRATCH_SPACE, 'done')
+    done_temp_path = done_path + '.temp'
+    with open(done_temp_path, 'w') as f:
+      for arg in pubargs:
+        f.write(arg + '\n')
+    # Atomically rename the temporary file to the desired file name
+    os.rename(done_temp_path, done_path)
 
   def run_git_cmd(cmds):
     return subprocess.check_output(cmds, cwd=clone_dir, universal_newlines=True).strip()
@@ -78,14 +86,14 @@ def build(config):
   message = ["**[%(org)s/%(repo)s: %(branch)s](https://github.com/%(org)s/%(repo)s/tree/%(branch)s)** rebuilt\n",
              "Commit: %(commit)s :%(emoji)s:\n",
              "Details: [build logs](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/%(buildlog)s)"]
-
+  print("finalizing")
   if not built:
     print("Build error occurred")
     details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'failure/build.log'
     message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/failure)"]
     shutil.copy(logfile, clone_dir)
-    do(['publish', details['org'], details['repo'], details['branch'], 'failure', details['default']], clone_dir, pipe=True)
+    finalize(clone_dir,  "".join(message)%details, [details['org'], details['repo'], details['branch'], 'failure', details['default']])
   else:
     print("Build succeeded")
     details['emoji'] = 'thumbs_up'
@@ -94,12 +102,8 @@ def build(config):
     message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/branches/%(branch)s/qa.html)"]
     print("Copying logfile")
     shutil.copy(logfile, build_dir)
-    print("publishing")
-    do(['publish', details['org'], details['repo'], details['branch'], 'success', details['default']], build_dir, pipe=True)
-    print("published")
-
-  send_zulip('committers/notification', 'ig-build', "".join(message)%details)
-  # sys.exit(0 if built else 1)
+    finalize(build_dir,  "".join(message)%details, [details['org'], details['repo'], details['branch'], 'success', details['default']])
+  print("finalized")
 
 if __name__ == '__main__':
   build({
