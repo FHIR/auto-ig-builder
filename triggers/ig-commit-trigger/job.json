@@ -9,85 +9,120 @@
     "activeDeadlineSeconds": 36000,
     "ttlSecondsAfterFinished": 30,
     "template": {
-      "metadata": {
-        "labels": { },
-        "name": "ig-build"
-      },
       "spec": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "PUBLISHER_JAR_URL",
+                "value": "https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
+              },
+              {
+                "name": "TX_SERVER_URL",
+                "value": "http://tx.fhir.org"
+              },
+              {
+                "name": "DEADLINE_SECONDS",
+                "value": "36000"
+              },
+              {
+                "name": "JAVA_MEMORY",
+                "value": "19000m"
+              }
+            ],
+            "image": "gcr.io/fhir-org-starter-project/ig-build",
+            "imagePullPolicy": "Always",
+            "name": "ig-build",
+            "resources": {
+              "limits": {
+                "memory": "30Gi"
+              },
+              "requests": {
+                "memory": "22Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/scratch",
+                "name": "scratch"
+              },
+              {
+                "mountPath": "/etc/ig.builder.keyfile.ini",
+                "name": "fhir-settings",
+                "subPath": "ig.builder.keyfile.ini"
+              },
+              {
+                "mountPath": "/etc/fhir-settings.json",
+                "name": "fhir-settings",
+                "subPath": "fhir-settings.json"
+              }
+            ]
+          }, {
+            "args": [],
+            "command": [
+              "/usr/local/bin/watch-and-publish"
+            ],
+            "env": [
+              {
+                "name": "ZULIP_EMAIL",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "email",
+                    "name": "zulip-secrets"
+                  }
+                }
+              },
+              {
+                "name": "ZULIP_API_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "api_key",
+                    "name": "zulip-secrets"
+                  }
+                }
+              }
+            ],
+            "image": "gcr.io/fhir-org-starter-project/ig-build",
+            "imagePullPolicy": "Always",
+            "name": "ig-upload",
+            "resources": {
+              "requests": {
+                "memory": "512Mi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/scratch",
+                "name": "scratch"
+              },
+              {
+                "mountPath": "/etc/ci_build_keys",
+                "name": "keys"
+              }
+            ]
+          }
+        ],
+        "restartPolicy": "Never",
         "volumes": [
+          {
+            "emptyDir": {},
+            "name": "scratch"
+          },
           {
             "name": "keys",
             "secret": {
-              "secretName": "ci-build-keys",
-              "defaultMode": 256
+              "defaultMode": 256,
+              "secretName": "ci-build-keys"
             }
           },
           {
             "name": "fhir-settings",
             "secret": {
-              "secretName": "fhir-settings",
-              "defaultMode": 256
+              "defaultMode": 256,
+              "secretName": "fhir-settings"
             }
           }
-        ],
-        "containers": [
-          {
-            "name": "ig-build",
-            "image": "gcr.io/fhir-org-starter-project/ig-build",
-            "imagePullPolicy": "Always",
-            "env": [{
-              "name": "PUBLISHER_JAR_URL",
-              "value": "https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar"
-            }, {
-              "name": "TX_SERVER_URL",
-              "value": "http://tx.fhir.org"
-            }, {
-              "name": "DEADLINE_SECONDS",
-              "value": "36000"
-            }, {
-              "name": "JAVA_MEMORY",
-              "value": "19000m"
-            }, {
-              "name": "ZULIP_EMAIL",
-              "valueFrom": {
-                "secretKeyRef": {
-                  "name": "zulip-secrets",
-                  "key": "email"
-                }
-              }
-            }, {
-              "name": "ZULIP_API_KEY",
-              "valueFrom": {
-                "secretKeyRef": {
-                  "name": "zulip-secrets",
-                  "key": "api_key"
-                }
-              }
-            }],
-            "volumeMounts": [{
-              "name": "keys",
-              "mountPath": "/etc/ci_build_keys"
-            },{
-              "name": "keys",
-              "subPath": "ig.builder.keyfile.ini",
-              "mountPath": "/etc/ig.builder.keyfile.ini"
-            },
-            {
-              "name": "fhir-settings",
-              "subPath": "fhir-settings.json",
-              "mountPath": "/etc/fhir-settings.json"
-            }],
-            "resources": {
-              "requests": {
-                "memory": "22Gi"
-              },
-              "limits": {
-                "memory": "30Gi"
-              }
-            }
-          }
-        ],
-        "restartPolicy": "Never"
+        ]
       }
     }
   }

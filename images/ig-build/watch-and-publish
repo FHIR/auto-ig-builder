@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Wait for 'done' file to appear
+echo "Waiting for the builder to complete"
+
+cd /scratch
+
+while true; do
+    inotifywait -e create -q -q . && [ -f done ] && break
+done
+echo "Builder completed; uploading"
+
+# At this point, both 'message' and 'done' files are present
+# Read each line from 'done' and store as positional arguments
+pubargs=()
+while IFS= read -r line; do
+  pubargs+=("$line")
+done < /scratch/done
+
+echo "Message"
+cat /scratch/message
+
+echo "publish"
+cat /scratch/done
+
+# Then, Run publish.sh with the arguments from the 'done' file
+cd /scratch/upload
+publish "${pubargs[@]}"
+
+# Send Zulip message
+echo "Uploaded; notifying zulip"
+zulip-send --stream committers/notification --subject ig-build \
+    --message "$(< /scratch/message)" \
+    --user "$ZULIP_EMAIL" \
+    --api-key "$ZULIP_API_KEY" \
+    --site https://chat.fhir.org
+echo "Notified"
