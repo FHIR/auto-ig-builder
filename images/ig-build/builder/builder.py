@@ -37,13 +37,14 @@ def build(config):
     message_path = os.path.join(SCRATCH_SPACE, 'message')
     with open(message_path, 'w') as f:
       f.write(message)
-    
+
     # Write each argument to a new line in a temporary file
     done_path = os.path.join(SCRATCH_SPACE, 'done')
     done_temp_path = done_path + '.temp'
     with open(done_temp_path, 'w') as f:
       for arg in pubargs:
         f.write(arg + '\n')
+
     # Atomically rename the temporary file to the desired file name
     os.rename(done_temp_path, done_path)
 
