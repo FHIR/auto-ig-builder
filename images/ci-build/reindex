@@ -8,11 +8,13 @@ reindex_files() {
     AUTOCLEAN_AFTER_DAYS=${AUTOCLEAN_AFTER_DAYS:-"+90"}
     AUTOCLEAN_EXEMPTION_REGEX=${AUTOCLEAN_EXEMPTION_REGEX:-"./\(HL7\|FHIR\|IHE\)/[^/]*/branches/\(main\|master\)"}
     find . -maxdepth 4 -mindepth 4  -type d -ctime "$AUTOCLEAN_AFTER_DAYS" -not -regex "$AUTOCLEAN_EXEMPTION_REGEX" -exec rm -rf {} \;
-    find . -mindepth 5 -maxdepth 6 -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json
+    find . -mindepth 5 -maxdepth 6 -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json.new
+    mv builds.json.new builds.json
 
     for f in `find . -mindepth 5  -maxdepth 5 -name qa.json`; do
         jq '. + {repo: input_filename[2:]}' $f;
-    done | jq --slurp  '.' > qas.json
+    done | jq --slurp  '.' > qas.json.new
+    mv qas.json.new qas.json
 
     find . -name '__default' -type l ! -exec test -e {} \; -delete
     for i in {1..4}; do
