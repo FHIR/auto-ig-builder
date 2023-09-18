@@ -12,6 +12,12 @@ HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'http://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
 TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org')
 
+temp_dir = SCRATCH_SPACE
+clone_dir = os.path.join(temp_dir, 'repo')
+build_dir = os.path.join(clone_dir, 'output')
+logfile = os.path.join(temp_dir, 'build.log')
+upload_dir = os.path.join(SCRATCH_SPACE, 'upload')
+
 def get_qa_score(build_dir):
   qa_file = os.path.join(build_dir, 'qa.html')
   try:
@@ -23,30 +29,27 @@ def get_qa_score(build_dir):
   except:
     return "No QA File"
 
+
+def finalize(result_dir, message, pubargs):
+  shutil.copy(logfile, result_dir)
+  os.rename(result_dir, upload_dir)
+  message_path = os.path.join(SCRATCH_SPACE, 'message')
+  with open(message_path, 'w') as f:
+    f.write(message)
+
+  # Write each argument to a new line in a temporary file
+  done_path = os.path.join(SCRATCH_SPACE, 'done')
+  done_temp_path = done_path + '.temp'
+  with open(done_temp_path, 'w') as f:
+    for arg in pubargs:
+      f.write(arg + '\n')
+  # Atomically rename the temporary file to the desired file name
+  os.rename(done_temp_path, done_path)
+
+
 def build(config):
-  temp_dir = SCRATCH_SPACE
-  clone_dir = os.path.join(temp_dir, 'repo')
-  build_dir = os.path.join(clone_dir, 'output')
-  logfile = os.path.join(temp_dir, 'build.log')
-  upload_dir = os.path.join(SCRATCH_SPACE, 'upload')
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
   logging.info('about to clone!')
-
-  def finalize(result_dir, message, pubargs):
-    os.rename(result_dir, upload_dir)
-    message_path = os.path.join(SCRATCH_SPACE, 'message')
-    with open(message_path, 'w') as f:
-      f.write(message)
-
-    # Write each argument to a new line in a temporary file
-    done_path = os.path.join(SCRATCH_SPACE, 'done')
-    done_temp_path = done_path + '.temp'
-    with open(done_temp_path, 'w') as f:
-      for arg in pubargs:
-        f.write(arg + '\n')
-
-    # Atomically rename the temporary file to the desired file name
-    os.rename(done_temp_path, done_path)
 
   def run_git_cmd(cmds):
     return subprocess.check_output(cmds, cwd=clone_dir, universal_newlines=True).strip()
@@ -56,9 +59,30 @@ def build(config):
     default_branch = default_branch_full.split('/')[-1]
     return bool(default_branch == config['branch'])
 
-  do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
-  do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
-  do(['npm', '-g', 'install', 'fsh-sushi'], temp_dir, deadline=True)
+  cloned_exit = do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
+  os.makedirs(clone_dir, exist_ok=True)
+
+  message_header = "**[{org}/{repo}: {branch}](https://github.com/{org}/{repo}/tree/{branch})** ".format(**config)
+
+  def early_failure(msg):
+    config["msg"] = msg
+    return {
+      "result_dir": clone_dir,
+      "message": message_header + msg,
+      "pubargs": [config['org'], config['repo'], config['branch'], 'failure', 'nondefault']
+    }
+
+  if cloned_exit != 0:
+    return early_failure("Failed to clone git repository")
+
+  dl_publisher_exit = do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
+  if dl_publisher_exit != 0:
+    return early_failure("Failed to download publisher")
+
+
+  install_sushi_exit = do(['npm', '-g', 'install', 'fsh-sushi'], temp_dir, deadline=True)
+  if install_sushi_exit != 0:
+    return early_failure("Failed to install sushi")
 
   details = {
     'root': HOSTED_ROOT,
@@ -79,36 +103,45 @@ def build(config):
          '-fhir-settings', '/etc/fhir-settings.json',
          '-auto-ig-build',
          '-tx', TX_SERVER_URL,
-         '-target', 'https://build.fhir.org/ig/%s/%s/'%(details['org'], details['repo']),
+         '-target', 'https://build.fhir.org/ig/{org}/{repo}/'.format(**details),
          '-out', clone_dir], clone_dir, deadline=True)
-  built = (0 == built_exit)
-  print(built, built_exit)
 
-  message = ["**[%(org)s/%(repo)s: %(branch)s](https://github.com/%(org)s/%(repo)s/tree/%(branch)s)** rebuilt\n",
-             "Commit: %(commit)s :%(emoji)s:\n",
-             "Details: [build logs](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/%(buildlog)s)"]
+  built = (0 == built_exit)
+
+  message = [message_header + "rebuilt\n",
+             "Commit: {commit} :{emoji}:\n",
+             "Details: [build logs]({root}/{org}/{repo}/branches/{branch}/{buildlog})"]
   print("finalizing")
   if not built:
     print("Build error occurred")
     details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'failure/build.log'
-    message += [" | [debug](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/failure)"]
-    shutil.copy(logfile, clone_dir)
-    finalize(clone_dir,  "".join(message)%details, [details['org'], details['repo'], details['branch'], 'failure', details['default']])
+    message += [" | [debug]({root}/{org}/{repo}/branches/{branch}/failure)"]
+    return {
+      "result_dir": clone_dir,
+      "message":"".join(message).format(**details),
+      "pubargs": [details['org'], details['repo'], details['branch'], 'failure', details['default']]
+    }
+
+
   else:
     print("Build succeeded")
     details['emoji'] = 'thumbs_up'
     details['buildlog'] = 'build.log'
-    message += [" | [published](%(root)s/%(org)s/%(repo)s/branches/%(branch)s/index.html)"]
-    message += [" | [qa: %s]"%get_qa_score(build_dir), "(%(root)s/%(org)s/%(repo)s/branches/%(branch)s/qa.html)"]
-    print("Copying logfile")
-    shutil.copy(logfile, build_dir)
-    finalize(build_dir,  "".join(message)%details, [details['org'], details['repo'], details['branch'], 'success', details['default']])
-  print("finalized")
+    message += [" | [published]({root}/{org}/{repo}/branches/{branch}/index.html)"]
+    message += [f" | [qa: {get_qa_score(build_dir)}]", "({root}/{org}/{repo}/branches/{branch}/qa.html)"]
+    return {
+      "result_dir": build_dir,
+      "message":"".join(message).format(**details),
+      "pubargs": [details['org'], details['repo'], details['branch'], 'success', details['default']]
+    }
 
 if __name__ == '__main__':
-  build({
+  results = build({
     'org': os.environ.get('IG_ORG', 'test-igs'),
     'repo': os.environ.get('IG_REPO', 'simple'),
     'branch': os.environ.get('IG_BRANCH', 'master'),
   })
+  print("results")
+  print(results)
+  finalize(**results)
