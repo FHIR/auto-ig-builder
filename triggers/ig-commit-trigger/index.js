@@ -76,7 +76,7 @@ functions.http("ig-commit-trigger", async function (req, res) {
     const created = await k8sBatch.createNamespacedJob("fhir", job);
 
     console.log("Kill existing jobs", existing?.body?.items?.map(j => j?.metadata?.name))
-    await Promise.all(existing?.body?.items?.map((i) => k8sBatch.deleteNamespacedJob(i.metadata.name, "fhir")))
+    await Promise.all(existing?.body?.items?.map((i) => k8sBatch.deleteNamespacedJob(i.metadata.name, "fhir", undefined, undefined, 0, undefined, "Background")))
 
     return res.status(200).json({
       created: true,
