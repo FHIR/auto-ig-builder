@@ -1,0 +1,44 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: -10
+preemptionPolicy: Never
+globalDefault: false
+description: "Low priority workloads"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: default-priority
+value: 0
+preemptionPolicy: PreemptLowerPriority
+globalDefault: true
+description: "The global default priority."
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: capacity-res-deploy
+  namespace: fhir
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reservation
+  template:
+    metadata:
+      labels:
+        app: reservation
+    spec:
+      priorityClassName: low-priority
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: ubuntu
+        image: ubuntu
+        command: ["sleep"]
+        args: ["infinity"]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 20Gi

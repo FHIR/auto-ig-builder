@@ -6,7 +6,8 @@ echo "Waiting for the builder to complete"
 cd /scratch
 
 while true; do
-    inotifywait -e create -q -q . && [ -f done ] && break
+    [ -f done ] && break
+    inotifywait -e create -q -q .
 done
 echo "Builder completed; uploading"
 
