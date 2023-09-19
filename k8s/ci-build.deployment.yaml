@@ -14,6 +14,15 @@ spec:
         run: ci-build
       namespace: fhir
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-spot
+                operator: NotIn
+                values:
+                - "true"
       containers:
       - env:
         - name: BUILD_NUMBER
