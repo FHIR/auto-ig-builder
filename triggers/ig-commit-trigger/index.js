@@ -37,10 +37,13 @@ functions.http("ig-commit-trigger", async function (req, res) {
     });
   }
 
+  const jobGroupId = `igbuild-${org}-${repo}-${branch}`.toLocaleLowerCase();
+
   const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`
     .toLocaleLowerCase()
     .replace(/[^A-Za-z0-9]/g, "")
     .slice(0, 63);
+
   const igIniUrl = `https://raw.githubusercontent.com/${org}/${repo}/${branch}/ig.ini`;
   const igIni = await fetch(igIniUrl);
 
@@ -50,24 +53,31 @@ functions.http("ig-commit-trigger", async function (req, res) {
 
   const job = JSON.parse(JSON.stringify(jobSource));
   job.metadata.name = jobId;
-  const container = job.spec.template.spec.containers[0];
-  container.env = container.env.concat([
-    {
-      name: "IG_ORG",
-      value: org,
-    },
-    {
-      name: "IG_REPO",
-      value: repo,
-    },
-    {
-      name: "IG_BRANCH",
-      value: branch,
-    },
-  ]);
+  job.metadata.labels["job-group-id"] = jobGroupId;
+  job.spec.template.spec.containers.forEach((container) => {
+    container.env = container.env.concat([
+      {
+        name: "IG_ORG",
+        value: org,
+      },
+      {
+        name: "IG_REPO",
+        value: repo,
+      },
+      {
+        name: "IG_BRANCH",
+        value: branch,
+      },
+    ]);
+  });
 
   try {
+    const existing = await k8sBatch.listNamespacedJob("fhir", false, false, undefined, undefined, `job-group-id=${jobGroupId}`);
     const created = await k8sBatch.createNamespacedJob("fhir", job);
+
+    console.log("Kill existing jobs", existing?.body?.items?.map(j => j?.metadata?.name))
+    await Promise.all(existing?.body?.items?.map((i) => k8sBatch.deleteNamespacedJob(i.metadata.name, "fhir")))
+
     return res.status(200).json({
       created: true,
       org: org,

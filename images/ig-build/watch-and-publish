@@ -25,7 +25,7 @@ cat /scratch/done
 
 # Then, Run publish.sh with the arguments from the 'done' file
 cd /scratch/upload
-publish "${pubargs[@]}"
+publish "${IG_ORG}" "${IG_REPO}" "${IG_BRANCH}" "${pubargs[@]}"
 
 # Send Zulip message
 echo "Uploaded; notifying zulip"

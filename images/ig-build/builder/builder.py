@@ -69,7 +69,7 @@ def build(config):
     return {
       "result_dir": clone_dir,
       "message": message_header + msg,
-      "pubargs": [config['org'], config['repo'], config['branch'], 'failure', 'nondefault']
+      "pubargs": ['failure', 'nondefault']
     }
 
   if cloned_exit != 0:
@@ -120,7 +120,7 @@ def build(config):
     return {
       "result_dir": clone_dir,
       "message":"".join(message).format(**details),
-      "pubargs": [details['org'], details['repo'], details['branch'], 'failure', details['default']]
+      "pubargs": ['failure', details['default']]
     }
 
 
@@ -133,7 +133,7 @@ def build(config):
     return {
       "result_dir": build_dir,
       "message":"".join(message).format(**details),
-      "pubargs": [details['org'], details['repo'], details['branch'], 'success', details['default']]
+      "pubargs": ['success', details['default']]
     }
 
 if __name__ == '__main__':
