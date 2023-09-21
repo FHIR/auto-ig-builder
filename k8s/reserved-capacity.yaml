@@ -33,6 +33,15 @@ spec:
     spec:
       priorityClassName: low-priority
       terminationGracePeriodSeconds: 0
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-spot
+                operator: In
+                values:
+                - "true"
       containers:
       - name: ubuntu
         image: "gcr.io/fhir-org-starter-project/ig-build"
