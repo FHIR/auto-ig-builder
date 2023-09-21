@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FHIR IG Builds</title>
     <link rel="stylesheet" href="bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="lodash.min.js"></script>
     <script src="timeago.js"></script>
     <script src="sortable.js"></script>
+    <script src="jquery.min.js"></script>
+    <script src="bootstrap.bundle.min.js"></script>
     <style>
       th {text-decoration: underline; cursor: pointer}
     </style>
@@ -39,7 +42,7 @@
 
     fetch("https://build.fhir.org/ig/builds.json")
       .then(r => r.json())
-      .then(r => r.filter(r => /\/master|main\//.test(r)))
+      .then(renderBranches)
       .then(fetchBuilds)
       .then(renderBuilds);
 
@@ -53,6 +56,13 @@
         return qa
       }))
       .then(renderQas);
+
+    function renderBranches(builds) {
+      state.branches = parseBranches(builds);
+      render(state);
+      return builds;
+    }
+
 
     function renderBuilds(builds) {
       state.builds = builds;
@@ -82,11 +92,46 @@
       }
     }
 
+
+    function parseBranches(builds) {
+      const grouped = _.groupBy(builds.map(entry =>{
+        const splitEntry = entry.split('/');
+        const failure = splitEntry.includes('failure');
+        
+        return {
+          org: splitEntry[0],
+          repo: splitEntry[1],
+          branch: splitEntry[3],
+          failure: failure
+        };
+      }), entry => `${entry.org}/${entry.repo}`);
+
+      const allBuilds = _.mapValues(grouped, entries => {
+        const branches = entries.map(entry => {
+          return {
+            name: entry.branch,
+            failing: _.some(entries, { branch: entry.branch, failure: true })
+          };
+        });
+
+        // If there are multiple entries with the same branch name, we want to deduplicate
+        const dedupedBranches = _.uniqBy(branches, 'name');
+
+        return {
+          branches: dedupedBranches
+        };
+      });
+
+      return allBuilds
+    }
+
     function fetchBuilds(builds) {
+      const allBuilds = parseBranches(builds);
       const fetchPool = asyncPool(fetch, 24);
-       return Promise.all(builds.map(repo =>
-        fetchPool("https://build.fhir.org/ig/"+repo.replace("#", "%23"))
-          .then(b => b.text())
+       return Promise.all(builds
+       .filter(repo => /\/master|main\//.test(repo))
+       .map(repo =>
+        fetchPool("https://build.fhir.org/ig/"+repo.replace("#", "%23")).then(b => b.text())
         .then(b => {
           var date = b.match(/Coordinated Universal Time \((.*?)\)/),
               version = b.match(/Definitions (\S+)/);
@@ -102,7 +147,8 @@
             master: true,
             failure: /\/failure\//.test(repo),
             date: date,
-            version: version
+            version: version,
+            choices: allBuilds[repo.split("/").slice(0, 2).join("/")]
           }})));
     }
 
@@ -112,9 +158,15 @@
       render(state);
     }
 
-    function rebuild(repo) {
+    const rebuilt = []
+    function rebuild(branchnum, org, repo, branch) {
+      if (rebuilt.includes(branchnum)) {
+        return;
+      }
+      rebuilt.push(branchnum)
+      document.getElementById(`branch-${branchnum}`).classList.add("text-muted");
       fetch("https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger", {
-        body: JSON.stringify({"ref": "refs/heads/master", "repository": {"full_name": repo}}),
+        body: JSON.stringify({"ref": `refs/heads/${branch}`, "repository": {"full_name": `${org}/${repo}`}}),
         headers: {
           'Content-Type': 'application/json'
         },
@@ -122,7 +174,6 @@
         referrer: 'no-referrer',
         mode: 'cors'
       })
-      document.getElementById(repo).setAttribute("disabled", "true")
     }
 
  
@@ -163,10 +214,10 @@
 
         acc[entry] = {
           build: build,
-	  date: new Date(Math.max(qa && qa.date || 0, build && build.date || 0)),
-	  version: (qa && qa.version) || build.version,
+          date: new Date(Math.max(qa && qa.date || 0, build && build.date || 0)),
+          version: (qa && qa.version) || build.version,
           qa: qa,
-	  repo: entry,
+          repo: entry,
         };
         return acc
     }, {})
@@ -180,17 +231,19 @@
         date: r.date,
         version: r.version,
         success: !(r.build && r.build.failure) && (r.qa && !r.qa.exception),
-        debug: {build: r.build, qa: r.qa}
+        debug: {build: r.build, qa: r.qa},
+        choices: state.branches?.[r.repo]?.branches ?? ["master"]
       }})
       .sort((a, b) => a.date < b. date ? 1 : -1)
 
+      let branchnum=0;
     var tbody = `<thead>
         <th>ig</th>
         <th>version</th>
         <th>date</th>
         <th>status</th>
         <th>links</th>
-      </thead><tr>` + rows.map(({org, repo, date, version, success, debug}) =>
+      </thead><tr>` + rows.map(({org, repo, date, version, success, debug, choices}) =>
         `<td>
         <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${quoteattr(JSON.stringify(debug, null, 2))}'>
         ${org} / <strong>${repo}</strong></a>
@@ -199,7 +252,15 @@
         <td sorttable_customkey="${date && date.toISOString() || '1900'}">
         <a data-toggle="tooltip" title="${date && date.toISOString()}">${date ? timeFormatter.format(date) : "???"}</td>
 	<td><span class="badge pill-badge badge-${success ? "success" : "danger"}">${success ? "success" : "failure"}</span></td>
-        <td><button id="${org}/${repo}" class="btn" onClick="rebuild('${org}/${repo}')">Rebuild</button>
+        <td>
+        <div class="dropdown">
+        <button class="btn-sm btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Rebuild Branch
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        ${choices.map(branch => `<a id="branch-${branchnum}" class="dropdown-item" onClick="rebuild(${branchnum++}, '${org}', '${repo}', '${branch.name}')">${branch.name + (branch.failing ? " [failing]" : "")}</a>`).join(`\n`)}
+        </div>
+      </div>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/"}build.log">log</a>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}/tree/master">gh</a>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/output/"}qa.html">qa</a>
