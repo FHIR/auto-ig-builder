@@ -35,7 +35,7 @@ spec:
       terminationGracePeriodSeconds: 0
       containers:
       - name: ubuntu
-        image: ubuntu
+        image: "gcr.io/fhir-org-starter-project/ig-build"
         command: ["sleep"]
         args: ["infinity"]
         resources:

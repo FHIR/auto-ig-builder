@@ -1,7 +1,7 @@
 FROM openjdk:21-jdk-bullseye
 MAINTAINER Josh Mandel
 
-RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev inotify-tools
+RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev inotify-tools && apt-get clean
 RUN pip3 install --upgrade  requests zulip
 RUN gem install jekyll jekyll-asciidoc
 
