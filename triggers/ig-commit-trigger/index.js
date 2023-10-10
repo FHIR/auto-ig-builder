@@ -1,6 +1,8 @@
 import functions from "@google-cloud/functions-framework";
 import k8s from "@kubernetes/client-node";
 import jobSource from "./job.json" assert { type: "json" };
+import crypto from "crypto"
+
 
 const kc = new k8s.KubeConfig();
 kc.loadFromFile("sa.kubeconfig");
@@ -37,7 +39,8 @@ functions.http("ig-commit-trigger", async function (req, res) {
     });
   }
 
-  const jobGroupId = `igbuild-${org}-${repo}-${branch}`.toLocaleLowerCase();
+  const jobGroupId = crypto.createHash('sha256').update(`${org}-${repo}-${branch}`, 'utf8').digest('hex').slice(0, 63);
+  console.log("Job group id", jobGroupId);
 
   const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`
     .toLocaleLowerCase()
