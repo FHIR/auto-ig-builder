@@ -261,9 +261,9 @@
         ${choices.map(branch => `<a id="branch-${branchnum}" class="dropdown-item" onClick="rebuild(${branchnum++}, '${org}', '${repo}', '${branch.name}')">${branch.name + (branch.failing ? " [failing]" : "")}</a>`).join(`\n`)}
         </div>
       </div>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/"}build.log">log</a>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}/tree/master">gh</a>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/master/${success ? "" : "failure/output/"}qa.html">qa</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/"}build.log">log</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}">gh</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/output/"}qa.html">qa</a>
         </td>`
     ).join(`</tr><tr>`)
 
