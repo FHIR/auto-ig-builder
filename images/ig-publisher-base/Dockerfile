@@ -7,10 +7,11 @@ RUN gem install jekyll jekyll-asciidoc
 
 RUN useradd -d /home/publisher -m publisher
 
-RUN  cd /tmp && \
-     wget --quiet https://nodejs.org/dist/latest-v18.x/node-v18.16.0-linux-x64.tar.xz && \
-     cd /usr/local && \
-     tar --strip-components 1 -xf /tmp/node-v18.16.0-linux-x64.tar.xz
+WORKDIR /tmp 
+RUN  wget --quiet https://nodejs.org/dist/latest-v18.x/node-v18.18.2-linux-x64.tar.gz   
+
+WORKDIR /usr/local   
+RUN tar --strip-components 1 -xf /tmp/node-v18.18.2-linux-x64.tar.gz
 
 
 USER publisher
