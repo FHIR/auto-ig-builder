@@ -1,37 +1,33 @@
 FROM openjdk:21-jdk-bullseye
-MAINTAINER Josh Mandel
+LABEL maintainer="Josh Mandel"
 
-RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev
-RUN pip3 install --upgrade  requests zulip
-RUN gem install jekyll jekyll-asciidoc
+# Set environment variables
+ENV NODE_VERSION=v18.18.2 \
+    PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}" \
+    NODE_PATH="/home/publisher/.node/lib/node_modules:${PATH}"
 
-RUN useradd -d /home/publisher -m publisher
+# Install dependencies, clean up, and set up non-root user
+RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev && \
+    apt-get clean && \
+    pip3 install --upgrade requests zulip && \
+    gem install jekyll jekyll-asciidoc && \
+    useradd -d /home/publisher -m publisher
 
+# Download and install Node.js
 WORKDIR /tmp 
-RUN  wget --quiet https://nodejs.org/dist/latest-v18.x/node-v18.18.2-linux-x64.tar.gz   
+RUN wget --quiet https://nodejs.org/dist/latest-v18.x/node-${NODE_VERSION}-linux-x64.tar.gz && \
+    tar --strip-components 1 -xf node-${NODE_VERSION}-linux-x64.tar.gz -C /usr/local && \
+    rm node-${NODE_VERSION}-linux-x64.tar.gz
 
-WORKDIR /usr/local   
-RUN tar --strip-components 1 -xf /tmp/node-v18.18.2-linux-x64.tar.gz
-
-
+# Set up publisher environment
 USER publisher
-RUN mkdir /home/publisher/ig
-ENV PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}"
-ENV NODE_PATH="/home/publisher/.node/lib/node_modules:${PATH}"
-
-RUN mkdir /home/publisher/.node && \
-    echo "prefix = /home/publisher/.node" > /home/publisher/.npmrc
-
-
-# Latest fsh and ig-publisher-scripts each time we start
-RUN mkdir /home/publisher/bin && \
-    cd /home/publisher/bin && \
+RUN mkdir /home/publisher/ig && \
+    mkdir /home/publisher/.node && \
+    echo "prefix = /home/publisher/.node" > /home/publisher/.npmrc && \
+    mkdir /home/publisher/bin && \
     git config --global pull.ff only && \
-    git clone https://github.com/HL7/ig-publisher-scripts && \
-    printf "#!/bin/sh\n\
-    npm install -g fsh-sushi\n\
-    cd /home/publisher/bin/ig-publisher-scripts && git pull\
-    " >>  /home/publisher/bin/with-latest-sushi.sh && \
+    git clone https://github.com/HL7/ig-publisher-scripts /home/publisher/bin/ig-publisher-scripts && \
+    echo "#!/bin/sh\nnpm install -g fsh-sushi\ncd /home/publisher/bin/ig-publisher-scripts && git pull" > /home/publisher/bin/with-latest-sushi.sh && \
     chmod +x /home/publisher/bin/with-latest-sushi.sh && \
     /home/publisher/bin/with-latest-sushi.sh
 
