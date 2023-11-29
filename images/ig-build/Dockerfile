@@ -1,14 +1,16 @@
 FROM openjdk:21-jdk-bullseye
-MAINTAINER Josh Mandel
+LABEL maintainer="Josh Mandel"
 
-RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev inotify-tools && apt-get clean
-RUN pip3 install --upgrade  requests zulip
-RUN gem install jekyll jekyll-asciidoc
-
-RUN  cd /tmp && \
-     wget --quiet https://nodejs.org/dist/v18.17.1/node-v18.17.1-linux-x64.tar.xz && \
-     cd /usr/local && \
-     tar --strip-components 1 -xf /tmp/node-v18.17.1-linux-x64.tar.xz
+ENV NODE_VERSION=v18.18.2
+RUN apt-get update && \
+    apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev inotify-tools && \
+    apt-get clean && \
+    pip3 install --upgrade  requests zulip && \
+    gem install jekyll jekyll-asciidoc && \
+    cd /tmp && \
+    wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz && \
+    cd /usr/local && \
+    tar --strip-components 1 -xf /tmp/node-${NODE_VERSION}-linux-x64.tar.xz
 
 ADD watch-and-publish /usr/local/bin/watch-and-publish
 ADD publish /usr/local/bin/publish
