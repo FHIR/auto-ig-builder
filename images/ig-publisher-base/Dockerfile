@@ -4,7 +4,7 @@ LABEL maintainer="Josh Mandel"
 ENV NODE_VERSION=v20.13.1
 
 # Install dependencies, clean up, and set up non-root user
-RUN apt-get update && apt-get -y install curl git python3 python3-pip python3-requests openssl wget graphviz ruby && \
+RUN apt-get update && apt-get -y install curl git python3 python3-pip python3-requests openssl wget graphviz ruby-dev && \
     apt-get clean && \
     gem install jekyll jekyll-asciidoc
 
