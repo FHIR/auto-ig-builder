@@ -1,25 +1,24 @@
-FROM openjdk:21-jdk-bullseye
+FROM openjdk:23-jdk-slim-bookworm
 LABEL maintainer="Josh Mandel"
 
-# Set environment variables
-ENV NODE_VERSION=v20.13.1 \
-    PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}" \
-    NODE_PATH="/home/publisher/.node/lib/node_modules:${PATH}"
+ENV NODE_VERSION=v20.13.1
 
 # Install dependencies, clean up, and set up non-root user
-RUN apt-get update && apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev && \
+RUN apt-get update && apt-get -y install curl git python3 python3-pip python3-requests openssl wget graphviz ruby && \
     apt-get clean && \
-    pip3 install --upgrade requests zulip && \
-    gem install jekyll jekyll-asciidoc && \
-    useradd -d /home/publisher -m publisher
+    gem install jekyll jekyll-asciidoc
 
 # Download and install Node.js
-WORKDIR /tmp 
+WORKDIR /tmp
+
 RUN wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.gz && \
     tar --strip-components 1 -xf node-${NODE_VERSION}-linux-x64.tar.gz -C /usr/local && \
     rm node-${NODE_VERSION}-linux-x64.tar.gz
 
 # Set up publisher environment
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN useradd -d /home/publisher -m publisher
 USER publisher
 RUN mkdir /home/publisher/ig && \
     mkdir /home/publisher/.node && \
@@ -34,9 +33,6 @@ RUN mkdir /home/publisher/ig && \
 # Following technique from https://gist.github.com/yogeek/bc8dc6dadbb72cb39efadf83920077d3
 WORKDIR /home/publisher/ig
 VOLUME /home/publisher/ig
-
-USER root
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-
+ENV PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}"
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["bash"]

@@ -1,16 +1,19 @@
-FROM openjdk:21-jdk-bullseye
+FROM openjdk:23-jdk-slim-bookworm
 LABEL maintainer="Josh Mandel"
 
-ENV NODE_VERSION=v18.18.2
-RUN apt-get update && \
-    apt-get -y install python3 python3-pip gosu openssl wget graphviz ruby2.7 ruby2.7-dev inotify-tools && \
+ENV NODE_VERSION=v20.13.1
+
+# Install dependencies, clean up, and set up non-root user
+RUN apt-get update && apt-get -y install curl git python3 python3-pip python3-venv python3-requests openssl wget graphviz ruby ruby-dev && \
     apt-get clean && \
-    pip3 install --upgrade  requests zulip && \
-    gem install jekyll jekyll-asciidoc && \
-    cd /tmp && \
-    wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz && \
-    cd /usr/local && \
-    tar --strip-components 1 -xf /tmp/node-${NODE_VERSION}-linux-x64.tar.xz
+    gem install jekyll jekyll-asciidoc
+
+# Download and install Node.js
+WORKDIR /tmp
+
+RUN wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.gz && \
+    tar --strip-components 1 -xf node-${NODE_VERSION}-linux-x64.tar.gz -C /usr/local && \
+    rm node-${NODE_VERSION}-linux-x64.tar.gz
 
 ADD watch-and-publish /usr/local/bin/watch-and-publish
 ADD publish /usr/local/bin/publish
@@ -39,5 +42,11 @@ RUN mkdir -p /home/fhiruser/.ssh && \
 RUN mkdir -p /app/builder
 ADD builder /app/builder
 WORKDIR /app
+
+RUN python3 -m venv venv
+
+# Activate the virtual environment and install the zulip library
+RUN /app/venv/bin/pip install --upgrade pip && \
+    /app/venv/bin/pip install zulip
 
 ENTRYPOINT python3 -m builder.builder || touch /scratch/done
