@@ -51,7 +51,7 @@ CMD ["bash"]
 FROM base as ci
 LABEL maintainer="Josh Mandel"
 
-RUN apt-get update && apt-get -y install python3 python3-pip python3-venv python3-requests openssl && \
+RUN apt-get update && apt-get -y install inotify-tools python3 python3-pip python3-venv python3-requests openssl && \
     apt-get clean
 
 ADD ./ci-files/watch-and-publish /usr/local/bin/watch-and-publish
