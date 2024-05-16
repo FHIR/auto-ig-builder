@@ -12,16 +12,16 @@ RUN apt-get update && apt-get -y install curl git openssl wget graphviz ruby rub
 WORKDIR /tmp
 
 # Set platform-specific variables
-RUN if [ -z "$NODE_DISTRO" ]; then \
-        if [ "$(uname -m)" = "x86_64" ]; then \
-            NODE_DISTRO=linux-x64; \
-        elif [ "$(uname -m)" = "arm64" ]; then \
-            NODE_DISTRO=darwin-arm64; \
-        else \
-            echo "Unsupported architecture"; \
-            exit 1; \
-        fi; \
-    fi;\
+ARG TARGETARCH
+
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        NODE_DISTRO=linux-x64; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        NODE_DISTRO=linux-arm64; \
+    else \
+        echo "Unsupported architecture"; \
+        exit 1; \
+    fi; \ 
     echo "DOWNLOAD https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz" && \
     wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz && \
     tar --strip-components 1 -xf node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz -C /usr/local && \
