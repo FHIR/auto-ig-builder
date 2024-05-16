@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source /app/venv/bin/activate
+
 # Wait for 'done' file to appear
 echo "Waiting for the builder to complete"
 
