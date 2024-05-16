@@ -1,19 +1,8 @@
-FROM openjdk:23-jdk-slim-bookworm
+FROM ghcr.io/fhir/ig-publisher-base:latest
 LABEL maintainer="Josh Mandel"
 
-ENV NODE_VERSION=v20.13.1
-
-# Install dependencies, clean up, and set up non-root user
-RUN apt-get update && apt-get -y install curl git python3 python3-pip python3-venv python3-requests openssl wget graphviz ruby ruby-dev && \
-    apt-get clean && \
-    gem install jekyll jekyll-asciidoc
-
-# Download and install Node.js
-WORKDIR /tmp
-
-RUN wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.gz && \
-    tar --strip-components 1 -xf node-${NODE_VERSION}-linux-x64.tar.gz -C /usr/local && \
-    rm node-${NODE_VERSION}-linux-x64.tar.gz
+RUN apt-get update && apt-get -y install python3 python3-pip python3-venv python3-requests openssl && \
+    apt-get clean
 
 ADD watch-and-publish /usr/local/bin/watch-and-publish
 ADD publish /usr/local/bin/publish
@@ -37,7 +26,6 @@ RUN mkdir -p /home/fhiruser/.ssh && \
     IdentityFile /etc/ci_build_keys/id\n\
     IdentitiesOnly yes" > /home/fhiruser/.ssh/config && \
     chmod go-wrx /home/fhiruser/.ssh/config
-
 
 RUN mkdir -p /app/builder
 ADD builder /app/builder
