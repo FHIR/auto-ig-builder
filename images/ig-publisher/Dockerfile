@@ -16,7 +16,7 @@ RUN if [ -z "$NODE_DISTRO" ]; then \
         if [ "$(uname -m)" = "x86_64" ]; then \
             NODE_DISTRO=linux-x64; \
         elif [ "$(uname -m)" = "arm64" ]; then \
-            NODE_DISTRO=darwin-arm64; \
+            NODE_DISTRO=linux-arm64; \
         else \
             echo "Unsupported architecture"; \
             exit 1; \
