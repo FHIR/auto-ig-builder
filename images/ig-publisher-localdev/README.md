@@ -42,7 +42,7 @@ docker run --rm -it \
 ```
 
 
-If you want to avoid downloading depenencies like gradle and kindling on each
+If you want to avoid downloading dependencies like gradle and kindling on each
 run, you can mount a `/home/publisher/.gradle` directory into the container:
 
 ```
