@@ -37,5 +37,5 @@ jobs:
         docker buildx build --push \
           --platform linux/amd64,linux/arm64 \
           --target localdev \
-          -t ghcr.io/${{ github.repository }}/ig-publisher-localdev:latest \
+          -t ghcr.io/fhir/ig-publisher-localdev:latest \
           images/ig-publisher
