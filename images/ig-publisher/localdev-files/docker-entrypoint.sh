@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
 
-/home/publisher/bin/with-latest-sushi.sh
+git clone https://github.com/HL7/ig-publisher-scripts /home/publisher/bin/ig-publisher-scripts
+npm install -g fsh-sushi
+
 exec "$@"
