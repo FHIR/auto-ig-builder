@@ -1,7 +1,8 @@
-FROM openjdk:23-jdk-slim-bookworm as base
+FROM --platform=$TARGETPLATFORM openjdk:23-jdk-slim-bookworm as base
 LABEL maintainer="Josh Mandel"
 
 ARG NODE_VERSION=v20.13.1
+ARG TARGETARCH
 
 # Install dependencies, clean up, and set up non-root user
 RUN apt-get update && apt-get -y install curl git openssl wget graphviz ruby ruby-dev build-essential libffi-dev && \
@@ -11,17 +12,16 @@ RUN apt-get update && apt-get -y install curl git openssl wget graphviz ruby rub
 # Download and install Node.js
 WORKDIR /tmp
 
+
 # Set platform-specific variables
-RUN if [ -z "$NODE_DISTRO" ]; then \
-        if [ "$(uname -m)" = "x86_64" ]; then \
-            NODE_DISTRO=linux-x64; \
-        elif [ "$(uname -m)" = "aarch64" ]; then \
-            NODE_DISTRO=linux-arm64; \
-        else \
-            echo "Unsupported architecture"; \
-            exit 1; \
-        fi; \
-    fi;\
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        NODE_DISTRO=linux-x64; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        NODE_DISTRO=linux-arm64; \
+    else \
+        echo "Unsupported architecture"; \
+        exit 1; \
+    fi; \
     echo "DOWNLOAD https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz" && \
     wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz && \
     tar --strip-components 1 -xf node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz -C /usr/local && \
