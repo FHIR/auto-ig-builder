@@ -45,6 +45,13 @@ docker build --target localdev -t ghcr.io/fhir/ig-publisher-localdev .
 docker build --target ci -t ghcr.io/fhir/ig-publisher-ci .
 ```
 
+### Multiplatform build
+
+```sh
+docker buildx build   --platform linux/arm64,linux/amd64 .
+```
+
+
 ### Usage
 
 #### Local Development
