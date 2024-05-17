@@ -30,7 +30,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 # ------- Begin Local Dev -------
 FROM base as localdev
 LABEL maintainer="Josh Mandel"
-
+LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
 COPY ./localdev-files/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN useradd -d /home/publisher -m publisher
