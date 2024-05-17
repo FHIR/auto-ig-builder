@@ -1,4 +1,4 @@
-### README for IG Publisher Project
+### IG Publisher Docker Images
 
 ## Overview
 
