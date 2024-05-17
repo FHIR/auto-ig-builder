@@ -1,5 +1,17 @@
 {
   "nodes": {
+    "fhirPublisherJarFile": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-YBhem06I/xG+CqN85Qmh2bY4i3ijRI5JV3Y7IeqcPxY=",
+        "type": "file",
+        "url": "https://github.com/HL7/fhir-ig-publisher/releases/download/1.6.7/publisher.jar"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://github.com/HL7/fhir-ig-publisher/releases/download/1.6.7/publisher.jar"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1715787315,
@@ -18,6 +30,7 @@
     },
     "root": {
       "inputs": {
+        "fhirPublisherJarFile": "fhirPublisherJarFile",
         "nixpkgs": "nixpkgs"
       }
     }
