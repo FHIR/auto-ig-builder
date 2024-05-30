@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM openjdk:23-jdk-slim-bookworm as base
+FROM --platform=$TARGETPLATFORM openjdk:23-slim-bookworm as base
 LABEL maintainer="Josh Mandel"
 
 ARG NODE_VERSION=v20.13.1
@@ -7,7 +7,7 @@ ARG TARGETARCH
 # Install dependencies, clean up, and set up non-root user
 RUN apt-get update && apt-get -y install curl git openssl wget graphviz ruby ruby-dev build-essential libffi-dev && \
     apt-get clean && \
-    gem install jekyll jekyll-asciidoc
+    gem install jekyll
 
 # Download and install Node.js
 WORKDIR /tmp
@@ -46,6 +46,17 @@ VOLUME /home/publisher/ig
 ENV PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}"
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["bash"]
+
+# ------- Begin CI -------
+FROM localdev as gh
+LABEL maintainer="Josh Mandel"
+LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
+USER root
+RUN groupmod -g 121 publisher && \
+usermod -u 1001 publisher && \
+chown -R publisher:publisher /home/publisher
+USER publisher
+
 
 # ------- Begin CI -------
 FROM base as ci

@@ -32,10 +32,18 @@ jobs:
     - name: Login to GHCR
       run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Build and push multi-platform image
+    - name: Build and push multi-platform image for localdev
       run: |
         docker buildx build --push \
           --platform linux/amd64,linux/arm64 \
           --target localdev \
           -t ghcr.io/fhir/ig-publisher-localdev:latest \
+          images/ig-publisher
+
+    - name: Build and push image for gh
+      run: |
+        docker buildx build --push \
+          --platform linux/arm64 \
+          --target gh \
+          -t ghcr.io/fhir/ig-publisher-gh:latest \
           images/ig-publisher
