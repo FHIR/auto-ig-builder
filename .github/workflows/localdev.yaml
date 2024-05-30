@@ -43,7 +43,7 @@ jobs:
     - name: Build and push image for gh
       run: |
         docker buildx build --push \
-          --platform linux/arm64 \
+          --platform linux/amd64 \
           --target gh \
           -t ghcr.io/fhir/ig-publisher-gh:latest \
           images/ig-publisher
