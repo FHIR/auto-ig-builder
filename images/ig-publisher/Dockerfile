@@ -33,6 +33,8 @@ LABEL maintainer="Josh Mandel"
 LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
 COPY ./localdev-files/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
+RUN apt-get update && apt-get -y install gosu && apt-get clean
+
 RUN useradd -d /home/publisher -m publisher
 USER publisher
 RUN mkdir /home/publisher/ig && \
@@ -44,18 +46,9 @@ RUN mkdir /home/publisher/ig && \
 WORKDIR /home/publisher/ig
 VOLUME /home/publisher/ig
 ENV PATH="/home/publisher/bin:/home/publisher/bin/ig-publisher-scripts:/home/publisher/.node/bin:${PATH}"
+USER root
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["bash"]
-
-# ------- Begin CI -------
-FROM localdev as gh
-LABEL maintainer="Josh Mandel"
-LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
-USER root
-RUN groupmod -g 121 publisher && \
-usermod -u 1001 publisher && \
-chown -R publisher:publisher /home/publisher
-USER publisher
 
 
 # ------- Begin CI -------
