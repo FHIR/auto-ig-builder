@@ -1,8 +1,5 @@
-FROM archlinux:latest as base
+FROM ghcr.io/fwcd/archlinux:latest as base
 LABEL maintainer="Josh Mandel"
-
-ARG NODE_VERSION=v20.13.1
-ARG TARGETARCH
 
 # Install dependencies and sudo
 RUN pacman -Syu --noconfirm && \
