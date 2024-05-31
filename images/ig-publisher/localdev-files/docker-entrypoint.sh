@@ -18,6 +18,6 @@ if [ "$MAP_NODE_UID" != "no" ]; then
     }
 fi
 
-gosu publisher git clone https://github.com/HL7/ig-publisher-scripts /home/publisher/bin/ig-publisher-scripts
-gosu publisher npm install -g fsh-sushi
-exec gosu publisher "$@"
+sudo -u publisher -H git clone https://github.com/HL7/ig-publisher-scripts /home/publisher/bin/ig-publisher-scripts
+sudo -u publisher -H npm install -g fsh-sushi
+exec sudo -u publisher -H "$@"

@@ -1,39 +1,43 @@
-FROM --platform=$TARGETPLATFORM openjdk:23-slim-bookworm as base
+FROM archlinux:latest as base
 LABEL maintainer="Josh Mandel"
 
 ARG NODE_VERSION=v20.13.1
 ARG TARGETARCH
 
-# Install dependencies, clean up, and set up non-root user
-RUN apt-get update && apt-get -y install curl git openssl wget graphviz ruby ruby-dev build-essential libffi-dev && \
-    apt-get clean && \
-    gem install jekyll
+# Install dependencies and sudo
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm curl git openssl wget graphviz nodejs npm base-devel sudo jdk11-openjdk && \
+    pacman -Scc --noconfirm
 
-# Download and install Node.js
-WORKDIR /tmp
+# Create a non-root user for building AUR packages
+RUN useradd -m builduser && echo "builduser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+USER builduser
+WORKDIR /home/builduser
 
-# Set platform-specific variables
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        NODE_DISTRO=linux-x64; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        NODE_DISTRO=linux-arm64; \
-    else \
-        echo "Unsupported architecture"; \
-        exit 1; \
-    fi; \
-    echo "DOWNLOAD https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz" && \
-    wget --quiet https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz && \
-    tar --strip-components 1 -xf node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz -C /usr/local && \
-    rm node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz
+# Install yay for AUR package management 
+RUN git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd .. && rm -rf yay-bin
+
+# Install Jekyll from AUR
+RUN yay -S --noconfirm jekyll
+
+# Switch back to root to clean up and continue with other installations
+USER root
+
+# Clean up build dependencies and unnecessary files
+RUN pacman -Rs --noconfirm base-devel && \
+    yay -Yc --noconfirm && \
+    pacman -Scc --noconfirm && \
+    rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/* /home/builduser && \
+    userdel builduser
 
 # ------- Begin Local Dev -------
-FROM base as localdev
+FROM scratch as localdev
 LABEL maintainer="Josh Mandel"
 LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
-COPY ./localdev-files/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN apt-get update && apt-get -y install gosu && apt-get clean
+COPY --from=base / /
+COPY ./localdev-files/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN useradd -d /home/publisher -m publisher
 USER publisher
@@ -50,17 +54,16 @@ USER root
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["bash"]
 
-
 # ------- Begin CI -------
-FROM base as ci
+FROM scratch as ci
 LABEL maintainer="Josh Mandel"
+LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
 
-RUN apt-get update && apt-get -y install inotify-tools python3 python3-pip python3-venv python3-requests openssl && \
-    apt-get clean
-
+COPY --from=base / /
 ADD ./ci-files/watch-and-publish /usr/local/bin/watch-and-publish
 ADD ./ci-files/publish /usr/local/bin/publish
 
+RUN pacman -S --noconfirm inotify-tools python python-pip python-virtualenv openssl && pacman -Scc --noconfirm
 RUN groupadd -r fhirgroup -g 2000 && \
     useradd -r -u 1000 -g fhirgroup -m -d /home/fhiruser -s /sbin/nologin fhiruser && \
     mkdir /app /var/lib/.fhir  && \
@@ -79,16 +82,20 @@ RUN mkdir -p /home/fhiruser/.ssh && \
     Port 2222\n\
     IdentityFile /etc/ci_build_keys/id\n\
     IdentitiesOnly yes" > /home/fhiruser/.ssh/config && \
-    chmod go-wrx /home/fhiruser/.ssh/config
+    chmod go-wrx /home/fhiruser/.ssh/config && \
+    mkdir /home/fhiruser/.node && \
+    echo "prefix = /home/fhiruser/.node" > /home/fhiruser/.npmrc
 
 RUN mkdir -p /app/builder
 ADD ./ci-files/builder /app/builder
 WORKDIR /app
 
-RUN python3 -m venv venv
+RUN python -m venv venv
 
 # Activate the virtual environment and install the zulip library
 RUN /app/venv/bin/pip install --upgrade pip && \
     /app/venv/bin/pip install zulip
 
-ENTRYPOINT python3 -m builder.builder || touch /scratch/done
+ENV PATH="/home/fhiruser/.node/bin:${PATH}"
+
+ENTRYPOINT python -m builder.builder || touch /scratch/done
