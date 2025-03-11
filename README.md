@@ -69,7 +69,23 @@ curl -X POST  "https://us-central1-fhir-org-starter-project.cloudfunctions.net/i
 ### Summary/stats of current ci builds
 Latest summary/stats of the ci ig builds are available at [https://fhir.github.io/auto-ig-builder](https://fhir.github.io/auto-ig-builder/builds.html)
 
+# IG Auto-Builder Purge Policy
 
+## Automated Cleanup
+
+* Branches older than 90 days with no activity are automatically removed
+* Only main branches (`main` or `master`) of official HL7, FHIR, IHE, and Argonaut repositories are exempt from purging
+
+## Keeping Your Branch
+
+* Make a commit to your branch at least once every 90 days to prevent purging
+* For repositories not in the exempted organizations, even main branches will be purged if inactive
+
+## After Purging
+
+* Purged content cannot be restored from the build service
+* Your GitHub source code remains unaffected
+* You can rebuild by pushing to the same branch again
 ---
 
 ## Developer Overview
