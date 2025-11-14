@@ -31,7 +31,7 @@ spec:
         volumeMounts:
         - mountPath: /home/fhir_upload/uploading
           name: fhir-ci-build-disk
-      - image: caddy:2.6
+      - image: gcr.io/fhir-org-starter-project/caddy-ratelimit:latest
         name: caddy
         volumeMounts:
         - name: fhir-ci-build-disk

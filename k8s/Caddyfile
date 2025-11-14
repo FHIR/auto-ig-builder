@@ -1,5 +1,6 @@
 {
 	email admin@fhir.org
+	order rate_limit before file_server
 }
 (tryall) {
 	try_files {args.0} {args.0}{fextension} {args.0}index.html
@@ -19,6 +20,20 @@ build.fhir.org:80, build.fhir.org {
 		Access-Control-Allow-Origin "*"
 		Access-Control-Allow-Methods "GET, POST, OPTIONS"
 		Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type"
+	}
+
+	# Rate limit qas.json: 100 requests per minute per IP (external IPs only)
+	@qasJsonExternal {
+		path */qas.json
+		not remote_ip 10.0.0.0/8
+	}
+
+	rate_limit @qasJsonExternal {
+		zone qas {
+			key {remote_host}
+			events 100
+			window 1m
+		}
 	}
 
 	map {header.Accept} {fextension} {

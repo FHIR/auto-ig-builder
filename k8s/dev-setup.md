@@ -35,7 +35,19 @@ docker build -t gcr.io/fhir-org-starter-project/ci-build  -f Dockerfile .
 gcloud docker -- push gcr.io/fhir-org-starter-project/ci-build
 ```
 
-7. Deploy updates to IG commit trigger
+7. Deploy updates to `caddy-ratelimit` image (custom Caddy with rate limiting plugin)
+
+```
+cd images/caddy-ratelimit
+docker build -t gcr.io/fhir-org-starter-project/caddy-ratelimit:latest -f Dockerfile .
+docker push gcr.io/fhir-org-starter-project/caddy-ratelimit:latest
+
+# After pushing, restart the deployment to use the new image
+kubectl rollout restart deployment/ci-build-deployment -n fhir
+kubectl rollout status deployment/ci-build-deployment -n fhir
+```
+
+8. Deploy updates to IG commit trigger
 
 ```
 cd triggers/ig-commit-trigger
