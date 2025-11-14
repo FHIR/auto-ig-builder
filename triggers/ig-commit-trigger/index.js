@@ -1,6 +1,6 @@
 import functions from "@google-cloud/functions-framework";
-import k8s from "@kubernetes/client-node";
-import jobSource from "./job.json" assert { type: "json" };
+import * as k8s from "@kubernetes/client-node";
+import jobSource from "./job.json" with { type: "json" };
 import crypto from "crypto"
 
 
@@ -75,11 +75,22 @@ functions.http("ig-commit-trigger", async function (req, res) {
   });
 
   try {
-    const existing = await k8sBatch.listNamespacedJob("fhir", false, false, undefined, undefined, `job-group-id=${jobGroupId}`);
-    const created = await k8sBatch.createNamespacedJob("fhir", job);
+    const existing = await k8sBatch.listNamespacedJob({
+      namespace: "fhir",
+      labelSelector: `job-group-id=${jobGroupId}`
+    });
+    const created = await k8sBatch.createNamespacedJob({
+      namespace: "fhir",
+      body: job
+    });
 
     console.log("Kill existing jobs", existing?.body?.items?.map(j => j?.metadata?.name))
-    await Promise.all(existing?.body?.items?.map((i) => k8sBatch.deleteNamespacedJob(i.metadata.name, "fhir", undefined, undefined, 0, undefined, "Background")))
+    await Promise.all((existing?.body?.items || []).map((i) => k8sBatch.deleteNamespacedJob({
+      name: i.metadata.name,
+      namespace: "fhir",
+      gracePeriodSeconds: 0,
+      propagationPolicy: "Background"
+    })))
 
     return res.status(200).json({
       created: true,

@@ -51,8 +51,10 @@ kubectl rollout status deployment/ci-build-deployment -n fhir
 
 ```
 cd triggers/ig-commit-trigger
-gcloud functions deploy ig-commit-trigger --runtime nodejs18 --trigger-http
+gcloud functions deploy ig-commit-trigger --runtime nodejs22 --trigger-http
 ```
+
+Note: Node.js 22 is GA and recommended.
 
 
 ---
