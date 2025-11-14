@@ -18,6 +18,15 @@ cd auto-ig-builder/triggers/ig-commit-trigger
 ./setup-secret.sh
 ```
 
+## Rate Limiting
+
+The build service uses Caddy with the `caddy-ratelimit` plugin to limit requests to `qas.json` files:
+- **Limit**: 100 requests per minute per IP address
+- **Scope**: Only applies to external IPs; internal IPs (10.0.0.0/8) are exempt
+- **Implementation**: Custom Caddy image with rate limiting configured in `k8s/Caddyfile`
+
+This prevents abuse while allowing internal monitoring systems unlimited access.
+
 ## Recurring tasks
 5. Deploy updates to the `ig-build` image
 
