@@ -105,6 +105,36 @@
                 "name": "keys"
               }
             ]
+          },
+          {
+            "name": "log-forwarder",
+            "image": "gcr.io/fhir-org-starter-project/ig-build",
+            "imagePullPolicy": "Always",
+            "env": [
+              {
+                "name": "RELAY_URL",
+                "value": "http://log-relay.fhir.svc.cluster.local:4000"
+              }
+            ],
+            "command": [
+              "/bin/sh",
+              "-c"
+            ],
+            "args": [
+              "set -e\nRELAY=${RELAY_URL:-http://ci-build-service.fhir.svc.cluster.local:4000}\nLOGFILE=/scratch/build.log\n\n(tail -F \"$LOGFILE\" | while IFS= read -r line; do curl -sS -m 2 -XPOST \"$RELAY/ingest/${IG_ORG}/${IG_REPO}/${IG_BRANCH}\" --data-binary \"$line\" || true; done) &\nSTREAM_PID=$!\n\nwhile [ ! -f /scratch/done ]; do sleep 2; done\nsleep 2\n\nkill \"$STREAM_PID\" 2>/dev/null || true\nwait \"$STREAM_PID\" 2>/dev/null || true\n\ncurl -sS -m 2 -XPOST \"$RELAY/ingest/${IG_ORG}/${IG_REPO}/${IG_BRANCH}?done=1\" || true\n"
+            ],
+            "resources": {
+              "requests": {
+                "memory": "64Mi",
+                "cpu": "10m"
+              }
+            },
+            "volumeMounts": [
+              {
+                "mountPath": "/scratch",
+                "name": "scratch"
+              }
+            ]
           }
         ],
         "restartPolicy": "Never",

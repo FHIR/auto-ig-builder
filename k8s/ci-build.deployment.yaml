@@ -42,6 +42,26 @@ spec:
         - name: caddy-conf-volume
           mountPath: /etc/caddy/Caddyfile
           subPath: Caddyfile
+      - image: gcr.io/fhir-org-starter-project/log-relay:latest
+        name: log-relay
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 2000
+          fsGroup: 2000
+        env:
+        - name: LOG_DIR
+          value: /var/www/log-buffers
+        - name: PORT
+          value: "4000"
+        ports:
+        - containerPort: 4000
+          name: logrelay
+          protocol: TCP
+        volumeMounts:
+        - name: fhir-ci-build-disk
+          mountPath: /var/www
+          subPath: www
       initContainers:
       - command:
         - sh
