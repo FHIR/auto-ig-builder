@@ -60,6 +60,7 @@ RUN apt-get update && apt-get -y install inotify-tools python3 python3-pip pytho
 
 ADD ./ci-files/watch-and-publish /usr/local/bin/watch-and-publish
 ADD ./ci-files/publish /usr/local/bin/publish
+ADD ./ci-files/delete /usr/local/bin/delete
 
 RUN groupadd -r fhirgroup -g 2000 && \
     useradd -r -u 1000 -g fhirgroup -m -d /home/fhiruser -s /sbin/nologin fhiruser && \

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -e
+
+IG_ORG=$1
+IG_REPO=$2
+BRANCH=$3
+
+if [ -z "$IG_ORG" ] || [ -z "$IG_REPO" ] || [ -z "$BRANCH" ]; then
+    echo "Usage: delete-branch ORG REPO BRANCH"
+    exit 1
+fi
+
+# Protect main branches from exempt orgs (but allow master to be deleted)
+if [ "$BRANCH" = "main" ]; then
+    if [[ "$IG_ORG" =~ ^(HL7|FHIR|IHE|argonautproject)$ ]]; then
+        echo "Cannot delete protected main branch for $IG_ORG/$IG_REPO"
+        exit 1
+    fi
+fi
+
+TARGET_DIR=~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$BRANCH
+
+if [ ! -d "$TARGET_DIR" ]; then
+    echo "Branch directory does not exist: $TARGET_DIR"
+    exit 0
+fi
+
+echo "Deleting branch: $IG_ORG/$IG_REPO/$BRANCH"
+rm -rf "$TARGET_DIR"
+
+# Trigger reindex
+cd ~/reindex_queue
+touch reindex_request_$(date --iso-8601=ns).sem
+
+echo "Deleted and reindex triggered"
