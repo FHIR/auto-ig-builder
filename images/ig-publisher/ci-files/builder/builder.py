@@ -12,6 +12,10 @@ HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
 TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org')
 
+def encode_branch_name(branch):
+    """Replace forward slashes with underscores for safe use in file paths"""
+    return branch.replace('/', '_')
+
 temp_dir = SCRATCH_SPACE
 clone_dir = os.path.join(temp_dir, 'repo')
 build_dir = os.path.join(clone_dir, 'output')
@@ -89,6 +93,7 @@ def build(config):
     'org': config['org'],
     'repo': config['repo'],
     'branch': config['branch'],
+    'branch_encoded': encode_branch_name(config['branch']),
     'default': 'default' if is_default_branch() else 'nondefault',
     'commit': run_git_cmd(['git', 'log', '-1', '--pretty=%B (%an)'])
   }
@@ -110,13 +115,13 @@ def build(config):
 
   message = [message_header + "rebuilt\n",
              "Commit: {commit} :{emoji}:\n",
-             "Details: [build logs]({root}/{org}/{repo}/branches/{branch}/{buildlog})"]
+             "Details: [build logs]({root}/{org}/{repo}/branches/{branch_encoded}/{buildlog})"]
   print("finalizing")
   if not built:
     print("Build error occurred")
     details['emoji'] = 'thumbs_down'
     details['buildlog'] = 'failure/build.log'
-    message += [" | [debug]({root}/{org}/{repo}/branches/{branch}/failure)"]
+    message += [" | [debug]({root}/{org}/{repo}/branches/{branch_encoded}/failure)"]
     return {
       "result_dir": clone_dir,
       "message":"".join(message).format(**details),
@@ -128,8 +133,8 @@ def build(config):
     print("Build succeeded")
     details['emoji'] = 'thumbs_up'
     details['buildlog'] = 'build.log'
-    message += [" | [published]({root}/{org}/{repo}/branches/{branch}/index.html)"]
-    message += [f" | [qa: {get_qa_score(build_dir)}]", "({root}/{org}/{repo}/branches/{branch}/qa.html)"]
+    message += [" | [published]({root}/{org}/{repo}/branches/{branch_encoded}/index.html)"]
+    message += [f" | [qa: {get_qa_score(build_dir)}]", "({root}/{org}/{repo}/branches/{branch_encoded}/qa.html)"]
     return {
       "result_dir": build_dir,
       "message":"".join(message).format(**details),
