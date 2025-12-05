@@ -66,7 +66,7 @@ def build(config):
   cloned_exit = do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
   os.makedirs(clone_dir, exist_ok=True)
 
-  message_header = "**[{org}/{repo}: {branch}](https://github.com/{org}/{repo}/tree/{branch})** ".format(**config)
+  message_header = "**[{org}/{repo}: {branch}]({root}/{org}/{repo}/tree/{branch})** ".format(**config)
 
   def early_failure(msg):
     config["msg"] = msg
@@ -108,7 +108,7 @@ def build(config):
          '-fhir-settings', '/etc/fhir-settings.json',
          '-auto-ig-build',
          '-tx', TX_SERVER_URL,
-         '-target', 'https://build.fhir.org/ig/{org}/{repo}/'.format(**details),
+         '-target', '{root}/{org}/{repo}/'.format(**details),
          '-out', clone_dir], clone_dir, deadline=True)
 
   built = (0 == built_exit)
@@ -146,6 +146,7 @@ if __name__ == '__main__':
     'org': os.environ.get('IG_ORG', 'test-igs'),
     'repo': os.environ.get('IG_REPO', 'simple'),
     'branch': os.environ.get('IG_BRANCH', 'master'),
+    'root': os.environ.get('HOSTED_ROOT', 'https://build.fhir.org/ig')
   })
   print("results")
   print(results)
