@@ -3,6 +3,7 @@ import os
 import shutil
 import string
 import subprocess
+import urllib.parse
 
 from .util  import do, SCRATCH_SPACE
 from os.path import normpath
@@ -11,6 +12,20 @@ GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
 TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org')
+
+# Get Git credentials from environment
+GIT_USERNAME = os.environ.get('GIT_USERNAME')
+GIT_PASSWORD = os.environ.get('GIT_PASSWORD')
+
+def get_authenticated_url(config):
+    """Build authenticated Git URL if credentials are available"""
+    if GIT_USERNAME and GIT_PASSWORD:
+        # URL encode the credentials to handle special characters
+        username = urllib.parse.quote(GIT_USERNAME, safe='')
+        password = urllib.parse.quote(GIT_PASSWORD, safe='')
+        return f'https://{username}:{password}@github.com/{config["org"]}/{config["repo"]}'
+    else:
+        return GITHUB % config
 
 def encode_branch_name(branch):
     """Replace forward slashes with underscores for safe use in file paths"""
@@ -55,6 +70,8 @@ def build(config):
   logging.basicConfig(filename=logfile, level=logging.DEBUG)
   logging.info('about to clone!')
 
+  print(f"Starting build for {config['org']}/{config['repo']}:{config['branch']}")
+
   def run_git_cmd(cmds):
     return subprocess.check_output(cmds, cwd=clone_dir, universal_newlines=True).strip()
 
@@ -63,21 +80,34 @@ def build(config):
     default_branch = default_branch_full.split('/')[-1]
     return bool(default_branch == config['branch'])
 
-  cloned_exit = do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
+  print("Executing git clone...")
+  cloned_exit = do(['git', 'clone', '--recursive', get_authenticated_url(config), '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
+  print(f"Git clone completed with exit code: {cloned_exit}")
   os.makedirs(clone_dir, exist_ok=True)
 
   message_header = "**[{org}/{repo}: {branch}]({root}/{org}/{repo}/tree/{branch})** ".format(**config)
 
   def early_failure(msg):
     config["msg"] = msg
+    print(f"Early failure: {msg}")
     return {
       "result_dir": clone_dir,
       "message": message_header + msg,
       "pubargs": ['failure', 'nondefault']
     }
 
-  if cloned_exit != 0:
+  # Check if clone actually succeeded by looking for repository content
+  repo_has_content = os.path.exists(clone_dir) and os.path.exists(os.path.join(clone_dir, '.git'))
+  print(f"Repository directory exists: {os.path.exists(clone_dir)}")
+  print(f"Repository has .git directory: {repo_has_content}")
+
+  if cloned_exit != 0 and not repo_has_content:
+    print(f"Clone failed - exit code {cloned_exit} and no repository content found")
     return early_failure("Failed to clone git repository")
+  elif cloned_exit != 0 and repo_has_content:
+    print(f"Clone succeeded despite non-zero exit code {cloned_exit} - continuing...")
+  else:
+    print("Clone succeeded normally")
 
   dl_publisher_exit = do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
   if dl_publisher_exit != 0:
