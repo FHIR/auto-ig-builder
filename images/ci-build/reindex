@@ -6,7 +6,7 @@ reindex_files() {
     cd ~/uploading/www/ig
     echo "reindexing"
     AUTOCLEAN_AFTER_DAYS=${AUTOCLEAN_AFTER_DAYS:-"+90"}
-    AUTOCLEAN_EXEMPTION_REGEX=${AUTOCLEAN_EXEMPTION_REGEX:-"./\(HL7\|FHIR\|IHE\|argonautproject\)/[^/]*/branches/\(main\|master\)"}
+    AUTOCLEAN_EXEMPTION_REGEX=${AUTOCLEAN_EXEMPTION_REGEX:-"./\(HL7\|FHIR\|IHE\|CodeX-HL7-FHIR-Accelerator\|argonautproject\)/[^/]*/branches/\(main\|master\)"}
     find . -maxdepth 4 -mindepth 4  -type d -ctime "$AUTOCLEAN_AFTER_DAYS" -not -regex "$AUTOCLEAN_EXEMPTION_REGEX" -exec rm -rf {} \;
     find . -mindepth 5 -maxdepth 6 -name build.log | sed 's|^./||'  | jq --raw-input . | jq -s . > builds.json.new
     mv builds.json.new builds.json
