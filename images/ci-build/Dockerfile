@@ -15,8 +15,9 @@ RUN useradd -m -r -s /bin/bash fhir_upload && \
 
 VOLUME /home/fhir_upload/uploading
 
-ADD publish publish-ig reindex /home/fhir_upload/
-RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
+ADD publish publish-ig reindex delete-branch /home/fhir_upload/
+RUN chown fhir_upload /home/fhir_upload/publish /home/fhir_upload/delete-branch && \
+    chmod +x /home/fhir_upload/publish /home/fhir_upload/publish-ig /home/fhir_upload/reindex /home/fhir_upload/delete-branch
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

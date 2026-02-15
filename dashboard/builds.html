@@ -176,6 +176,31 @@
       })
     }
 
+    const deleted = []
+    function deleteBranch(branchnum, org, repo, branch) {
+      if (deleted.includes(branchnum)) {
+        return;
+      }
+      if (!confirm(`Delete branch "${branch}" from ${org}/${repo}? This cannot be undone.`)) {
+        return;
+      }
+      deleted.push(branchnum)
+      document.getElementById(`delete-branch-${branchnum}`).classList.add("text-muted");
+      fetch("https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger", {
+        body: JSON.stringify({
+          "action": "delete",
+          "ref": `refs/heads/${branch}`,
+          "repository": {"full_name": `${org}/${repo}`}
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        method: 'POST',
+        referrer: 'no-referrer',
+        mode: 'cors'
+      })
+    }
+
  
   function render({builds, qas}){
     const sorter = (a, b) => {
@@ -252,13 +277,21 @@
         <td sorttable_customkey="${date && date.toISOString() || '1900'}">
         <a data-toggle="tooltip" title="${date && date.toISOString()}">${date ? timeFormatter.format(date) : "???"}</td>
 	<td><span class="badge pill-badge badge-${success ? "success" : "danger"}">${success ? "success" : "failure"}</span></td>
-        <td>
-        <div class="dropdown">
-        <button class="btn-sm btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          Rebuild Branch
+        <td style="white-space: nowrap;">
+        <div class="dropdown" style="display:inline-block;">
+        <button class="btn-sm btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Rebuild
         </button>
-        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        <div class="dropdown-menu">
         ${choices.map(branch => `<a id="branch-${branchnum}" class="dropdown-item" onClick="rebuild(${branchnum++}, '${org}', '${repo}', '${branch.name}')">${branch.name + (branch.failing ? " [failing]" : "")}</a>`).join(`\n`)}
+        </div>
+      </div>
+        <div class="dropdown" style="display:inline-block;" data-toggle="tooltip" title="Delete a branch build">
+        <button class="btn-sm btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          🗑
+        </button>
+        <div class="dropdown-menu">
+        ${choices.map(branch => `<a id="delete-branch-${branchnum}" class="dropdown-item" onClick="deleteBranch(${branchnum++}, '${org}', '${repo}', '${branch.name}')">${branch.name}</a>`).join(`\n`)}
         </div>
       </div>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/"}build.log">log</a>

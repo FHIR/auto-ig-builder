@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Delete branch $1/$2/$3"
+ssh ci-build ./delete-branch "$@"

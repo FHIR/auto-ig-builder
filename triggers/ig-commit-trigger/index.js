@@ -1,6 +1,7 @@
 import functions from "@google-cloud/functions-framework";
 import * as k8s from "@kubernetes/client-node";
 import jobSource from "./job.json" with { type: "json" };
+import deleteJobSource from "./delete-job.json" with { type: "json" };
 import crypto from "crypto"
 
 
@@ -19,11 +20,13 @@ functions.http("ig-commit-trigger", async function (req, res) {
     return;
   }
 
+  const action = req.body.action || "build";
+
   let org, repo, branch, commitHash;
   try {
     [org, repo] = req.body.repository.full_name.split("/");
     branch = req.body.ref.split("/").slice(-1)[0];
-    commitHash = "" + req.body.after;
+    commitHash = "" + (req.body.after || "delete");
     if (!org || !repo || !branch) {
       throw "Bad inputs";
     }
@@ -40,8 +43,45 @@ functions.http("ig-commit-trigger", async function (req, res) {
   }
 
   const jobGroupId = crypto.createHash('sha256').update(`${org}-${repo}-${branch}`, 'utf8').digest('hex').slice(0, 63);
-  console.log("Job group id", jobGroupId);
+  console.log("Job group id", jobGroupId, "action", action);
 
+  if (action === "delete") {
+    const jobId = `igdelete-${org}-${repo}-${branch}`
+      .toLocaleLowerCase()
+      .replace(/[^A-Za-z0-9]/g, "")
+      .slice(0, 63);
+
+    const job = JSON.parse(JSON.stringify(deleteJobSource));
+    job.metadata.name = jobId;
+    job.metadata.labels["job-group-id"] = jobGroupId;
+    job.spec.template.spec.containers[0].args = [org, repo, branch];
+
+    try {
+      await k8sBatch.createNamespacedJob({
+        namespace: "fhir",
+        body: job
+      });
+
+      return res.status(200).json({
+        deleted: true,
+        org: org,
+        repo: repo,
+        branch: branch,
+        jobId: jobId,
+      });
+    } catch (e) {
+      if (e.body?.message?.includes("already exists")) {
+        return res
+          .status(200)
+          .json({ deleted: false, reason: "Delete job already exists" });
+      } else {
+        console.error(e)
+        throw e;
+      }
+    }
+  }
+
+  // Build action
   const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`
     .toLocaleLowerCase()
     .replace(/[^A-Za-z0-9]/g, "")
