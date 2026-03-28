@@ -50,7 +50,7 @@ That means:
 
 ### 1. GitHub -> GCF bridge
 
-The existing trigger in [index.js](/home/jmandel/work/auto-ig-builder/triggers/ig-commit-trigger/index.js)
+The existing trigger in [index.js](../../triggers/ig-commit-trigger/index.js)
 remains the ingress point.
 
 Its job becomes:
@@ -64,7 +64,7 @@ Its job becomes:
 ### 2. Kubernetes Jobs remain the workers
 
 The heavy IG build still runs in a Kubernetes Job based on
-[job.json](/home/jmandel/work/auto-ig-builder/triggers/ig-commit-trigger/job.json).
+[job.json](../../triggers/ig-commit-trigger/job.json).
 
 There is no separate long-running scheduler pod in this design.
 
@@ -84,7 +84,7 @@ Never:
 ## Why Same-Node Successors Matter
 
 Each build requests `22Gi` of memory in
-[job.json:45](/home/jmandel/work/auto-ig-builder/triggers/ig-commit-trigger/job.json#L45),
+[job.json:45](../../triggers/ig-commit-trigger/job.json#L45),
 which effectively means one build per node.
 
 If a newer webhook arrives while a branch is already building, the bad outcome is:
@@ -422,7 +422,7 @@ Operationally:
 4. let the queued successor start once the node frees up
 
 To support that, the Job template should explicitly set
-[`terminationGracePeriodSeconds: 0`](/home/jmandel/work/auto-ig-builder/triggers/ig-commit-trigger/job.json#L13)
+[`terminationGracePeriodSeconds: 0`](../../triggers/ig-commit-trigger/job.json#L13)
 so pod termination does not sit on the default grace window.
 
 The important point is that this solution is **not** defined in terms of Kubernetes

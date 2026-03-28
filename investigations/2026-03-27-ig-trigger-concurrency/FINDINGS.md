@@ -71,7 +71,7 @@ John Moehrke reported:
 - Content was consolidated into `fusionRessourcesCDA` branch, then merged to `main`
   via PR #104 on March 27 at 09:31 UTC
 - The Job template has also been tightened to use
-  [`terminationGracePeriodSeconds: 0`](/home/jmandel/work/auto-ig-builder/triggers/ig-commit-trigger/job.json#L13)
+  [`terminationGracePeriodSeconds: 0`](../../triggers/ig-commit-trigger/job.json#L13)
   so hard cancels release node capacity as quickly as Kubernetes allows
 - Recommended remediation design is documented in
   [SOLUTION.md](./SOLUTION.md)
