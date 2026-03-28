@@ -1,12 +1,45 @@
+// @ts-check
+
 import functions from "@google-cloud/functions-framework";
 import * as k8s from "@kubernetes/client-node";
 import jobSource from "./job.json" with { type: "json" };
-import crypto from "crypto"
-
+import { createScheduler } from "./scheduling.js";
 
 const kc = new k8s.KubeConfig();
 kc.loadFromFile("sa.kubeconfig");
-const k8sBatch = kc.makeApiClient(k8s.BatchV1Api);
+
+const scheduler = createScheduler({
+  k8sBatch: kc.makeApiClient(k8s.BatchV1Api),
+  k8sCore: kc.makeApiClient(k8s.CoreV1Api),
+  jobSource,
+  patchOptions: k8s.setHeaderOptions("Content-Type", k8s.PatchStrategy.StrategicMergePatch),
+});
+
+/**
+ * @param {string} org
+ * @param {string} repo
+ * @param {string} branch
+ */
+async function resolveHead(org, repo, branch) {
+  const resp = await fetch(
+    `https://api.github.com/repos/${org}/${repo}/commits/${encodeURIComponent(branch)}`,
+    { headers: { Accept: "application/vnd.github.sha" } }
+  );
+  if (resp.status !== 200) return null;
+  return (await resp.text()).trim();
+}
+
+/**
+ * @param {string} org
+ * @param {string} repo
+ * @param {string} branch
+ */
+async function hasIgIni(org, repo, branch) {
+  const resp = await fetch(
+    `https://raw.githubusercontent.com/${org}/${repo}/${encodeURIComponent(branch)}/ig.ini`
+  );
+  return resp.status === 200;
+}
 
 functions.http("ig-commit-trigger", async function (req, res) {
   res.header("Access-Control-Allow-Method", "POST, OPTIONS");
@@ -14,99 +47,43 @@ functions.http("ig-commit-trigger", async function (req, res) {
   res.header("Access-Control-Allow-Origin", "*");
 
   if (req.method === "OPTIONS") {
-    res.status(200);
-    res.json({});
-    return;
+    return res.status(200).json({});
   }
 
-  let org, repo, branch, commitHash;
+  let org, repo, branch;
   try {
     [org, repo] = req.body.repository.full_name.split("/");
     branch = req.body.ref.split("/").slice(-1)[0];
-    commitHash = "" + req.body.after;
-    if (!org || !repo || !branch) {
-      throw "Bad inputs";
-    }
-  } catch(e) {
-    console.error(e)
+    if (!org || !repo || !branch) throw new Error("Bad inputs");
+  } catch (e) {
+    console.error(e);
     return res.json({
       created: false,
-      reason: `Could not get org, branch, and repo from
-      req.body.repository.full_name
-        ${req?.body?.repository?.full_name}
-      req.body.ref
-        ${req?.body?.ref}`,
+      reason: `Could not parse webhook: repository=${req?.body?.repository?.full_name} ref=${req?.body?.ref}`,
     });
   }
 
-  const jobGroupId = crypto.createHash('sha256').update(`${org}-${repo}-${branch}`, 'utf8').digest('hex').slice(0, 63);
-  console.log("Job group id", jobGroupId);
-
-  const jobId = `igbuild-${commitHash.slice(0, 6)}-${org}-${repo}-${branch}`
-    .toLocaleLowerCase()
-    .replace(/[^A-Za-z0-9]/g, "")
-    .slice(0, 63);
-
-  const igIniUrl = `https://raw.githubusercontent.com/${org}/${repo}/${branch}/ig.ini`;
-  const igIni = await fetch(igIniUrl);
-
-  if (igIni.status !== 200) {
+  if (!(await hasIgIni(org, repo, branch))) {
     return res.json({ created: false, reason: "No ig.ini found" });
   }
 
-  const job = JSON.parse(JSON.stringify(jobSource));
-  job.metadata.name = jobId;
-  job.metadata.labels["job-group-id"] = jobGroupId;
-  job.spec.template.spec.containers.forEach((container) => {
-    container.env = container.env.concat([
-      {
-        name: "IG_ORG",
-        value: org,
-      },
-      {
-        name: "IG_REPO",
-        value: repo,
-      },
-      {
-        name: "IG_BRANCH",
-        value: branch,
-      },
-    ]);
-  });
+  const headSha = await resolveHead(org, repo, branch);
+  if (!headSha) {
+    console.error(`Failed to resolve HEAD for ${org}/${repo}@${branch}`);
+    return res.status(502).json({
+      created: false,
+      reason: "Could not resolve branch HEAD from GitHub; not scheduling to avoid stale preemption",
+    });
+  }
 
   try {
-    const existing = await k8sBatch.listNamespacedJob({
-      namespace: "fhir",
-      labelSelector: `job-group-id=${jobGroupId}`
-    });
-    const created = await k8sBatch.createNamespacedJob({
-      namespace: "fhir",
-      body: job
-    });
-
-    console.log("Kill existing jobs", existing?.body?.items?.map(j => j?.metadata?.name))
-    await Promise.all((existing?.body?.items || []).map((i) => k8sBatch.deleteNamespacedJob({
-      name: i.metadata.name,
-      namespace: "fhir",
-      gracePeriodSeconds: 0,
-      propagationPolicy: "Background"
-    })))
-
-    return res.status(200).json({
-      created: true,
-      org: org,
-      repo: repo,
-      branch: branch,
-      jobId: jobId,
-    });
-  } catch (e) {
-    if (e.body?.message?.includes("already exists")) {
-      return res
-        .status(200)
-        .json({ created: false, reason: "Job already exists" });
-    } else {
-      console.error(e)
-      throw e;
+    const result = await scheduler.handleWebhook(org, repo, branch, headSha);
+    if (!result.ok) {
+      return res.status(500).json(result);
     }
+    return res.json(result);
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 });
