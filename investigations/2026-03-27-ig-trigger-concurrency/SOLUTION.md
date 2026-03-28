@@ -266,6 +266,27 @@ This should make the successor:
 - pending until the current Job releases resources on `N`
 - unable to trigger a second build node for that branch
 
+### Stale placement recovery
+
+Same-node pinning is the preferred handoff, not an infinite requirement.
+
+If a queued successor is:
+
+- still unbound to any node
+- still pinned to a specific prior node
+- and older than a bounded threshold
+
+then the scheduler should treat that as stale placement and recover by:
+
+- deleting the stuck queued successor
+- recreating it unpinned
+- preserving the latest `intent-*` annotations
+
+This covers cases where the original node disappeared, was replaced, or otherwise
+stopped being a realistic placement target. A reasonable first threshold is 3 minutes:
+longer than normal scheduler churn, but much shorter than waiting for
+`activeDeadlineSeconds`.
+
 ## Branch State Reduction
 
 On every webhook, GCF should reconstruct branch state from Jobs and Pods.
@@ -281,6 +302,7 @@ Useful distinctions:
 - `bound current`: pod has `spec.nodeName`
 - `queued successor`: pod not yet running, usually still pending, with `pinned-node`
 - `pending-only`: one Job exists but has not started/bound yet
+- `stale queued successor`: queued successor is still unbound past the stale-placement threshold
 
 `extras` should be cleaned up aggressively.
 
@@ -336,6 +358,12 @@ Action on newer webhook:
 - patch the queued successor's `intent-*` annotations forward
 
 No additional Job is needed.
+
+If the queued successor is stale by the rule above, then instead:
+
+- delete the stale queued successor
+- recreate it without node affinity
+- preserve the latest branch intent
 
 ## Event Handling Algorithm
 
@@ -532,6 +560,7 @@ should fail visibly rather than return success with no created or patched Job.
 - resolve branch HEAD before choosing intent
 - create pinned successor Jobs on preemption
 - patch queued successor annotations forward on repeated webhooks
+- detect stale pinned queued successors and recreate them unpinned
 - on `409 AlreadyExists`, reread and reconcile instead of returning success immediately
 - when no slot name is reusable, do short bounded polling for actual slot release
 - keep cleanup and slot reuse separate from correctness-critical handoff
@@ -571,7 +600,7 @@ So even if webhook timing is chaotic, the branch does not fan out into many node
 ## Tradeoffs
 
 - branch-head semantics are preserved instead of moving to exact-SHA builds
-- if the pinned node disappears, the queued successor may need a later webhook to recover
+- same-node pinning remains the preferred fast path, but stale-placement fallback adds a little more scheduler logic
 - there is no remembered desired intent for a fully idle branch with zero Jobs
 - correctness is "latest observed branch head wins operationally," not "every webhook SHA is built exactly"
 

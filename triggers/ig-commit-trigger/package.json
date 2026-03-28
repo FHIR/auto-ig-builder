@@ -5,7 +5,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "npx functions-framework --target=ig-commit-trigger --signature-type=http"
+    "start": "npx functions-framework --target=ig-commit-trigger --signature-type=http",
+    "typecheck": "tsc --noEmit",
+    "test": "node test-scheduling.js"
   },
   "author": "Josh Mandel",
   "license": "Apache-2.0",

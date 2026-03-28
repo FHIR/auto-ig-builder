@@ -550,6 +550,68 @@ async function testSlotWaitReReconcilesOnStateChange() {
   console.log("  PASS\n");
 }
 
+async function testStalePinnedSuccessorRecreatedUnpinned() {
+  console.log(
+    "TEST: Stale pinned successor in State E → delete and recreate unpinned"
+  );
+  reset();
+
+  // Queued successor pinned to a node, created 5 minutes ago (past threshold)
+  const name = slotName(BKEY, "b", SLUG);
+  addJob(name, BKEY, "b", {
+    role: "successor",
+    headSha: "old-sha",
+    createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    annotations: { "build.fhir.org/pinned-node": "dead-node" },
+  });
+  addPod(name, { node: null }); // still unbound
+
+  // Use a short threshold so the test triggers stale detection
+  const scheduler = makeScheduler({ opts: { stalePinnedThresholdMs: 60_000 } });
+  const result = await scheduler.handleWebhook(ORG, REPO, BRANCH, "new-sha");
+
+  assert.equal(result.ok, true, `Expected ok, got: ${JSON.stringify(result)}`);
+  assert.equal(result.state, "E-stale");
+  assert.equal(result.created, true);
+
+  // New job should exist without node affinity
+  const newJob = jobs.find((j) => !isTerminal(j));
+  assert.ok(newJob, "New job should exist");
+  assert.ok(
+    !newJob.spec?.template?.spec?.affinity,
+    "Recreated job should not have node affinity"
+  );
+  assert.equal(
+    newJob.metadata.annotations["build.fhir.org/intent-head-sha"],
+    "new-sha"
+  );
+  console.log("  PASS\n");
+}
+
+async function testFreshPinnedSuccessorNotStale() {
+  console.log(
+    "TEST: Recently-pinned successor in State E → normal patch, not stale"
+  );
+  reset();
+
+  // Queued successor pinned, but created just 10 seconds ago (not stale)
+  const name = slotName(BKEY, "b", SLUG);
+  addJob(name, BKEY, "b", {
+    role: "successor",
+    headSha: "old-sha",
+    createdAt: new Date(Date.now() - 10_000).toISOString(),
+    annotations: { "build.fhir.org/pinned-node": "some-node" },
+  });
+  addPod(name, { node: null });
+
+  const result = await trigger("new-sha");
+
+  assert.equal(result.state, "E", "Should be normal State E, not stale");
+  assert.equal(result.created, false);
+  assert.equal(result.patched, name);
+  console.log("  PASS\n");
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 console.log("=== Branch-Head Scheduling Tests ===\n");
@@ -566,4 +628,6 @@ await test409RetryRecoversState();
 await testBothSlotsOccupiedTimesOut();
 await testBothSlotsOccupiedFreesUpDuringPoll();
 await testSlotWaitReReconcilesOnStateChange();
+await testStalePinnedSuccessorRecreatedUnpinned();
+await testFreshPinnedSuccessorNotStale();
 console.log("All tests passed.");

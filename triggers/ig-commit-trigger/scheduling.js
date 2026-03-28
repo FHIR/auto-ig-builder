@@ -70,6 +70,7 @@ function isTerminal(job) {
  *   maxReconcileAttempts?: number,
  *   slotPollIntervalMs?: number,
  *   slotPollTimeoutMs?: number,
+ *   stalePinnedThresholdMs?: number,
  * }} SchedulerOpts
  */
 
@@ -100,6 +101,7 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
   const MAX_RECONCILE_ATTEMPTS = opts.maxReconcileAttempts ?? 3;
   const SLOT_POLL_INTERVAL_MS = opts.slotPollIntervalMs ?? 1000;
   const SLOT_POLL_TIMEOUT_MS = opts.slotPollTimeoutMs ?? 15_000;
+  const STALE_PINNED_THRESHOLD_MS = opts.stalePinnedThresholdMs ?? 3 * 60_000;
 
   // --- K8s Operations ---
 
@@ -427,6 +429,24 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
     // State E: Queued successor only
     if (!current && queued) {
       const queuedName = queued.job.metadata?.name ?? "";
+      const pinnedNode = queued.job.metadata?.annotations?.["build.fhir.org/pinned-node"];
+      const createdAt = new Date(queued.job.metadata?.creationTimestamp ?? 0).getTime();
+      const isStalePinned = pinnedNode && !queued.node && (Date.now() - createdAt > STALE_PINNED_THRESHOLD_MS);
+
+      if (isStalePinned) {
+        // Pinned node likely disappeared. Delete and recreate unpinned.
+        console.log(`State E (stale pinned): deleting ${queuedName} pinned to ${pinnedNode}, recreating unpinned`);
+        await deleteJob(queuedName);
+        const freeSlot = findFreeSlot("a");
+        if (!freeSlot) {
+          // The name we just deleted may not be free yet. Signal retry.
+          return { ok: false, retry: true, reason: "Deleted stale successor; re-reconciling" };
+        }
+        const job = buildJob(branchKey, freeSlot, org, repo, branch, headSha);
+        await k8sBatch.createNamespacedJob({ namespace: NAMESPACE, body: job });
+        return { ok: true, created: true, state: "E-stale", jobId: job.metadata?.name, org, repo, branch };
+      }
+
       console.log(`State E (queued only): patching ${queuedName}`);
       await patchAnnotations(queuedName, intentAnnotations);
       return { ok: true, created: false, state: "E", patched: queuedName, org, repo, branch };
