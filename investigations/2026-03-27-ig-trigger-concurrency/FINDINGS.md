@@ -70,11 +70,6 @@ John Moehrke reported:
 - The `NicolasRessourcesCDA` branch was deleted at 20:49 UTC
 - Content was consolidated into `fusionRessourcesCDA` branch, then merged to `main`
   via PR #104 on March 27 at 09:31 UTC
-- The Job template has also been tightened to use
-  [`terminationGracePeriodSeconds: 0`](../../triggers/ig-commit-trigger/job.json#L13)
-  so hard cancels release node capacity as quickly as Kubernetes allows
-- Recommended remediation design is documented in
-  [SOLUTION.md](./SOLUTION.md)
 
 ## Root Cause
 
