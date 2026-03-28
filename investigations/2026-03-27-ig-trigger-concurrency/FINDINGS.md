@@ -86,7 +86,10 @@ The trigger's "create-then-kill" ordering meant that rapid commits on the same b
 caused a pileup of node provisioning requests, exhausting cluster capacity even though
 only the latest build was actually needed.
 
-## Problem Statement for Fix Design
+## Fix Design Evaluation
+
+This section records the design constraints, solution space considered during the
+incident review, and the approach that was ultimately selected.
 
 ### Goal
 
@@ -216,3 +219,25 @@ problem (the briefly-coexisting jobs still trigger node provisioning).
 - **Failure modes**: What happens if the fix's mechanism fails (lock stuck, queue
   down, timeout)?
 - **Testability**: Can we test the fix locally without deploying to the live cluster?
+
+### Decision
+
+We decided against introducing new control-plane infrastructure such as a queue,
+ConfigMap-backed lock, or in-cluster controller. The chosen design keeps scheduling in
+the Google Cloud Function, preserves the current branch-head build model, and uses
+Jobs themselves as the only durable per-branch state.
+
+Concretely, the selected approach is:
+
+- keep at most one current Job and one queued successor per branch
+- create the successor immediately on preemption, pinned to the same node as the
+  incumbent when possible
+- patch successor intent forward on newer webhook deliveries instead of creating more
+  Jobs
+- fall back from stale pinned placement if the queued successor remains unbound too long
+
+This was selected because it directly addresses the node-pool blowup from the incident
+without adding a queue or long-running controller, while still keeping the common case
+fast for the first build on a branch.
+
+The full remediation design is documented in [SOLUTION.md](./SOLUTION.md).
