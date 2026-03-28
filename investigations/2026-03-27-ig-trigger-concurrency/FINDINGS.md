@@ -74,7 +74,7 @@ John Moehrke reported:
   [`terminationGracePeriodSeconds: 0`](/home/jmandel/work/auto-ig-builder/triggers/ig-commit-trigger/job.json#L13)
   so hard cancels release node capacity as quickly as Kubernetes allows
 - Recommended remediation design is documented in
-  [SOLUTION.md](/home/jmandel/work/auto-ig-builder/investigations/2026-03-27-ig-trigger-concurrency/SOLUTION.md)
+  [SOLUTION.md](./SOLUTION.md)
 
 ## Root Cause
 
