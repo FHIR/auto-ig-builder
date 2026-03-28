@@ -1,0 +1,74 @@
+# kubeadm cluster configuration examples for FHIR IG Builder
+# Choose one of the following storage provisioner setups
+
+# Option 1: Local Path Provisioner (simple, single-node or testing)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-path-config
+  namespace: local-path-storage
+data:
+  config.json: |-
+    {
+      "nodePathMap": [
+        {
+          "node": "DEFAULT_PATH_FOR_NON_LISTED_NODES",
+          "paths": ["/opt/local-path-provisioner"]
+        }
+      ]
+    }
+---
+# Apply with: kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+
+# Option 2: OpenEBS Local PV (production-ready, multi-node)
+# Apply with: kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+# Then create storage class:
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-hostpath
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: openebs.io/local
+parameters:
+  cas-type: local
+  basePath: "/opt/fhir-data"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+
+---
+# Option 3: Longhorn (distributed storage, production-ready)
+# Apply with: kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/master/deploy/longhorn.yaml
+# Access UI: kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+
+---
+# Node labeling examples for FHIR workloads
+apiVersion: v1
+kind: Node
+metadata:
+  name: worker-node-1
+  labels:
+    workload: fhir
+    storage: fast-ssd
+
+---
+# Ingress configuration example (optional)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fhir-ig-builder-ingress
+  namespace: fhir
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: fhir-ig.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ci-build-service
+            port:
+              number: 80

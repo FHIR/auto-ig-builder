@@ -7,12 +7,21 @@ function finish_upload_keepalive {
 }
 trap finish_upload_keepalive EXIT
 
+# Replace forward slashes with underscores for safe use in file paths
+function encode_branch_name {
+    echo "$1" | sed 's/\//\_/g'
+}
 
 IG_ORG=$1
 IG_REPO=$2
 DEPLOY_TO_BRANCH=${3:-master}
 FAILURE_FLAG=${4:-success}
 IS_DEFAUT_BRANCH=${5:-nondefault}
+
+# Encode the branch name for safe file path usage
+DEPLOY_TO_BRANCH_ENCODED=$(encode_branch_name "$DEPLOY_TO_BRANCH")
+
+echo "DEBUG: Received arguments: ORG=$IG_ORG REPO=$IG_REPO BRANCH=$DEPLOY_TO_BRANCH BRANCH_ENCODED=$DEPLOY_TO_BRANCH_ENCODED FAILURE=$FAILURE_FLAG DEFAULT=$IS_DEFAUT_BRANCH" >&2
 
 TARGET="${RANDOM}_${IG_ORG}_${IG_REPO}"
 
@@ -24,19 +33,19 @@ KEEPALIVE_PID=$!
 tar xzf - && date --iso-8601 > ~/uploading/$TARGET/done.txt || false
 
 if [ "$FAILURE_FLAG" == "failure" ]; then
-    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
-    rm -rf ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH/failure || true
-    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH/failure
+    mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH_ENCODED
+    rm -rf ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH_ENCODED/failure || true
+    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH_ENCODED/failure
 else
-    mv ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH ~/uploading/branch.$TARGET.old  || true
+    mv ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH_ENCODED ~/uploading/branch.$TARGET.old  || true
     mkdir -p ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/
-    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH
+    mv ~/uploading/$TARGET/ ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/$DEPLOY_TO_BRANCH_ENCODED
     rm -rf ~/uploading/branch.$TARGET.old || true
 fi
 
 if [ "$IS_DEFAUT_BRANCH" == "default" ]; then
     rm -f ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/__default
-    ln -s ./$DEPLOY_TO_BRANCH ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/__default
+    ln -s ./$DEPLOY_TO_BRANCH_ENCODED ~/uploading/www/ig/$IG_ORG/$IG_REPO/branches/__default
 fi
 
 set +e

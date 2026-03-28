@@ -3,10 +3,11 @@
 	order rate_limit before file_server
 }
 (tryall) {
-	try_files {args.0} {args.0}{fextension} {args.0}index.html
+	try_files {args[0]} {args[0]}{fextension} {args[0]}index.html
 }
 
-build.fhir.org:80, build.fhir.org {
+# Listen on all interfaces and domains with HTTPS
+:80, :443 {
 	log {
 		output stdout
 		level info

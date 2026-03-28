@@ -1,0 +1,62 @@
+---
+# PersistentVolume using Docker volume for FHIR CI Build
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fhir-ci-build-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: docker-hostpath
+  hostPath:
+    path: /var/lib/docker/volumes/fhir-ci-build/_data
+    type: DirectoryOrCreate
+---
+# PersistentVolumeClaim for FHIR CI Build
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fhir-ci-build
+  namespace: fhir
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: docker-hostpath
+  volumeName: fhir-ci-build-pv
+---
+# PersistentVolume using Docker volume for Caddy Certificates
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: caddy-cert-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: docker-hostpath
+  hostPath:
+    path: /var/lib/docker/volumes/caddy-certs/_data
+    type: DirectoryOrCreate
+---
+# PersistentVolumeClaim for Caddy Certificates
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: caddy-cert
+  namespace: fhir
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: docker-hostpath
+  volumeName: caddy-cert-pv

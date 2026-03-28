@@ -1,16 +1,8 @@
-# DEPRECATED: This file is preserved for reference only.
-#
-# Use the unified setup instead:
-#   ./setup.sh --type gcloud
-#   kubectl apply -f ci-build.deployment.generated.yaml
-#
-# The generated file will have the correct configuration for your deployment type.
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ci-build-deployment
-  namespace: fhir
+  namespace: ${NAMESPACE}
 spec:
   replicas: 1
   selector:
@@ -20,7 +12,7 @@ spec:
     metadata:
       labels:
         run: ci-build
-      namespace: fhir
+      namespace: ${NAMESPACE}
     spec:
       containers:
       - env:
@@ -33,13 +25,14 @@ spec:
             configMapKeyRef:
               key: ssh_authorized_key
               name: ci-build-config
-        image: gcr.io/fhir-org-starter-project/ci-build
-        imagePullPolicy: Always
+        image: ${CI_BUILD_IMAGE}
+        imagePullPolicy: ${IMAGE_PULL_POLICY}
         name: ci-build
         volumeMounts:
         - mountPath: /home/fhir_upload/uploading
           name: fhir-ci-build-disk
-      - image: gcr.io/fhir-org-starter-project/caddy-ratelimit:latest
+      - image: ${CADDY_IMAGE}
+        imagePullPolicy: ${IMAGE_PULL_POLICY}
         name: caddy
         volumeMounts:
         - name: fhir-ci-build-disk
@@ -63,15 +56,9 @@ spec:
           name: fhir-ci-build-disk
       restartPolicy: Always
       terminationGracePeriodSeconds: 10
+${NODE_SELECTOR_CONFIG}
       volumes:
-      - gcePersistentDisk:
-          fsType: ext4
-          pdName: caddy-cert-disk
-        name: caddy-cert-disk
-      - gcePersistentDisk:
-          fsType: ext4
-          pdName: fhir-ci-build-disk
-        name: fhir-ci-build-disk
+${VOLUMES_CONFIG}
       - configMap:
           defaultMode: 420
           name: caddy-conf-volume

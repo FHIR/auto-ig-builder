@@ -21,7 +21,7 @@
   </div>
   </body>
   <script>
-	  
+
     function quoteattr(s) { // from https://stackoverflow.com/a/9756789/318206
       return ('' + s) /* Forces the conversion to string. */
         .replace(/&/g, '&amp;') /* This MUST be the 1st replacement. */
@@ -40,14 +40,16 @@
     timeFormatter = timeago(),
     buildsTable = document.getElementById("builds");
 
-    fetch("https://build.fhir.org/ig/builds.json")
-      .then(r => r.json())
+    fetch("/ig/builds.json")
+      .then(r => r.ok ? r.json() : [])
+      .catch(() => [])
       .then(renderBranches)
       .then(fetchBuilds)
       .then(renderBuilds);
 
-    fetch("https://build.fhir.org/ig/qas.json")
-      .then(r => r.json())
+    fetch("/ig/qas.json")
+      .then(r => r.ok ? r.json() : [])
+      .catch(() => [])
       .then(r => r.map(qa => {
         qa.date = new Date(qa.date)
         qa.master = /\/master\//.test(qa.repo)
@@ -58,6 +60,9 @@
       .then(renderQas);
 
     function renderBranches(builds) {
+      if (!builds || !Array.isArray(builds)) {
+        builds = [];
+      }
       state.branches = parseBranches(builds);
       render(state);
       return builds;
@@ -65,6 +70,9 @@
 
 
     function renderBuilds(builds) {
+      if (!builds || !Array.isArray(builds)) {
+        builds = [];
+      }
       state.builds = builds;
       render(state);
     }
@@ -94,10 +102,13 @@
 
 
     function parseBranches(builds) {
+      if (!builds || !Array.isArray(builds)) {
+        return {};
+      }
       const grouped = _.groupBy(builds.map(entry =>{
         const splitEntry = entry.split('/');
         const failure = splitEntry.includes('failure');
-        
+
         return {
           org: splitEntry[0],
           repo: splitEntry[1],
@@ -131,7 +142,9 @@
        return Promise.all(builds
        .filter(repo => /\/master|main\//.test(repo))
        .map(repo =>
-        fetchPool("https://build.fhir.org/ig/"+repo.replace("#", "%23")).then(b => b.text())
+        fetchPool("/ig/"+repo.replace("#", "%23"))
+        .then(b => b.ok ? b.text() : "")
+        .catch(() => "")
         .then(b => {
           var date = b.match(/Coordinated Universal Time \((.*?)\)/),
               version = b.match(/Definitions (\S+)/);
@@ -153,8 +166,10 @@
     }
 
     function renderQas(qas) {
-      state.qas = qas
-;
+      if (!qas || !Array.isArray(qas)) {
+        qas = [];
+      }
+      state.qas = qas;
       render(state);
     }
 
@@ -176,7 +191,7 @@
       })
     }
 
- 
+
   function render({builds, qas}){
     const sorter = (a, b) => {
       if (a.repo < b.repo) {
@@ -245,7 +260,7 @@
         <th>links</th>
       </thead><tr>` + rows.map(({org, repo, date, version, success, debug, choices}) =>
         `<td>
-        <a target="_blank" href="https://build.fhir.org/ig/${org}/${repo}" data-toggle="tooltip" title='${quoteattr(JSON.stringify(debug, null, 2))}'>
+        <a target="_blank" href="/ig/${org}/${repo}" data-toggle="tooltip" title='${quoteattr(JSON.stringify(debug, null, 2))}'>
         ${org} / <strong>${repo}</strong></a>
         </td>
         <td>${version}</td>
@@ -261,9 +276,9 @@
         ${choices.map(branch => `<a id="branch-${branchnum}" class="dropdown-item" onClick="rebuild(${branchnum++}, '${org}', '${repo}', '${branch.name}')">${branch.name + (branch.failing ? " [failing]" : "")}</a>`).join(`\n`)}
         </div>
       </div>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/"}build.log">log</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/"}build.log">log</a>
         <a target="_blank" class="btn btn-primary btn-sm" href="https://github.com/${org}/${repo}">gh</a>
-        <a target="_blank" class="btn btn-primary btn-sm" href="https://build.fhir.org/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/output/"}qa.html">qa</a>
+        <a target="_blank" class="btn btn-primary btn-sm" href="/ig/${org}/${repo}/branches/__default/${success ? "" : "failure/output/"}qa.html">qa</a>
         </td>`
     ).join(`</tr><tr>`)
 
