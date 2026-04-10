@@ -7,7 +7,7 @@
   "scripts": {
     "start": "npx functions-framework --target=ig-commit-trigger --signature-type=http",
     "typecheck": "tsc --noEmit",
-    "test": "node test-scheduling.js"
+    "test": "node test-scheduling.js && node test-sweep.js"
   },
   "author": "Josh Mandel",
   "license": "Apache-2.0",

@@ -4,15 +4,24 @@ import functions from "@google-cloud/functions-framework";
 import * as k8s from "@kubernetes/client-node";
 import jobSource from "./job.json" with { type: "json" };
 import { createScheduler } from "./scheduling.js";
+import { createSweepHandler } from "./sweep.js";
 
 const kc = new k8s.KubeConfig();
 kc.loadFromFile("sa.kubeconfig");
 
+const k8sBatch = kc.makeApiClient(k8s.BatchV1Api);
+const k8sCore = kc.makeApiClient(k8s.CoreV1Api);
+
 const scheduler = createScheduler({
-  k8sBatch: kc.makeApiClient(k8s.BatchV1Api),
-  k8sCore: kc.makeApiClient(k8s.CoreV1Api),
+  k8sBatch,
+  k8sCore,
   jobSource,
   patchOptions: k8s.setHeaderOptions("Content-Type", k8s.PatchStrategy.StrategicMergePatch),
+});
+const sweepHandler = createSweepHandler({
+  scheduler,
+  k8sBatch,
+  k8sCore,
 });
 
 /**
@@ -45,6 +54,10 @@ functions.http("ig-commit-trigger", async function (req, res) {
   res.header("Access-Control-Allow-Method", "POST, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Origin", "*");
+
+  if (req.query?.action === "sweep") {
+    return sweepHandler(req, res);
+  }
 
   if (req.method === "OPTIONS") {
     return res.status(200).json({});

@@ -60,10 +60,61 @@ kubectl rollout status deployment/ci-build-deployment -n fhir
 
 ```
 cd triggers/ig-commit-trigger
-gcloud functions deploy ig-commit-trigger --runtime nodejs22 --trigger-http
+npm test
+npm run typecheck
+
+gcloud functions deploy ig-commit-trigger \
+  --region=us-central1 \
+  --runtime=nodejs22 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --entry-point=ig-commit-trigger \
+  --memory=256MB \
+  --timeout=60s \
+  --source=.
 ```
 
 Note: Node.js 22 is GA and recommended.
+
+9. Configure or update the 5-minute stale-pin sweep
+
+The same deployed `ig-commit-trigger` function also serves a periodic repair path at
+`?action=sweep`. A Cloud Scheduler job should call the trigger every 5 minutes with
+`apply=1`.
+
+```
+gcloud services enable cloudscheduler.googleapis.com
+
+FUNCTION_URL="$(gcloud functions describe ig-commit-trigger \
+  --region=us-central1 \
+  --format='value(httpsTrigger.url)')"
+
+gcloud scheduler jobs create http ig-commit-trigger-sweep \
+  --location=us-central1 \
+  --schedule='*/5 * * * *' \
+  --time-zone='Etc/UTC' \
+  --http-method=POST \
+  --uri="${FUNCTION_URL}?action=sweep&apply=1"
+```
+
+If the Scheduler job already exists, update it instead:
+
+```
+gcloud scheduler jobs update http ig-commit-trigger-sweep \
+  --location=us-central1 \
+  --schedule='*/5 * * * *' \
+  --time-zone='Etc/UTC' \
+  --http-method=POST \
+  --uri="${FUNCTION_URL}?action=sweep&apply=1"
+```
+
+Useful checks:
+
+```
+gcloud scheduler jobs describe ig-commit-trigger-sweep --location=us-central1
+gcloud scheduler jobs run ig-commit-trigger-sweep --location=us-central1
+curl "${FUNCTION_URL}?action=sweep"
+```
 
 
 ---
@@ -90,4 +141,3 @@ kubectl  -n fhir create secret generic zulip-secrets --from-literal=email=bot@hs
 Build the igbuild image as `igbuild` in minikube docker
 
     kubectl apply -f example-job-for-minikube.yaml
-

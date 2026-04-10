@@ -287,6 +287,63 @@ stopped being a realistic placement target. A reasonable first threshold is 3 mi
 longer than normal scheduler churn, but much shorter than waiting for
 `activeDeadlineSeconds`.
 
+### Periodic stale-pin sweep
+
+The webhook path alone is not sufficient to recover a stale pinned successor on a quiet
+branch. If the last webhook for a branch created a pinned successor and the pinned node
+then disappeared, no later webhook may arrive to trigger State E recovery.
+
+So this design also needs a small periodic sweep action, invoked on a schedule
+(`Cloud Scheduler` -> HTTP call -> the same GCF trigger, using `action=sweep`), whose
+only purpose is to find and repair stale pinned successors.
+
+Functional requirements:
+
+- run on a short fixed interval, such as every 1 to 5 minutes
+- be safe and idempotent to invoke concurrently or repeatedly
+- inspect only Jobs labeled `build.fhir.org/managed-by=ig-trigger`
+- act only on Jobs annotated `build.fhir.org/role=successor`
+- reconstruct branch-local state the same way the webhook handler does
+- never act on a branch that still has a bound/running current Job
+
+A Job is a stale-pin recovery candidate only if all of the following are true:
+
+- it is the only non-terminal Job for its branch
+- its pod is still `Pending`
+- its pod is unbound (`spec.nodeName` absent)
+- `PodScheduled` is still `False`
+- it has `build.fhir.org/pinned-node`
+- its age is greater than the stale-pin threshold
+- and there is evidence that the pin is the blocker, not ordinary cluster pressure
+
+The final condition should be satisfied by either:
+
+- the pinned node no longer exists in the cluster
+- or the pod remains unschedulable due to node affinity mismatch
+
+"Node affinity mismatch" here means evidence such as:
+
+- repeated `FailedScheduling` events containing `didn't match Pod's node affinity/selector`
+- autoscaler marks the pod unhelpable, such as
+  `cloud.google.com/cluster_autoscaler_unhelpable_until=Inf`
+
+The sweep must not unpin just because a pod has been pending for 3 minutes. In
+particular, it must not act on:
+
+- an initial unpinned branch build waiting for ordinary capacity
+- a queued successor whose current Job is still alive
+- a pod whose scheduling failures are only about general capacity, taints, or quota
+
+When a stale-pin candidate is found, the sweep should:
+
+- delete the stuck queued successor Job
+- recreate the branch's queued Job without node affinity
+- preserve the latest branch intent annotations
+- log the branch, prior pinned node, and recovery action
+
+This should reuse the same branch-state reduction and Job-construction helpers as the
+webhook path, rather than introduce a second scheduling algorithm.
+
 ## Branch State Reduction
 
 On every webhook, GCF should reconstruct branch state from Jobs and Pods.
@@ -564,6 +621,8 @@ should fail visibly rather than return success with no created or patched Job.
 - on `409 AlreadyExists`, reread and reconcile instead of returning success immediately
 - when no slot name is reusable, do short bounded polling for actual slot release
 - keep cleanup and slot reuse separate from correctness-critical handoff
+- add a periodic authenticated sweep entrypoint that repairs stale pinned successors on
+  quiet branches
 
 ### Job Template
 
