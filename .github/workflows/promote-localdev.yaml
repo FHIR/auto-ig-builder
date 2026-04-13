@@ -1,0 +1,66 @@
+name: Promote Tested Docker Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_tag:
+        description: 'Candidate tag to promote, for example candidate-abcdef123456'
+        required: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    env:
+      GHCR_IMAGE: ghcr.io/fhir/ig-publisher-localdev
+      DOCKERHUB_IMAGE: hl7fhir/ig-publisher-base
+      CANDIDATE_TAG: ${{ github.event.inputs.candidate_tag }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GHCR
+      uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Promote candidate tag to latest
+      run: |
+        set -euo pipefail
+
+        case "${CANDIDATE_TAG}" in
+          candidate-*)
+            ;;
+          *)
+            echo "candidate_tag must start with candidate-"
+            exit 1
+            ;;
+        esac
+
+        docker buildx imagetools inspect "${GHCR_IMAGE}:${CANDIDATE_TAG}"
+        docker buildx imagetools inspect "${DOCKERHUB_IMAGE}:${CANDIDATE_TAG}"
+
+        docker buildx imagetools create \
+          -t "${GHCR_IMAGE}:latest" \
+          "${GHCR_IMAGE}:${CANDIDATE_TAG}"
+
+        docker buildx imagetools create \
+          -t "${DOCKERHUB_IMAGE}:latest" \
+          "${DOCKERHUB_IMAGE}:${CANDIDATE_TAG}"
+
+    - name: Show promoted tags
+      run: |
+        echo "Promoted ${GHCR_IMAGE}:${CANDIDATE_TAG} -> ${GHCR_IMAGE}:latest"
+        echo "Promoted ${DOCKERHUB_IMAGE}:${CANDIDATE_TAG} -> ${DOCKERHUB_IMAGE}:latest"

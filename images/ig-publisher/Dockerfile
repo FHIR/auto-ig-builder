@@ -1,19 +1,30 @@
-FROM --platform=$TARGETPLATFORM openjdk:23-slim-bookworm as base
-LABEL maintainer="Josh Mandel"
-
-ARG NODE_VERSION=v20.13.1
+FROM eclipse-temurin:21-jdk-noble AS gem-builder
 ARG TARGETARCH
 
-# Install dependencies, clean up, and set up non-root user
-RUN apt-get update && apt-get -y install curl git openssl wget graphviz ruby ruby-dev build-essential libffi-dev && \
-    apt-get clean && \
+# Compile native gem extensions in a throwaway stage
+RUN apt-get update && apt-get -y --no-install-recommends install \
+        ruby ruby-dev build-essential libffi-dev && \
+    rm -rf /var/lib/apt/lists/* && \
     gem install jekyll
 
-# Download and install Node.js
+# ------- Runtime base (no build toolchain) -------
+FROM eclipse-temurin:21-jdk-noble AS base
+LABEL maintainer="Josh Mandel"
+
+ARG NODE_VERSION=v22.22.2
+ARG TARGETARCH
+
+# Runtime-only packages (no build-essential, no ruby-dev, no libffi-dev)
+RUN apt-get update && apt-get -y --no-install-recommends install \
+        curl git openssl wget graphviz ruby libffi8 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy compiled gems from build stage
+COPY --from=gem-builder /var/lib/gems /var/lib/gems
+COPY --from=gem-builder /usr/local/bin/jekyll /usr/local/bin/jekyll
+
+# Download and install Node.js + update npm for latest security patches
 WORKDIR /tmp
-
-
-# Set platform-specific variables
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
         NODE_DISTRO=linux-x64; \
     elif [ "$TARGETARCH" = "arm64" ]; then \
@@ -27,13 +38,20 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
     tar --strip-components 1 -xf node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz -C /usr/local && \
     rm node-${NODE_VERSION}-${NODE_DISTRO}.tar.gz
 
+# Patch npm's bundled picomatch (CVE-2026-33671: ReDoS via crafted extglob)
+RUN cd /usr/local/lib/node_modules/npm/node_modules/picomatch && \
+    wget -q https://registry.npmjs.org/picomatch/-/picomatch-4.0.4.tgz && \
+    tar xzf picomatch-4.0.4.tgz --strip-components=1 && \
+    rm picomatch-4.0.4.tgz
+
 # ------- Begin Local Dev -------
-FROM base as localdev
+FROM base AS localdev
 LABEL maintainer="Josh Mandel"
 LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
 COPY ./localdev-files/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN apt-get update && apt-get -y install gosu && apt-get clean
+RUN apt-get update && apt-get -y --no-install-recommends install gosu && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN useradd -d /home/publisher -m publisher
 USER publisher
@@ -52,16 +70,18 @@ CMD ["bash"]
 
 
 # ------- Begin CI -------
-FROM base as ci
+FROM base AS ci
 LABEL maintainer="Josh Mandel"
 
-RUN apt-get update && apt-get -y install inotify-tools python3 python3-pip python3-venv python3-requests openssl && \
-    apt-get clean
+RUN apt-get update && apt-get -y --no-install-recommends install \
+        inotify-tools python3 python3-pip python3-venv openssl && \
+    rm -rf /var/lib/apt/lists/*
 
-ADD ./ci-files/watch-and-publish /usr/local/bin/watch-and-publish
-ADD ./ci-files/publish /usr/local/bin/publish
+COPY ./ci-files/watch-and-publish /usr/local/bin/watch-and-publish
+COPY ./ci-files/publish /usr/local/bin/publish
 
-RUN groupadd -r fhirgroup -g 2000 && \
+RUN userdel -r ubuntu 2>/dev/null || true && \
+    groupadd -r fhirgroup -g 2000 && \
     useradd -r -u 1000 -g fhirgroup -m -d /home/fhiruser -s /sbin/nologin fhiruser && \
     mkdir /app /var/lib/.fhir  && \
     chown fhiruser.fhirgroup /app && \
@@ -82,13 +102,13 @@ RUN mkdir -p /home/fhiruser/.ssh && \
     chmod go-wrx /home/fhiruser/.ssh/config
 
 RUN mkdir -p /app/builder
-ADD ./ci-files/builder /app/builder
+COPY ./ci-files/builder /app/builder
 WORKDIR /app
 
 RUN python3 -m venv venv
 
 # Activate the virtual environment and install the zulip library
-RUN /app/venv/bin/pip install --upgrade pip && \
-    /app/venv/bin/pip install zulip
+RUN /app/venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /app/venv/bin/pip install --no-cache-dir zulip
 
-ENTRYPOINT python3 -m builder.builder || touch /scratch/done
+ENTRYPOINT ["/bin/sh", "-c", "python3 -m builder.builder || touch /scratch/done"]
