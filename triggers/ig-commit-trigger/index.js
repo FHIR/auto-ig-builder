@@ -12,16 +12,35 @@ kc.loadFromFile("sa.kubeconfig");
 const k8sBatch = kc.makeApiClient(k8s.BatchV1Api);
 const k8sCore = kc.makeApiClient(k8s.CoreV1Api);
 
+const MANAGED_BY_LABEL = process.env.IG_TRIGGER_MANAGED_BY ?? "ig-trigger";
+const JOB_NAME_PREFIX = process.env.IG_TRIGGER_JOB_PREFIX ?? "igbuild";
+const BRANCH_KEY_SCOPE = process.env.IG_TRIGGER_BRANCH_KEY_SCOPE ?? "";
+const BUILD_IMAGE = process.env.IG_BUILD_IMAGE ?? "";
+
+function buildJobSource() {
+  /** @type {any} */
+  const resolvedJobSource = JSON.parse(JSON.stringify(jobSource));
+  if (!BUILD_IMAGE) return resolvedJobSource;
+  for (const container of resolvedJobSource.spec.template.spec.containers) {
+    container.image = BUILD_IMAGE;
+  }
+  return resolvedJobSource;
+}
+
 const scheduler = createScheduler({
   k8sBatch,
   k8sCore,
-  jobSource,
+  jobSource: buildJobSource(),
+  managedByLabel: MANAGED_BY_LABEL,
+  jobNamePrefix: JOB_NAME_PREFIX,
+  branchKeyScope: BRANCH_KEY_SCOPE,
   patchOptions: k8s.setHeaderOptions("Content-Type", k8s.PatchStrategy.StrategicMergePatch),
 });
 const sweepHandler = createSweepHandler({
   scheduler,
   k8sBatch,
   k8sCore,
+  managedByLabel: MANAGED_BY_LABEL,
 });
 
 /**

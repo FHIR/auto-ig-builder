@@ -16,7 +16,7 @@ ARG TARGETARCH
 
 # Runtime-only packages (no build-essential, no ruby-dev, no libffi-dev)
 RUN apt-get update && apt-get -y --no-install-recommends install \
-        curl git openssl wget graphviz ruby libffi8 && \
+        curl git openssl openssh-client wget graphviz ruby libffi8 && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy compiled gems from build stage

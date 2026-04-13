@@ -108,15 +108,13 @@ def build(config):
 
   built = (0 == built_exit)
 
-  message = [message_header + "rebuilt\n",
-             "Commit: {commit} :{emoji}:\n",
-             "Details: [build logs]({root}/{org}/{repo}/branches/{branch}/{buildlog})"]
+  message = [message_header + "{status}\n",
+             "Commit: {commit} :{emoji}:"]
   print("finalizing")
   if not built:
     print("Build error occurred")
+    details['status'] = 'rebuild failed'
     details['emoji'] = 'thumbs_down'
-    details['buildlog'] = 'failure/build.log'
-    message += [" | [debug]({root}/{org}/{repo}/branches/{branch}/failure)"]
     return {
       "result_dir": clone_dir,
       "message":"".join(message).format(**details),
@@ -126,14 +124,13 @@ def build(config):
 
   else:
     print("Build succeeded")
+    details['status'] = 'rebuilt'
     details['emoji'] = 'thumbs_up'
-    details['buildlog'] = 'build.log'
-    message += [" | [published]({root}/{org}/{repo}/branches/{branch}/index.html)"]
-    message += [f" | [qa: {get_qa_score(build_dir)}]", "({root}/{org}/{repo}/branches/{branch}/qa.html)"]
+    qa_score = get_qa_score(build_dir)
     return {
       "result_dir": build_dir,
       "message":"".join(message).format(**details),
-      "pubargs": ['success', details['default']]
+      "pubargs": ['success', details['default'], qa_score]
     }
 
 if __name__ == '__main__':

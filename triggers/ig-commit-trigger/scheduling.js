@@ -8,11 +8,14 @@ const NAMESPACE = "fhir";
 
 // --- Helpers ---
 
-/** @param {string} org @param {string} repo @param {string} branch */
-export function computeBranchKey(org, repo, branch) {
+/** @param {string} org @param {string} repo @param {string} branch @param {string} [scope] */
+export function computeBranchKey(org, repo, branch, scope = "") {
+  const identity = scope
+    ? `${scope}\u0000${org}-${repo}-${branch}`
+    : `${org}-${repo}-${branch}`;
   return crypto
     .createHash("sha256")
-    .update(`${org}-${repo}-${branch}`, "utf8")
+    .update(identity, "utf8")
     .digest("hex")
     .slice(0, 63);
 }
@@ -45,11 +48,12 @@ export function shortHash(branchKey) {
  * @param {string} branchKey
  * @param {string} slot
  * @param {string} [slug]
+ * @param {string} [jobNamePrefix]
  */
-export function slotName(branchKey, slot, slug) {
+export function slotName(branchKey, slot, slug, jobNamePrefix = "igbuild") {
   const s = slug ?? branchKey.slice(0, 40);
   const h = shortHash(branchKey);
-  return `igbuild-${s}-${h}-${slot}`.slice(0, 63);
+  return `${jobNamePrefix}-${s}-${h}-${slot}`.slice(0, 63);
 }
 
 /** @param {string} slot */
@@ -94,10 +98,22 @@ function isTerminal(job) {
  *   k8sCore: CoreV1Api,
  *   jobSource: object,
  *   opts?: SchedulerOpts,
+ *   managedByLabel?: string,
+ *   jobNamePrefix?: string,
+ *   branchKeyScope?: string,
  *   patchOptions?: object,
  * }} deps
  */
-export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patchOptions }) {
+export function createScheduler({
+  k8sBatch,
+  k8sCore,
+  jobSource,
+  opts = {},
+  managedByLabel = "ig-trigger",
+  jobNamePrefix = "igbuild",
+  branchKeyScope = "",
+  patchOptions,
+}) {
   const MAX_RECONCILE_ATTEMPTS = opts.maxReconcileAttempts ?? 3;
   const SLOT_POLL_INTERVAL_MS = opts.slotPollIntervalMs ?? 1000;
   const SLOT_POLL_TIMEOUT_MS = opts.slotPollTimeoutMs ?? 15_000;
@@ -154,7 +170,7 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
     const [newResult, legacyResult] = await Promise.all([
       /** @type {Promise<V1JobList>} */ (k8sBatch.listNamespacedJob({
         namespace: NAMESPACE,
-        labelSelector: `build.fhir.org/managed-by=ig-trigger,build.fhir.org/branch-key=${branchKey}`,
+        labelSelector: `build.fhir.org/managed-by=${managedByLabel},build.fhir.org/branch-key=${branchKey}`,
       })),
       /** @type {Promise<V1JobList>} */ (k8sBatch.listNamespacedJob({
         namespace: NAMESPACE,
@@ -246,9 +262,14 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
     /** @type {any} */
     const job = JSON.parse(JSON.stringify(jobSource));
 
-    job.metadata.name = slotName(branchKey, slot, branchSlug(org, repo, branch));
+    job.metadata.name = slotName(
+      branchKey,
+      slot,
+      branchSlug(org, repo, branch),
+      jobNamePrefix
+    );
     job.metadata.labels = {
-      "build.fhir.org/managed-by": "ig-trigger",
+      "build.fhir.org/managed-by": managedByLabel,
       "build.fhir.org/branch-key": branchKey,
       "build.fhir.org/slot": slot,
       "job-group-id": branchKey,
@@ -315,7 +336,7 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
         if (job.metadata?.name) await deleteJob(job.metadata.name);
       }
       for (const s of ["a", "b"]) {
-        if (!occupiedNames.has(slotName(branchKey, s, slug))) return s;
+        if (!occupiedNames.has(slotName(branchKey, s, slug, jobNamePrefix))) return s;
       }
     }
     return null;
@@ -358,9 +379,11 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
 
     /** @param {string} preferred */
     function findFreeSlot(preferred) {
-      if (!occupiedNames.has(slotName(branchKey, preferred, slug))) return preferred;
+      if (!occupiedNames.has(slotName(branchKey, preferred, slug, jobNamePrefix))) {
+        return preferred;
+      }
       const alt = otherSlot(preferred);
-      if (!occupiedNames.has(slotName(branchKey, alt, slug))) return alt;
+      if (!occupiedNames.has(slotName(branchKey, alt, slug, jobNamePrefix))) return alt;
       return null;
     }
 
@@ -403,7 +426,7 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
       }
       const currentName = current.job.metadata?.name ?? "";
       console.log(
-        `State C (running): successor ${slotName(branchKey, successorSlot, slug)} pinned to ${current.node}, cancel ${currentName}`
+        `State C (running): successor ${slotName(branchKey, successorSlot, slug, jobNamePrefix)} pinned to ${current.node}, cancel ${currentName}`
       );
       const job = buildJob(branchKey, successorSlot, org, repo, branch, headSha, {
         role: "successor",
@@ -464,7 +487,7 @@ export function createScheduler({ k8sBatch, k8sCore, jobSource, opts = {}, patch
    * @param {string} headSha
    */
   async function handleWebhook(org, repo, branch, headSha) {
-    const branchKey = computeBranchKey(org, repo, branch);
+    const branchKey = computeBranchKey(org, repo, branch, branchKeyScope);
     console.log(
       `Webhook: ${org}/${repo}@${branch} head=${headSha.slice(0, 8)} key=${branchKey.slice(0, 12)}`
     );

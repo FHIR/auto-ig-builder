@@ -1,6 +1,53 @@
 #!/bin/bash
 
+set -euo pipefail
+
 source /app/venv/bin/activate
+
+HOSTED_ROOT="${HOSTED_ROOT:-https://build.fhir.org/ig}"
+
+notify_zulip() {
+    local message="$1"
+    zulip-send --stream committers/notification --subject ig-build \
+        --message "$message" \
+        --user "$ZULIP_EMAIL" \
+        --api-key "$ZULIP_API_KEY" \
+        --site https://chat.fhir.org
+}
+
+published_message() {
+    local base_message="$1"
+    local publish_state="$2"
+    local qa_score="${3:-}"
+    local branch_root="${HOSTED_ROOT}/${IG_ORG}/${IG_REPO}/branches/${IG_BRANCH}"
+
+    if [ "$publish_state" = "success" ]; then
+        local message="${base_message} | [build logs](${branch_root}/build.log) | [published](${branch_root}/index.html)"
+        if [ -n "$qa_score" ]; then
+            message="${message} | [qa: ${qa_score}](${branch_root}/qa.html)"
+        fi
+        printf '%s' "$message"
+        return
+    fi
+
+    printf '%s | [build logs](%s/failure/build.log) | [debug](%s/failure)' \
+        "$base_message" "$branch_root" "$branch_root"
+}
+
+publish_failed_message() {
+    local base_message="$1"
+    local publish_state="$2"
+    local exit_status="$3"
+
+    if [ "$publish_state" = "failure" ]; then
+        printf '%s | build failed and failure artifacts could not be published (exit %s)' \
+            "$base_message" "$exit_status"
+        return
+    fi
+
+    printf '%s | build succeeded but publish handoff to ci-build failed (exit %s)' \
+        "$base_message" "$exit_status"
+}
 
 # Wait for 'done' file to appear
 echo "Waiting for the builder to complete"
@@ -20,6 +67,10 @@ while IFS= read -r line; do
   pubargs+=("$line")
 done < /scratch/done
 
+publish_state="${pubargs[0]:-unknown}"
+qa_score="${pubargs[2]:-}"
+base_message="$(< /scratch/message)"
+
 echo "Message"
 cat /scratch/message
 
@@ -28,13 +79,20 @@ cat /scratch/done
 
 # Then, Run publish.sh with the arguments from the 'done' file
 cd /scratch/upload
-publish "${IG_ORG}" "${IG_REPO}" "${IG_BRANCH}" "${pubargs[@]}"
-
-# Send Zulip message
-echo "Uploaded; notifying zulip"
-zulip-send --stream committers/notification --subject ig-build \
-    --message "$(< /scratch/message)" \
-    --user "$ZULIP_EMAIL" \
-    --api-key "$ZULIP_API_KEY" \
-    --site https://chat.fhir.org
-echo "Notified"
+if publish "${IG_ORG}" "${IG_REPO}" "${IG_BRANCH}" "${pubargs[@]}"; then
+    final_message="$(published_message "$base_message" "$publish_state" "$qa_score")"
+    echo "Uploaded; notifying zulip"
+    if ! notify_zulip "$final_message"; then
+        echo "Failed to notify zulip after successful publish" >&2
+    fi
+    echo "Notified"
+    exit 0
+else
+    publish_status=$?
+    failure_message="$(publish_failed_message "$base_message" "$publish_state" "$publish_status")"
+    echo "Publish failed; notifying zulip"
+    if ! notify_zulip "$failure_message"; then
+        echo "Failed to notify zulip after publish failure" >&2
+    fi
+    exit "$publish_status"
+fi

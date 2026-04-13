@@ -251,9 +251,16 @@ export function classifyStalePinnedSuccessor(input) {
  *   k8sBatch: BatchV1Api,
  *   k8sCore: CoreV1Api,
  *   opts?: SweepOpts,
+ *   managedByLabel?: string,
  * }} deps
  */
-export function createSweepHandler({ scheduler, k8sBatch, k8sCore, opts = {} }) {
+export function createSweepHandler({
+  scheduler,
+  k8sBatch,
+  k8sCore,
+  opts = {},
+  managedByLabel = "ig-trigger",
+}) {
   const STALE_PINNED_THRESHOLD_MS = opts.stalePinnedThresholdMs ?? 3 * 60_000;
 
   let cachedNodeNames = /** @type {Set<string> | null} */ (null);
@@ -290,7 +297,7 @@ export function createSweepHandler({ scheduler, k8sBatch, k8sCore, opts = {} }) 
   async function listManagedBranchKeys() {
     const result = await k8sBatch.listNamespacedJob({
       namespace: NAMESPACE,
-      labelSelector: "build.fhir.org/managed-by=ig-trigger",
+      labelSelector: `build.fhir.org/managed-by=${managedByLabel}`,
     });
     return /** @type {string[]} */ (Array.from(
       new Set(

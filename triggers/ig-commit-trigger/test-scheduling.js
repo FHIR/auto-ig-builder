@@ -22,6 +22,8 @@ import {
 let jobs = [];
 let pods = [];
 const calls = [];
+const DEFAULT_MANAGED_BY = "ig-trigger";
+const DEFAULT_JOB_PREFIX = "igbuild";
 
 function reset() {
   jobs = [];
@@ -35,11 +37,17 @@ const k8sBatch = {
   listNamespacedJob: async ({ labelSelector }) => {
     calls.push({ op: "listJobs", labelSelector });
     const matched = jobs.filter((j) => {
-      if (labelSelector.includes("build.fhir.org/managed-by=ig-trigger")) {
+      if (labelSelector.includes("build.fhir.org/managed-by=")) {
+        const managedBy = labelSelector.match(
+          /build\.fhir\.org\/managed-by=([^,]+)/
+        )?.[1];
         const key = labelSelector.match(
           /build\.fhir\.org\/branch-key=([^,]+)/
         )?.[1];
-        return j.metadata?.labels?.["build.fhir.org/branch-key"] === key;
+        return (
+          j.metadata?.labels?.["build.fhir.org/managed-by"] === managedBy &&
+          j.metadata?.labels?.["build.fhir.org/branch-key"] === key
+        );
       }
       if (labelSelector.includes("job-group-id=")) {
         const key = labelSelector.match(/job-group-id=([^,]+)/)?.[1];
@@ -104,6 +112,9 @@ function makeScheduler(overrides = {}) {
     k8sBatch: overrides.k8sBatch || k8sBatch,
     k8sCore: overrides.k8sCore || k8sCore,
     jobSource,
+    managedByLabel: overrides.managedByLabel || DEFAULT_MANAGED_BY,
+    jobNamePrefix: overrides.jobNamePrefix || DEFAULT_JOB_PREFIX,
+    branchKeyScope: overrides.branchKeyScope || "",
     opts: { slotPollIntervalMs: 10, slotPollTimeoutMs: 200, ...overrides.opts },
   });
 }
@@ -118,7 +129,7 @@ function addJob(name, branchKey, slot, opts = {}) {
       name,
       creationTimestamp: opts.createdAt || new Date().toISOString(),
       labels: {
-        "build.fhir.org/managed-by": "ig-trigger",
+        "build.fhir.org/managed-by": opts.managedBy || DEFAULT_MANAGED_BY,
         "build.fhir.org/branch-key": branchKey,
         "build.fhir.org/slot": slot,
         "job-group-id": branchKey,
@@ -612,6 +623,55 @@ async function testFreshPinnedSuccessorNotStale() {
   console.log("  PASS\n");
 }
 
+async function testIsolatedSchedulerUsesCustomIdentity() {
+  console.log(
+    "TEST: Isolated scheduler uses custom branch scope, label, and name prefix"
+  );
+  reset();
+
+  const prodName = slotName(BKEY, "a", SLUG);
+  addJob(prodName, BKEY, "a");
+  addPod(prodName, { node: null, phase: "Pending" });
+
+  const isolatedManagedBy = "ig-trigger-testing";
+  const isolatedPrefix = "igbuildtest";
+  const isolatedScope = "testing";
+  const isolatedBranchKey = computeBranchKey(ORG, REPO, BRANCH, isolatedScope);
+  const isolatedScheduler = makeScheduler({
+    managedByLabel: isolatedManagedBy,
+    jobNamePrefix: isolatedPrefix,
+    branchKeyScope: isolatedScope,
+  });
+
+  const result = await trigger("sha-testing", isolatedScheduler);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state, "A");
+  assert.equal(jobs.length, 2, "Isolated scheduler should not collide with prod-like job");
+
+  const isolatedJob = jobs.find(
+    (job) => job.metadata.labels["build.fhir.org/managed-by"] === isolatedManagedBy
+  );
+  assert.ok(isolatedJob, "Expected isolated job to be created");
+  assert.equal(
+    isolatedJob.metadata.labels["build.fhir.org/branch-key"],
+    isolatedBranchKey
+  );
+  assert.ok(
+    isolatedJob.metadata.name.startsWith(`${isolatedPrefix}-`),
+    `Expected job name to start with ${isolatedPrefix}-`
+  );
+  assert.ok(
+    calls.some(
+      (call) =>
+        call.op === "listJobs" &&
+        call.labelSelector.includes(`build.fhir.org/managed-by=${isolatedManagedBy}`)
+    ),
+    "Expected isolated managed-by label selector to be used"
+  );
+  console.log("  PASS\n");
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 console.log("=== Branch-Head Scheduling Tests ===\n");
@@ -630,4 +690,5 @@ await testBothSlotsOccupiedFreesUpDuringPoll();
 await testSlotWaitReReconcilesOnStateChange();
 await testStalePinnedSuccessorRecreatedUnpinned();
 await testFreshPinnedSuccessorNotStale();
+await testIsolatedSchedulerUsesCustomIdentity();
 console.log("All tests passed.");
