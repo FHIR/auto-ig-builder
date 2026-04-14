@@ -65,7 +65,6 @@ export function BuildTable() {
     failingBranches += g.allBranches.filter(b => b.failing).length
   }
 
-  // For org grouping, track org boundaries
   let lastOrg = ''
 
   return (

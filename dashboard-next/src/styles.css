@@ -141,11 +141,14 @@ td { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
 .repo-cell a { color: var(--fg); }
 .repo-cell .org { color: var(--fg-muted); font-size: 12px; }
 .repo-cell .name { font-weight: 500; }
-.branch-name-cell { padding-left: 24px; font-family: var(--mono); font-size: 12px; }
-.version-cell { width: 80px; font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
-.date-cell { width: 70px; color: var(--fg-muted); }
-.status-cell { width: 52px; }
-.links-cell { width: 240px; }
+.repo-cell { overflow: hidden; text-overflow: ellipsis; }
+.branch-name-cell {
+  padding-left: 24px; font-family: var(--mono); font-size: 12px;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.version-cell { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
+.date-cell { color: var(--fg-muted); }
+.links-cell { white-space: nowrap; }
 
 /* Show more */
 .show-more-row td { padding: 4px 24px; }

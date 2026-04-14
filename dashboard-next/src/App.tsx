@@ -81,15 +81,8 @@ export default function App() {
       const params = new URLSearchParams()
       if (state.search) params.set('q', state.search)
 
-      // Check if current config matches a saved preset exactly
-      const matchedPreset = state.presets.find(p => JSON.stringify(p) === configJson)
-      if (matchedPreset) {
-        if (matchedPreset.id !== state.presets[0].id) {
-          params.set('view', matchedPreset.id)
-        }
-      } else {
-        params.set('view', JSON.stringify(state.viewConfig))
-      }
+      // Always serialize the full config so URLs are self-contained and shareable
+      params.set('view', JSON.stringify(state.viewConfig))
 
       const qs = params.toString()
       window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)

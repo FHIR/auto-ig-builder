@@ -1,18 +1,23 @@
 // @ts-ignore — Bun import attribute to get raw file text
 import typesSource from '../types.ts' with { type: 'text' }
+import { useState, useRef } from 'react'
 
 export function LLMPromptButton() {
+  const [copied, setCopied] = useState(false)
+  const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
+
   const handleCopy = () => {
     const baseUrl = window.location.origin + window.location.pathname
     const prompt = buildPrompt(baseUrl)
-    navigator.clipboard.writeText(prompt).then(() => {
-      alert('Prompt copied to clipboard! Paste it into an LLM conversation.')
-    })
+    navigator.clipboard.writeText(prompt)
+    setCopied(true)
+    clearTimeout(timeout.current)
+    timeout.current = setTimeout(() => setCopied(false), 1500)
   }
 
   return (
     <button className="link-btn prompt-btn" onClick={handleCopy} title="Copy a prompt for an LLM to help you create a custom view">
-      Copy LLM prompt
+      {copied ? 'Copied!' : 'Copy LLM prompt'}
     </button>
   )
 }
