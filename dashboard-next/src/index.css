@@ -1,0 +1,71 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-fhir-red: var(--fhir-red);
+  --color-fhir-red-dark: var(--fhir-red-dark);
+  --color-fhir-red-light: var(--fhir-red-light);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    /* FHIR-inspired warm palette */
+    --background: oklch(0.995 0.002 80);
+    --foreground: oklch(0.22 0.01 30);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.22 0.01 30);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.22 0.01 30);
+    --primary: oklch(0.35 0.12 25);       /* FHIR dark red/maroon */
+    --primary-foreground: oklch(0.98 0 0);
+    --secondary: oklch(0.96 0.008 30);    /* warm light gray */
+    --secondary-foreground: oklch(0.30 0.02 25);
+    --muted: oklch(0.96 0.006 60);        /* warm muted */
+    --muted-foreground: oklch(0.50 0.015 30);
+    --accent: oklch(0.94 0.015 25);       /* red-tinted accent bg */
+    --accent-foreground: oklch(0.30 0.08 25);
+    --destructive: oklch(0.55 0.22 27);
+    --destructive-foreground: oklch(0.98 0 0);
+    --border: oklch(0.91 0.008 60);
+    --input: oklch(0.91 0.008 60);
+    --ring: oklch(0.45 0.10 25);          /* red-tinted ring */
+    --radius: 0.5rem;
+
+    /* FHIR brand reds */
+    --fhir-red: oklch(0.40 0.14 25);
+    --fhir-red-dark: oklch(0.30 0.12 22);
+    --fhir-red-light: oklch(0.94 0.03 25);
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
