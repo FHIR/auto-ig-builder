@@ -77,6 +77,7 @@ a:hover { text-decoration: underline; }
   background: var(--card); border: 1px solid var(--border); border-radius: 10px;
   box-shadow: 0 16px 30px rgba(31,35,40,.12), 0 2px 8px rgba(31,35,40,.08);
   overflow: hidden; max-height: min(52vh, 420px); overflow-y: auto;
+  contain: content;
 }
 .chip-row[hidden], .suggestions[hidden] { display: none; }
 .chip {
@@ -93,12 +94,13 @@ a:hover { text-decoration: underline; }
 .suggestion {
   border: none; border-top: 1px solid #edf0f2; background: var(--card); color: var(--muted);
   padding: 8px 11px; font-size: 12px; cursor: pointer; text-align: left;
+  display: block; width: 100%;
+  content-visibility: auto; contain-intrinsic-size: 34px;
 }
 .suggestion:first-child { border-top: none; }
 .suggestion:hover { color: var(--text); background: #f8fbff; }
 .suggestion.active { background: #eaf2ff; color: var(--text); }
 .suggestion strong { color: var(--text); }
-.suggestion small { color: var(--muted); margin-left: 8px; }
 .hint-row { font-size: 11px; color: var(--muted); min-height: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
 
 @media (max-width: 960px) {
@@ -356,6 +358,12 @@ function currentInputToken(input) {
   return parseToken(raw);
 }
 
+function looksLikeFilterKeyPrefix(input) {
+  const raw = (input || "").trim().toLowerCase();
+  if (!raw || /[\s:]/.test(raw)) return false;
+  return [...FILTER_KEYS, "pkg"].some((key) => key.startsWith(raw));
+}
+
 function branchMatches(parsed, branchModel, index) {
   if (!taggedMatch(parsed.branch, branchModel.lower, index.branchSet)) return false;
   if (!taggedMatch(parsed.status, branchModel.status, index.statusSet)) return false;
@@ -592,16 +600,8 @@ async function main() {
   const state = {
     chips: splitTokens(initialFilter(sc)).map(parseToken).filter((token) => token && token.kind !== "pending"),
     activeSuggestion: 0,
+    visibleSuggestions: [],
   };
-  let queuedRefresh = 0;
-
-  function queueRefresh() {
-    cancelAnimationFrame(queuedRefresh);
-    queuedRefresh = requestAnimationFrame(() => {
-      queuedRefresh = 0;
-      refresh();
-    });
-  }
 
 function suggestionSource(key, parsed) {
   if (key === "repo" && parsed.org.length === 1 && filterIndex.orgSet.has(parsed.org[0])) {
@@ -614,13 +614,12 @@ function suggestionsForCurrentInput(input, parsed) {
   const token = currentInputToken(input);
   if (!token || token.kind !== "pending" && token.kind !== "tag") return [];
   if (!FILTER_KEYS.has(token.key)) return [];
-  if (token.kind === "pending") return suggestionSource(token.key, parsed).slice(0, 10);
+  if (token.kind === "pending") return suggestionSource(token.key, parsed);
   const prefix = token.kind === "tag" ? token.valueLower : "";
   const used = new Set(state.chips.filter((chip) => chip.kind === "tag" && chip.key === token.key).map((chip) => chip.valueLower));
   if (token.kind === "tag" && used.has(token.valueLower)) return [];
   return suggestionSource(token.key, parsed)
-      .filter((item) => !used.has(item.valueLower) && (prefix === "" || item.valueLower.startsWith(prefix)))
-      .slice(0, 10);
+      .filter((item) => !used.has(item.valueLower) && (prefix === "" || item.valueLower.startsWith(prefix)));
 }
 
   function renderChips() {
@@ -651,7 +650,7 @@ function suggestionsForCurrentInput(input, parsed) {
       });
       remove.addEventListener("click", () => {
         state.chips.splice(idx, 1);
-        queueRefresh();
+        refresh();
       });
       chipEl.appendChild(label);
       chipEl.appendChild(remove);
@@ -661,31 +660,20 @@ function suggestionsForCurrentInput(input, parsed) {
 
   function renderSuggestions(input, parsed) {
     const suggestions = suggestionsForCurrentInput(input, parsed);
+    state.visibleSuggestions = suggestions;
     if (state.activeSuggestion >= suggestions.length) state.activeSuggestion = 0;
-    suggestionsEl.textContent = "";
+    const token = currentInputToken(input);
     suggestionsEl.hidden = suggestions.length === 0;
-    for (const [idx, item] of suggestions.entries()) {
-      const token = currentInputToken(input);
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `suggestion${idx === state.activeSuggestion ? " active" : ""}`;
-      const strong = document.createElement("strong");
-      strong.textContent = `${token.key}:`;
-      button.appendChild(strong);
-      button.appendChild(document.createTextNode(item.label));
-      if (token.kind === "pending") {
-        const note = document.createElement("small");
-        note.textContent = "click or Tab to add";
-        button.appendChild(note);
-      }
-      button.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        commitSuggestion(token.key, item);
-      });
-      suggestionsEl.appendChild(button);
+    if (suggestions.length === 0) {
+      suggestionsEl.replaceChildren();
+    } else {
+      const keyLabel = esc(`${token.key}:`);
+      const note = token.kind === "pending" ? '<small>click or Tab to add</small>' : "";
+      suggestionsEl.innerHTML = suggestions.map((item, idx) =>
+        `<button type="button" class="suggestion${idx === state.activeSuggestion ? " active" : ""}" data-index="${idx}"><strong>${keyLabel}</strong>${esc(item.label)}${note}</button>`
+      ).join("");
     }
 
-    const token = currentInputToken(input);
     const article = token && /^[aeiou]/i.test(token.key) ? "an" : "a";
     if (token && FILTER_KEYS.has(token.key)) {
       hintEl.textContent = suggestions.length > 0
@@ -720,7 +708,8 @@ function suggestionsForCurrentInput(input, parsed) {
     });
     q.value = "";
     state.activeSuggestion = 0;
-    queueRefresh();
+    state.visibleSuggestions = [];
+    refresh();
     q.focus();
   }
 
@@ -792,11 +781,26 @@ function suggestionsForCurrentInput(input, parsed) {
     document.getElementById("st").innerHTML = renderStats(shownOrgCount, shownRepoCount, shownBranchCount);
   }
 
+  function liveFilterInputValue(input) {
+    if (looksLikeFilterKeyPrefix(input)) return "";
+    const token = currentInputToken(input);
+    if (!token) return input;
+    if (token.kind === "text") return input;
+    return "";
+  }
+
+  let lastFilterSignature = "";
+
   function refresh() {
-    const parsed = buildParsedFilter(state.chips, q.value);
+    const suggestionsParsed = buildParsedFilter(state.chips, "");
+    const filterParsed = buildParsedFilter(state.chips, liveFilterInputValue(q.value));
     renderChips();
-    renderSuggestions(q.value, parsed);
-    applyFilter(parsed);
+    renderSuggestions(q.value, suggestionsParsed);
+    const filterSignature = JSON.stringify(filterParsed);
+    if (filterSignature !== lastFilterSignature) {
+      lastFilterSignature = filterSignature;
+      applyFilter(filterParsed);
+    }
   }
 
   document.getElementById("ld").style.display = "none";
@@ -805,11 +809,21 @@ function suggestionsForCurrentInput(input, parsed) {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   q.focus({ preventScroll: true });
 
-  let pendingFrame = 0;
+  suggestionsEl.addEventListener("mousedown", (event) => {
+    const button = event.target.closest(".suggestion");
+    if (!button) return;
+    event.preventDefault();
+    const token = currentInputToken(q.value);
+    if (!token) return;
+    const idx = Number(button.dataset.index);
+    const item = state.visibleSuggestions[idx];
+    if (!item) return;
+    commitSuggestion(token.key, item);
+  });
+
   q.addEventListener("input", () => {
     commitInputTokens(false);
-    cancelAnimationFrame(pendingFrame);
-    pendingFrame = requestAnimationFrame(refresh);
+    refresh();
   });
 
   q.addEventListener("blur", () => {
@@ -818,19 +832,19 @@ function suggestionsForCurrentInput(input, parsed) {
   });
 
   q.addEventListener("keydown", (event) => {
-    const parsed = buildParsedFilter(state.chips, q.value);
-    const suggestions = suggestionsForCurrentInput(q.value, parsed);
+    const suggestionsParsed = buildParsedFilter(state.chips, "");
+    const suggestions = suggestionsForCurrentInput(q.value, suggestionsParsed);
 
     if (event.key === "ArrowDown" && suggestions.length > 0) {
       event.preventDefault();
       state.activeSuggestion = (state.activeSuggestion + 1) % suggestions.length;
-      renderSuggestions(q.value, parsed);
+      renderSuggestions(q.value, suggestionsParsed);
       return;
     }
     if (event.key === "ArrowUp" && suggestions.length > 0) {
       event.preventDefault();
       state.activeSuggestion = (state.activeSuggestion + suggestions.length - 1) % suggestions.length;
-      renderSuggestions(q.value, parsed);
+      renderSuggestions(q.value, suggestionsParsed);
       return;
     }
     if ((event.key === "Enter" || event.key === "Tab") && suggestions.length > 0) {
@@ -855,7 +869,7 @@ function suggestionsForCurrentInput(input, parsed) {
       const chip = state.chips.pop();
       q.value = chip.raw;
       state.activeSuggestion = 0;
-      queueRefresh();
+      refresh();
     }
   });
 
