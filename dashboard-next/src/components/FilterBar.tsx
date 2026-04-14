@@ -8,6 +8,7 @@ const filters: { value: StatusFilter; label: string }[] = [
 ]
 
 const timeWindows: { days: number; label: string }[] = [
+  { days: 1, label: '1d' },
   { days: 7, label: '1w' },
   { days: 14, label: '2w' },
   { days: 30, label: '1m' },
