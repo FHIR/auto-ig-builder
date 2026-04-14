@@ -21,14 +21,14 @@ function LoadingStatus() {
       <div className="loading-row">
         <span>
           <span className={`dot ${qasLoaded ? 'dot-done' : 'dot-loading'}`} />
-          {qasLoaded ? 'QA data loaded' : 'Fetching QA data\u2026'}
+          {qasLoaded ? 'QA data loaded' : 'Fetching QA data…'}
         </span>
         <span>
           <span className={`dot ${buildsLoaded ? 'dot-done' : 'dot-loading'}`} />
-          {!buildsJsonFetched ? 'Fetching builds index\u2026'
-            : !branchesLoaded ? 'Parsing branches\u2026'
+          {!buildsJsonFetched ? 'Fetching builds index…'
+            : !branchesLoaded ? 'Parsing branches…'
             : total > 0 ? `Scraping build pages ${done}/${total}`
-            : 'Starting build scrapes\u2026'}
+            : 'Starting build scrapes…'}
         </span>
       </div>
       {total > 0 && !buildsLoaded && (
@@ -109,7 +109,7 @@ export default function App() {
         {(branchesLoaded || qasLoaded) ? (
           <BuildTable />
         ) : (
-          <div className="empty">Loading\u2026</div>
+          <div className="empty">Loading…</div>
         )}
       </div>
     </>

@@ -34,7 +34,7 @@ a:hover { text-decoration: underline; }
 .prompt-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
 /* Container */
-.container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 16px; overflow: hidden; }
 
 /* Loading */
 .loading-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 12px; font-size: 13px; color: var(--fg-muted); }
@@ -107,7 +107,7 @@ a:hover { text-decoration: underline; }
 .toggle-btn.active { background: var(--red-light); color: var(--red-dark); font-weight: 500; }
 
 /* Table */
-.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); overflow: hidden; }
+.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); overflow-x: auto; max-width: 100%; }
 table { width: 100%; border-collapse: collapse; }
 thead { position: sticky; top: 0; z-index: 2; background: var(--bg); }
 thead th {
@@ -117,7 +117,7 @@ thead th {
 }
 tbody tr { border-bottom: 1px solid var(--border); transition: background 0.05s; }
 tbody tr:last-child { border-bottom: none; }
-td { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
+td { padding: 5px 8px; font-size: 13px; }
 
 /* Org header (for org grouping) */
 .org-header td {
@@ -138,17 +138,14 @@ td { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
 
 /* Branch rows */
 .branch-row:hover { background: var(--hover); }
+.repo-cell { word-break: break-word; }
 .repo-cell a { color: var(--fg); }
 .repo-cell .org { color: var(--fg-muted); font-size: 12px; }
 .repo-cell .name { font-weight: 500; }
-.repo-cell { overflow: hidden; text-overflow: ellipsis; }
-.branch-name-cell {
-  padding-left: 24px; font-family: var(--mono); font-size: 12px;
-  overflow: hidden; text-overflow: ellipsis;
-}
+.branch-name-cell { padding-left: 24px; font-family: var(--mono); font-size: 12px; word-break: break-word; }
 .version-cell { font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
 .date-cell { color: var(--fg-muted); }
-.links-cell { white-space: nowrap; }
+.links-cell .link-btns { flex-wrap: wrap; }
 
 /* Show more */
 .show-more-row td { padding: 4px 24px; }
