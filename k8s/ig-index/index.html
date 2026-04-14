@@ -579,13 +579,7 @@ async function main() {
   const suggestionsEl = document.getElementById("sg");
   const hintEl = document.getElementById("sh");
 
-  let bc = "";
-  if (sc.org) {
-    bc = '<a href="/ig/">all</a> / ';
-    if (sc.repo) bc += `<a href="/ig/${encSeg(sc.org)}/">${esc(sc.org)}</a> / ${esc(sc.repo)}`;
-    else bc += esc(sc.org);
-  }
-  document.getElementById("bc").innerHTML = bc;
+  document.getElementById("bc").textContent = "";
 
   let repoCount = 0;
   let buildCount = 0;
