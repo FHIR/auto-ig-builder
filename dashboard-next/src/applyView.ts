@@ -14,17 +14,22 @@ function matchesPattern(value: string, pattern: string): boolean {
 function filterBranches(branches: BranchRow[], config: ViewConfig, cutoff: Date): BranchRow[] {
   let result = branches
 
-  // Apply branchFilter preset
+  // Time window ALWAYS applies when the control is shown
+  if (config.controls.timeWindow) {
+    result = result.filter(b => b.date.getTime() > cutoff.getTime())
+  }
+
+  // Apply branchFilter preset (composes with time window)
   switch (config.branchFilter) {
     case 'failing':
       result = result.filter(b => b.failing); break
     case 'master':
       result = result.filter(b => b.branch === 'master' || b.branch === 'main'); break
-    case 'recent':
-      result = result.filter(b => b.date.getTime() > cutoff.getTime()); break
+    // 'recent' is now redundant with the time window above, but kept for semantic clarity
+    // 'all' does nothing extra
   }
 
-  // Apply status filter (composes with branchFilter)
+  // Apply status filter
   if (config.statusFilter === 'failure') {
     result = result.filter(b => b.failing)
   } else if (config.statusFilter === 'success') {
@@ -101,8 +106,8 @@ export function applyViewConfig(
     groups = groups.filter(g => matchesPattern(g.repo, config.repoPattern))
   }
 
-  // For 'recent' branchFilter, hide repos with no recent activity
-  if (config.branchFilter === 'recent') {
+  // When time window is active, hide repos with no activity in the window
+  if (config.controls.timeWindow) {
     groups = groups.filter(g => g.latestDate.getTime() > cutoff.getTime())
   }
 
@@ -134,20 +139,12 @@ export function applyViewConfig(
   // Grouped mode
   const viewGroups: ViewGroup[] = groups.map(g => {
     const allBranches = sortBranches(filterBranches(g.branches, config, cutoff), config)
-
-    // For 'recent' filter, visibleBranches are the recent ones; others are hidden behind "show more"
-    // For other filters, all matching branches are visible (no hidden)
-    let visibleBranches: BranchRow[]
-    let hiddenCount: number
-    if (config.branchFilter === 'recent') {
-      visibleBranches = allBranches.filter(b => b.date.getTime() > cutoff.getTime())
-      hiddenCount = allBranches.length - visibleBranches.length
-    } else {
-      visibleBranches = allBranches
-      hiddenCount = 0
+    return {
+      repo: g.repo, org: g.org, repoName: g.repoName,
+      allBranches,
+      visibleBranches: allBranches,
+      hiddenCount: 0,
     }
-
-    return { repo: g.repo, org: g.org, repoName: g.repoName, allBranches, visibleBranches, hiddenCount }
   }).filter(g => g.allBranches.length > 0)
 
   // For org grouping, sort by org first then by groupSort within each org
