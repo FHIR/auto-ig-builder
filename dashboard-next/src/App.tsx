@@ -2,8 +2,9 @@ import { useEffect } from 'react'
 import { initData } from './api'
 import { FilterBar } from './components/FilterBar'
 import { BuildTable } from './components/BuildTable'
+import { LLMPromptButton } from './components/LLMPromptButton'
 import { useStore } from './store'
-import type { StatusFilter, SortColumn } from './types'
+import { normalizeConfig } from './presets'
 
 function LoadingStatus() {
   const buildsJsonFetched = useStore(s => s.buildsJsonFetched)
@@ -13,7 +14,6 @@ function LoadingStatus() {
   const { done, total } = useStore(s => s.buildProgress)
 
   if (buildsLoaded && qasLoaded) return null
-
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
   return (
@@ -43,37 +43,56 @@ function LoadingStatus() {
 export default function App() {
   useEffect(() => { initData() }, [])
 
+  // Hydrate from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const q = params.get('q')
-    const status = params.get('status')
-    const days = params.get('days')
-    const sort = params.get('sort')
-    const asc = params.get('asc')
     if (q) useStore.getState().setSearch(q)
-    if (status && ['all', 'success', 'failure'].includes(status))
-      useStore.getState().setStatusFilter(status as StatusFilter)
-    if (days) useStore.getState().setTimeWindowDays(parseInt(days, 10))
-    if (sort && ['repo', 'version', 'date', 'status'].includes(sort))
-      useStore.setState({ sortColumn: sort as SortColumn, sortAsc: asc === '1' })
+
+    const viewParam = params.get('view')
+    if (viewParam) {
+      // Check if it's a known preset id
+      const presets = useStore.getState().presets
+      const preset = presets.find(p => p.id === viewParam)
+      if (preset) {
+        useStore.getState().setViewConfig(viewParam)
+      } else {
+        // Try parsing as JSON config
+        try {
+          const parsed = JSON.parse(viewParam)
+          if (parsed && typeof parsed === 'object' && parsed.groupBy) {
+            useStore.getState().setViewConfigDirect(normalizeConfig(parsed))
+          }
+        } catch {}
+      }
+    }
   }, [])
 
+  // Sync to URL
   useEffect(() => {
-    let prev = { search: '', statusFilter: 'all' as StatusFilter, timeWindowDays: 14, sortColumn: 'date' as SortColumn, sortAsc: false }
+    let prevSearch = ''
+    let prevConfigJson = ''
     return useStore.subscribe(state => {
-      const cur = { search: state.search, statusFilter: state.statusFilter, timeWindowDays: state.timeWindowDays, sortColumn: state.sortColumn, sortAsc: state.sortAsc }
-      if (cur.search === prev.search && cur.statusFilter === prev.statusFilter && cur.timeWindowDays === prev.timeWindowDays && cur.sortColumn === prev.sortColumn && cur.sortAsc === prev.sortAsc) return
-      prev = cur
+      const configJson = JSON.stringify(state.viewConfig)
+      if (state.search === prevSearch && configJson === prevConfigJson) return
+      prevSearch = state.search
+      prevConfigJson = configJson
+
       const params = new URLSearchParams()
-      if (cur.search) params.set('q', cur.search)
-      if (cur.statusFilter !== 'all') params.set('status', cur.statusFilter)
-      if (cur.timeWindowDays !== 14) params.set('days', String(cur.timeWindowDays))
-      if (cur.sortColumn !== 'date' || cur.sortAsc) {
-        params.set('sort', cur.sortColumn)
-        if (cur.sortAsc) params.set('asc', '1')
+      if (state.search) params.set('q', state.search)
+
+      // Check if current config matches a saved preset exactly
+      const matchedPreset = state.presets.find(p => JSON.stringify(p) === configJson)
+      if (matchedPreset) {
+        if (matchedPreset.id !== state.presets[0].id) {
+          params.set('view', matchedPreset.id)
+        }
+      } else {
+        params.set('view', JSON.stringify(state.viewConfig))
       }
+
       const qs = params.toString()
-      window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+      window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
     })
   }, [])
 
@@ -85,7 +104,10 @@ export default function App() {
       <header className="header">
         <div className="header-inner">
           <h1>FHIR IG Builds</h1>
-          <span className="subtitle">build.fhir.org</span>
+          <div className="header-right">
+            <LLMPromptButton />
+            <span className="subtitle">build.fhir.org</span>
+          </div>
         </div>
       </header>
       <div className="container">

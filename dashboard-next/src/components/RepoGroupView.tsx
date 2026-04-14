@@ -1,68 +1,63 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { StatusBadge } from './StatusBadge'
 import { timeago } from '../timeago'
 import { triggerRebuild, isRebuilt } from '../rebuild'
-import type { RepoGroup, BranchRow, StatusFilter } from '../types'
-import { useState } from 'react'
+import type { ViewGroup, BranchRow } from '../types'
 
 interface Props {
-  group: RepoGroup
+  group: ViewGroup
   expanded: boolean
   onToggle: (repo: string) => void
-  cutoff: Date
-  statusFilter: StatusFilter
+  orgHeader?: string
 }
 
-export const RepoGroupView = memo(function RepoGroupView({ group, expanded, onToggle, cutoff, statusFilter }: Props) {
-  // Filter branches: status filter always applies; time filter unless expanded
-  const filteredBranches = group.branches.filter(b => {
-    if (statusFilter === 'success' && b.failing) return false
-    if (statusFilter === 'failure' && !b.failing) return false
-    return true
-  })
-
-  const recentBranches = filteredBranches.filter(b => b.date.getTime() > cutoff.getTime())
-  const visibleBranches = expanded ? filteredBranches : recentBranches
-  const hiddenCount = filteredBranches.length - recentBranches.length
+export const RepoGroupView = memo(function RepoGroupView({ group, expanded, onToggle, orgHeader }: Props) {
+  const branches = expanded ? group.allBranches : group.visibleBranches
+  const hiddenCount = expanded ? 0 : group.hiddenCount
 
   return (
     <>
+      {orgHeader && (
+        <tr className="org-header">
+          <td colSpan={5}>{orgHeader}</td>
+        </tr>
+      )}
       <tr className="group-header">
         <td colSpan={5}>
           <a href={`https://build.fhir.org/ig/${group.org}/${group.repoName}`} target="_blank" rel="noopener">
             <span className="org">{group.org}</span>/<span className="name">{group.repoName}</span>
           </a>
           <span className="group-meta">
-            {group.branches.length} branch{group.branches.length !== 1 ? 'es' : ''}
+            {group.allBranches.length} branch{group.allBranches.length !== 1 ? 'es' : ''}
           </span>
           <a className="link-btn group-link" href={`https://github.com/${group.org}/${group.repoName}`} target="_blank" rel="noopener">gh</a>
         </td>
       </tr>
-      {visibleBranches.map(b => (
+      {branches.map(b => (
         <BranchRowView key={b.branch} branch={b} org={group.org} repoName={group.repoName} />
       ))}
-      {!expanded && hiddenCount > 0 && (
+      {hiddenCount > 0 && (
         <tr className="show-more-row">
           <td colSpan={5}>
             <button className="show-more-btn" onClick={() => onToggle(group.repo)}>
-              show {hiddenCount} older branch{hiddenCount !== 1 ? 'es' : ''}
+              show {hiddenCount} more branch{hiddenCount !== 1 ? 'es' : ''}
             </button>
           </td>
         </tr>
       )}
-      {expanded && hiddenCount > 0 && (
+      {expanded && group.hiddenCount > 0 && (
         <tr className="show-more-row">
           <td colSpan={5}>
             <button className="show-more-btn" onClick={() => onToggle(group.repo)}>
-              hide older branches
+              hide extra branches
             </button>
           </td>
         </tr>
       )}
-      {visibleBranches.length === 0 && !expanded && hiddenCount > 0 && (
+      {branches.length === 0 && hiddenCount > 0 && (
         <tr className="show-more-row">
           <td colSpan={5}>
-            <span className="no-recent">no recent activity &mdash; </span>
+            <span className="no-recent">no matching branches &mdash; </span>
             <button className="show-more-btn" onClick={() => onToggle(group.repo)}>
               show {hiddenCount} branch{hiddenCount !== 1 ? 'es' : ''}
             </button>
@@ -89,8 +84,8 @@ const BranchRowView = memo(function BranchRowView({ branch: b, org, repoName }: 
   return (
     <tr className="branch-row">
       <td className="branch-name-cell">
-          <a href={`https://build.fhir.org/ig/${org}/${repoName}/branches/${branchPath}/`} target="_blank" rel="noopener">{b.branch}</a>
-        </td>
+        <a href={`https://build.fhir.org/ig/${org}/${repoName}/branches/${branchPath}/`} target="_blank" rel="noopener">{b.branch}</a>
+      </td>
       <td className="version-cell">{b.version ?? '\u2014'}</td>
       <td className="date-cell" title={b.date?.toISOString()}>
         {b.date.getTime() > 0 ? timeago(b.date) : '\u2014'}
@@ -100,7 +95,6 @@ const BranchRowView = memo(function BranchRowView({ branch: b, org, repoName }: 
         <div className="link-btns">
           <a className="link-btn" href={`https://build.fhir.org/ig/${org}/${repoName}/branches/${branchPath}/${failPrefix}build.log`} target="_blank" rel="noopener">log</a>
           <a className="link-btn" href={`https://build.fhir.org/ig/${org}/${repoName}/branches/${branchPath}/${failPrefix}${b.failing ? 'output/' : ''}qa.html`} target="_blank" rel="noopener">qa</a>
-          <a className="link-btn" href={`https://build.fhir.org/ig/${org}/${repoName}/branches/${branchPath}/`} target="_blank" rel="noopener">build</a>
           <button className={`link-btn${rebuilt ? ' rebuilt' : ''}`} onClick={handleRebuild} disabled={rebuilt}>
             {rebuilt ? 'sent' : 'rebuild'}
           </button>

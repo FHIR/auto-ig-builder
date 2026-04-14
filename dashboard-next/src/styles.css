@@ -28,7 +28,10 @@ a:hover { text-decoration: underline; }
 .header { background: var(--red-dark); color: #fff; padding: 10px 0; }
 .header-inner { max-width: 1400px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
 .header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.header-right { display: flex; align-items: center; gap: 10px; }
 .header .subtitle { font-size: 13px; opacity: 0.7; }
+.prompt-btn { background: transparent; color: #fff; border-color: rgba(255,255,255,0.3); font-size: 11px; }
+.prompt-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
 /* Container */
 .container { max-width: 1400px; margin: 0 auto; padding: 16px; }
@@ -43,8 +46,51 @@ a:hover { text-decoration: underline; }
 .dot-loading { background: var(--border); animation: pulse 1.5s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+/* Preset bar */
+.filter-bar-wrap { margin-bottom: 12px; }
+.preset-bar { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.preset-btn {
+  padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 500; border: 1px solid var(--border);
+  border-radius: var(--radius); cursor: pointer; background: var(--bg-card); color: var(--fg-muted);
+  transition: all 0.1s;
+}
+.preset-btn:hover { background: var(--hover); color: var(--fg); }
+.preset-btn.active { background: var(--red-dark); color: #fff; border-color: var(--red-dark); }
+.preset-btn-wrap { display: inline-flex; position: relative; }
+.preset-delete {
+  position: absolute; top: -4px; right: -4px; width: 14px; height: 14px;
+  border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card);
+  font-size: 10px; line-height: 1; cursor: pointer; display: none;
+  align-items: center; justify-content: center; color: var(--fg-muted);
+}
+.preset-btn-wrap:hover .preset-delete { display: inline-flex; }
+.preset-delete:hover { background: var(--red-badge-bg); color: var(--red-badge); border-color: var(--red-badge); }
+.save-btn { border-style: dashed; color: var(--green); }
+.save-btn:hover { background: var(--green-bg); }
+.reset-btn { color: var(--fg-muted); font-size: 11px; }
+
+/* View info */
+.view-info { margin-bottom: 8px; font-size: 13px; line-height: 1.4; }
+.view-info-header { display: flex; align-items: baseline; gap: 8px; }
+.view-label { color: var(--fg); font-size: 14px; }
+.view-desc-toggle {
+  font: inherit; font-size: 11px; color: var(--red); background: none;
+  border: none; cursor: pointer; padding: 0;
+}
+.view-desc-toggle:hover { text-decoration: underline; }
+.view-details {
+  margin-top: 6px; padding: 10px 12px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.view-desc { color: var(--fg-muted); margin: 0 0 8px; }
+.view-json {
+  font: 11px/1.4 var(--mono); color: var(--fg-muted); margin: 0;
+  background: var(--bg); padding: 8px; border-radius: var(--radius);
+  overflow-x: auto; max-height: 200px;
+}
+
 /* Filter bar */
-.filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.filter-bar { display: flex; align-items: center; gap: 8px; }
 .filter-input {
   width: 240px; height: 32px; padding: 0 10px; font: inherit; font-size: 13px;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card);
@@ -73,6 +119,12 @@ tbody tr { border-bottom: 1px solid var(--border); transition: background 0.05s;
 tbody tr:last-child { border-bottom: none; }
 td { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
 
+/* Org header (for org grouping) */
+.org-header td {
+  background: var(--red-light); padding: 8px 12px; font-size: 14px; font-weight: 700;
+  color: var(--red-dark); border-bottom: 2px solid var(--border); letter-spacing: -0.01em;
+}
+
 /* Group header */
 .group-header td {
   background: var(--bg); padding: 6px 12px; font-size: 13px;
@@ -86,6 +138,9 @@ td { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
 
 /* Branch rows */
 .branch-row:hover { background: var(--hover); }
+.repo-cell a { color: var(--fg); }
+.repo-cell .org { color: var(--fg-muted); font-size: 12px; }
+.repo-cell .name { font-weight: 500; }
 .branch-name-cell { padding-left: 24px; font-family: var(--mono); font-size: 12px; }
 .version-cell { width: 80px; font-family: var(--mono); font-size: 12px; color: var(--fg-muted); }
 .date-cell { width: 70px; color: var(--fg-muted); }
