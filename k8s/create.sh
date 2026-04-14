@@ -9,7 +9,8 @@ kubectl  -n fhir create secret generic ci-build-keys --from-file=id --from-file=
 kubectl  -n fhir create secret generic fhir-settings --from-file=keyfile.ini --from-file=fhir-settings.json
 
 gcloud compute disks create caddy-cert-disk --size=10GB --zone=us-east1-d
-kubectl  -n fhir create configmap caddy-conf-volume --from-file Caddyfile
+kubectl -n fhir create configmap caddy-conf-volume --from-file Caddyfile --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n fhir create configmap ig-index-volume --from-file=ig-index/index.html --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f ci-build.configmap.yaml
 kubectl apply -f ci-build.deployment.yaml

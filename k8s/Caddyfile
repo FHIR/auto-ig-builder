@@ -55,6 +55,36 @@ build.fhir.org:80, build.fhir.org {
 		import tryall /branches/master/{path}
 	}
 
+	@igIndexRoot {
+		path /ig /ig/ /ig/index.html
+	}
+
+	handle @igIndexRoot {
+		root * /opt/ig-index
+		rewrite * /index.html
+		file_server
+	}
+
+	@igIndexOrg {
+		path_regexp igindexorg ^\/ig\/(?P<org>[A-Za-z0-9](?:-?[A-Za-z0-9])*)(?:\/index\.html|\/)?$
+	}
+
+	handle @igIndexOrg {
+		root * /opt/ig-index
+		rewrite * /index.html
+		file_server
+	}
+
+	@igIndexBranches {
+		path_regexp igindexbranches ^\/ig\/(?P<org>[A-Za-z0-9](?:-?[A-Za-z0-9])*)\/(?P<repo>[^/]+)\/branches(?:\/index\.html|\/)?$
+	}
+
+	handle @igIndexBranches {
+		root * /opt/ig-index
+		rewrite * /index.html
+		file_server
+	}
+
 	@ig {
 		not path_regexp \/branches\/
 		path_regexp ig ^\/ig/(?P<org>[^/]+)\/(?P<repo>[^/]+)\/(?P<rest>.*)

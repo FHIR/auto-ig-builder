@@ -56,7 +56,27 @@ kubectl rollout restart deployment/ci-build-deployment -n fhir
 kubectl rollout status deployment/ci-build-deployment -n fhir
 ```
 
-8. Deploy updates to IG commit trigger
+8. Apply `ci-build` web config updates
+
+Use this when changing `k8s/Caddyfile` or the IG index UI at `k8s/ig-index/index.html`.
+
+```
+cd k8s
+
+kubectl -n fhir create configmap caddy-conf-volume \
+  --from-file=Caddyfile \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n fhir create configmap ig-index-volume \
+  --from-file=ig-index/index.html \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl apply -f ci-build.deployment.yaml
+kubectl rollout restart deployment/ci-build-deployment -n fhir
+kubectl rollout status deployment/ci-build-deployment -n fhir
+```
+
+9. Deploy updates to IG commit trigger
 
 ```
 cd triggers/ig-commit-trigger
@@ -76,7 +96,7 @@ gcloud functions deploy ig-commit-trigger \
 
 Note: Node.js 22 is GA and recommended.
 
-9. Configure or update the 5-minute stale-pin sweep
+10. Configure or update the 5-minute stale-pin sweep
 
 The same deployed `ig-commit-trigger` function also serves a periodic repair path at
 `?action=sweep`. A Cloud Scheduler job should call the trigger every 5 minutes with

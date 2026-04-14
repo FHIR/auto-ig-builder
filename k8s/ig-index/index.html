@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FHIR IG Build Index</title>
+<style>
+:root {
+  --bg: #f3f3f0; --card: #fff; --border: #d1d9e0; --text: #1f2328;
+  --muted: #656d76; --link: #0969da;
+  --green: #1a7f37; --gbg: #dafbe1;
+  --yellow: #9a6700; --ybg: #fff8c5;
+  --red: #cf222e; --rbg: #ffebe9;
+  --focus: #fff8e1; --focusBorder: #e8b931;
+  --fhir-red: #b61e2e;
+  --fhir-ink: #2d3138;
+  --fhir-paper: #f7f7f4;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.4; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.masthead {
+  background: linear-gradient(180deg, #fbfbf8 0%, #f3f2ed 100%);
+  border-bottom: 1px solid #c9c9c3;
+  box-shadow: inset 0 -6px 0 rgba(182,30,46,.2);
+}
+.masthead-top {
+  max-width: 1400px; margin: 0 auto; padding: 18px 16px 16px;
+  display: flex; align-items: center; gap: 22px;
+}
+.brandmark { display: flex; align-items: center; }
+.brandmark img { display: block; height: 68px; width: auto; }
+.brand-copy {
+  min-width: 0; flex: 1;
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+}
+.brand-copy h1 {
+  font-size: 30px; line-height: 1.02; font-weight: 650; color: var(--fhir-ink);
+  letter-spacing: -.02em;
+}
+.brand-copy h1 a { color: inherit; text-decoration: none; }
+.brand-copy .bc {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 13px; color: #6a7078;
+}
+.brand-copy .bc:empty { display: none; }
+.brand-copy .bc a { color: #4a6f94; }
+
+.bar { position: sticky; top: 0; z-index: 99; background: linear-gradient(180deg, #f7f7f3 0%, #f2f2ee 100%); padding: 10px 0 8px; border-bottom: 1px solid var(--border); }
+.bar .inner { max-width: 1400px; margin: 0 auto; padding: 0 16px; }
+.search-shell { display: flex; flex-direction: column; gap: 6px; }
+.search-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.search-main { position: relative; flex: 1; min-width: 240px; }
+.qbox {
+  width: 100%; padding: 9px 12px; border: 1px solid #b9c8d7; border-radius: 9px;
+  font-size: 15px; background: var(--card); outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+.qbox:focus { border-color: #5a97e3; box-shadow: 0 0 0 4px rgba(88,151,227,.14); }
+.st {
+  display: inline-flex; align-items: center; gap: 10px; align-self: center; white-space: nowrap;
+  font-size: 14px; color: var(--muted); background: rgba(255,255,255,.78);
+  border: 1px solid #d8e0e8; border-radius: 999px; padding: 8px 14px;
+  box-shadow: 0 1px 2px rgba(31,35,40,.04);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+.st-metric { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.st-sep { color: #8b949e; }
+.st b { color: var(--text); font-size: 15px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+.suggestions {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 110;
+  display: flex; flex-direction: column; gap: 0; min-height: 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 16px 30px rgba(31,35,40,.12), 0 2px 8px rgba(31,35,40,.08);
+  overflow: hidden; max-height: min(52vh, 420px); overflow-y: auto;
+}
+.chip-row[hidden], .suggestions[hidden] { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
+  border-radius: 999px; border: 1px solid #bfd8ff; background: #eaf2ff;
+  color: #0b3d91; font-size: 12px; line-height: 1;
+}
+.chip-key { font-weight: 600; color: #0a57c4; }
+.chip-remove {
+  border: none; background: transparent; color: inherit; cursor: pointer;
+  font: inherit; line-height: 1; padding: 0; opacity: .8;
+}
+.chip-remove:hover { opacity: 1; }
+.suggestion {
+  border: none; border-top: 1px solid #edf0f2; background: var(--card); color: var(--muted);
+  padding: 8px 11px; font-size: 12px; cursor: pointer; text-align: left;
+}
+.suggestion:first-child { border-top: none; }
+.suggestion:hover { color: var(--text); background: #f8fbff; }
+.suggestion.active { background: #eaf2ff; color: var(--text); }
+.suggestion strong { color: var(--text); }
+.suggestion small { color: var(--muted); margin-left: 8px; }
+.hint-row { font-size: 11px; color: var(--muted); min-height: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+
+@media (max-width: 960px) {
+  .masthead-top { align-items: center; gap: 16px; }
+  .brandmark img { height: 56px; }
+  .brand-copy h1 { font-size: 26px; }
+  .search-top { align-items: stretch; }
+  .search-main { min-width: 100%; }
+  .st { width: fit-content; margin-left: auto; }
+}
+
+@media (max-width: 640px) {
+  .masthead-top { gap: 12px; align-items: center; }
+  .brandmark img { height: 42px; }
+  .brand-copy h1 { font-size: 20px; }
+  .st {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    border-radius: 12px;
+    white-space: normal;
+  }
+}
+
+.wrap { max-width: 1400px; margin: 0 auto; padding: 4px 16px 40px; }
+
+.org { margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); overflow: hidden; scroll-margin-top: 80px; }
+.oh { display: flex; align-items: center; gap: 8px; padding: 5px 12px; background: #f6f8fa; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; font-size: 14px; font-weight: 600; }
+.oh:hover { background: #eef1f4; }
+.oh .ch { font-size: 9px; color: var(--muted); transition: transform .12s; display: inline-block; }
+.org.shut .ch { transform: rotate(-90deg); }
+.org.shut .ob { display: none; }
+.oh .om { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: auto; }
+.oav { width: 22px; height: 22px; border-radius: 4px; vertical-align: middle; background: #eee; }
+
+.repo-hdr { padding: 6px 12px 4px; border-bottom: 1px solid #e8ecf0; background: #f9fafb; scroll-margin-top: 80px; }
+.rn { font-weight: 600; font-size: 14px; }
+.rn a { color: var(--link); }
+.repo-meta { font-size: 12px; color: var(--muted); margin-left: 10px; }
+.repo-tags { display: inline-flex; gap: 8px; margin-left: 10px; font-size: 12px; color: var(--muted); vertical-align: baseline; }
+.repo-tags span { white-space: nowrap; }
+
+.bt { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.bt td { padding: 2px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+.bt tr:last-child td { border-bottom: none; }
+.bt tr:hover { background: #f8f9fb; }
+
+col.col-status { width: 76px; }
+col.col-built { width: 48px; }
+
+.bn { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 12px; padding-left: 8px; }
+.bn-def { font-weight: 600; color: var(--text); }
+.bn-other { color: var(--muted); }
+.bn a { color: inherit; }
+.bn a:hover { color: var(--link); }
+
+.badge { display: inline-block; padding: 0 5px; border-radius: 10px; font-size: 11px; font-weight: 500; line-height: 17px; white-space: nowrap; }
+.bg { background: var(--gbg); color: var(--green); }
+.by { background: var(--ybg); color: var(--yellow); }
+.br { background: var(--rbg); color: var(--red); }
+
+.tt { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+.loading { text-align: center; padding: 60px; color: var(--muted); }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--link); border-radius: 50%; animation: sp .5s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-top">
+    <a class="brandmark" href="/ig/" aria-label="FHIR IG Build Index home">
+      <img src="https://hl7.org/fhir/R4/assets/images/fhir-logo-www.png" alt="FHIR Release 4">
+    </a>
+    <div class="brand-copy">
+      <h1><a href="/ig/">IG Build Index</a></h1>
+      <div class="bc" id="bc"></div>
+    </div>
+  </div>
+</header>
+<div class="bar"><div class="inner">
+  <div class="search-shell">
+    <div class="search-top">
+      <div class="search-main">
+        <input class="qbox" id="q" placeholder="Filter repos... e.g. org:HL7 repo:cgm" autocomplete="off" spellcheck="false">
+        <div class="suggestions" id="sg" hidden></div>
+      </div>
+      <div class="st" id="st"></div>
+    </div>
+    <div class="chip-row" id="chips" hidden></div>
+    <div class="hint-row" id="sh"></div>
+  </div>
+</div></div>
+<div class="wrap">
+  <div class="loading" id="ld"><div class="spinner"></div><br>Loading...</div>
+  <div id="out"></div>
+</div>
+<script>
+const DATA_URL = "/ig/qas.json";
+const DEFAULT_BRANCHES = new Set(["__default", "master", "main"]);
+const FILTER_KEYS = new Set(["org", "repo", "branch", "package", "status"]);
+const avatarUrl = (org) => `https://avatars.githubusercontent.com/${encodeURIComponent(org)}?size=48`;
+const encSeg = (value) => encodeURIComponent(value);
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function relativeTime(iso) {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return "";
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo`;
+  return `${Math.floor(months / 12)}y`;
+}
+
+function statusBadge(entry) {
+  const errors = entry.errs || 0;
+  const warnings = entry.warnings || 0;
+  if (errors) return `<span class="badge br">${errors} err</span>`;
+  if (warnings) return `<span class="badge by">${warnings} warn</span>`;
+  return '<span class="badge bg">ok</span>';
+}
+
+function statusName(entry) {
+  if ((entry.errs || 0) > 0) return "error";
+  if ((entry.warnings || 0) > 0) return "warn";
+  return "ok";
+}
+
+function branchSort(a, b) {
+  const aDefault = DEFAULT_BRANCHES.has(a);
+  const bDefault = DEFAULT_BRANCHES.has(b);
+  if (aDefault !== bDefault) return bDefault - aDefault;
+  return a.toLowerCase().localeCompare(b.toLowerCase());
+}
+
+function safeId(...parts) {
+  return parts.join("_").replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function scope() {
+  const p = location.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  const i = p.indexOf("ig");
+  if (i < 0) return { org: null, repo: null };
+  const rest = p.slice(i + 1).filter((segment) => segment !== "index.html" && segment !== "branches");
+  return { org: rest[0] || null, repo: rest[1] || null };
+}
+
+function initialFilter(scopeInfo) {
+  const filters = [];
+  if (scopeInfo.org) filters.push(`org:${scopeInfo.org}`);
+  if (scopeInfo.repo) filters.push(`repo:${scopeInfo.repo}`);
+  return filters.join(" ");
+}
+
+function canonicalKey(key) {
+  return key === "pkg" ? "package" : key;
+}
+
+function splitTokens(input) {
+  return (input || "").trim().split(/\s+/).filter(Boolean);
+}
+
+function parseToken(token) {
+  const raw = (token || "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^([a-z]+):(.*)$/i);
+  if (!match) {
+    return {
+      kind: "text",
+      raw,
+      valueLower: raw.toLowerCase(),
+    };
+  }
+
+  const key = canonicalKey(match[1].toLowerCase());
+  const value = match[2].trim();
+  if (!FILTER_KEYS.has(key)) {
+    return {
+      kind: "text",
+      raw,
+      valueLower: raw.toLowerCase(),
+    };
+  }
+  if (!value) {
+    return {
+      kind: "pending",
+      key,
+      raw: `${key}:`,
+    };
+  }
+  return {
+    kind: "tag",
+    key,
+    raw: `${key}:${value}`,
+    value,
+    valueLower: value.toLowerCase(),
+  };
+}
+
+function suggestionLabel(key, item) {
+  return `${key}:${item.label}`;
+}
+
+function chipSignature(chip) {
+  return chip.kind === "tag" ? `${chip.key}:${chip.valueLower}` : `text:${chip.valueLower}`;
+}
+
+function taggedMatch(values, candidate, universe) {
+  return values.length === 0 || values.some((value) => (universe.has(value) ? candidate === value : candidate.startsWith(value)));
+}
+
+function buildParsedFilter(chips, input) {
+  const parsed = {
+    org: [],
+    repo: [],
+    branch: [],
+    package: [],
+    status: [],
+    text: [],
+    pending: new Set(),
+  };
+
+  const addParsedToken = (token) => {
+    if (!token) return;
+    if (token.kind === "pending") {
+      parsed.pending.add(token.key);
+      return;
+    }
+    if (token.kind === "tag") {
+      parsed[token.key].push(token.valueLower);
+      return;
+    }
+    parsed.text.push(token.valueLower);
+  };
+
+  for (const chip of chips) addParsedToken(chip);
+  for (const token of splitTokens(input).map(parseToken)) addParsedToken(token);
+  return parsed;
+}
+
+function currentInputToken(input) {
+  const raw = (input || "").trim();
+  if (!raw || /\s/.test(raw)) return null;
+  return parseToken(raw);
+}
+
+function branchMatches(parsed, branchModel, index) {
+  if (!taggedMatch(parsed.branch, branchModel.lower, index.branchSet)) return false;
+  if (!taggedMatch(parsed.status, branchModel.status, index.statusSet)) return false;
+  return true;
+}
+
+function repoMatches(parsed, orgModel, repoModel, index) {
+  if (!taggedMatch(parsed.org, orgModel.lower, index.orgSet)) return false;
+  if (!taggedMatch(parsed.repo, repoModel.lower, index.repoSet)) return false;
+  if (!taggedMatch(parsed.package, repoModel.packageIdLower, index.packageSet)) return false;
+  if (parsed.branch.length > 0 || parsed.status.length > 0) {
+    const hasMatchingBranch = repoModel.branchModels.some((branchModel) => branchMatches(parsed, branchModel, index));
+    if (!hasMatchingBranch) return false;
+  }
+
+  if (parsed.text.length > 0) {
+    if (!parsed.text.every((term) => repoModel.searchText.includes(term))) return false;
+  }
+
+  return true;
+}
+
+function parseData(entries) {
+  const orgs = {};
+  for (const entry of entries) {
+    const match = (entry.repo || "").match(/^([^/]+)\/([^/]+)\/branches\/([^/]+)\//);
+    if (!match) continue;
+    const [, org, repo, branch] = match;
+    orgs[org] ||= {};
+    orgs[org][repo] ||= { branches: {}, best: null };
+    const repoEntry = orgs[org][repo];
+    repoEntry.branches[branch] = entry;
+    const isDefault = DEFAULT_BRANCHES.has(branch);
+    if (!repoEntry.best || (isDefault && !repoEntry.best._default)) {
+      repoEntry.best = { ...entry, _default: isDefault };
+    }
+  }
+  return orgs;
+}
+
+function prepareData(orgs) {
+  const index = {
+    org: [],
+    repo: [],
+    branch: [],
+    package: [],
+    status: [
+      { label: "ok", valueLower: "ok" },
+      { label: "warn", valueLower: "warn" },
+      { label: "error", valueLower: "error" },
+    ],
+    orgSet: new Set(),
+    repoSet: new Set(),
+    branchSet: new Set(),
+    packageSet: new Set(),
+    statusSet: new Set(["ok", "warn", "error"]),
+    orgRepoMap: new Map(),
+  };
+
+  const addIndexValue = (key, raw, targetList = index[key]) => {
+    const label = (raw || "").trim();
+    const valueLower = label.toLowerCase();
+    const setName = `${key}Set`;
+    if (!label || index[setName].has(valueLower)) return;
+    index[setName].add(valueLower);
+    targetList.push({ label, valueLower });
+  };
+
+  const orgModels = Object.keys(orgs).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).map((orgName) => {
+    addIndexValue("org", orgName);
+    const orgRepoSuggestions = [];
+    const repos = Object.keys(orgs[orgName]).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).map((repoName) => {
+      const repoInfo = orgs[orgName][repoName];
+      const best = repoInfo.best || Object.values(repoInfo.branches)[0];
+      addIndexValue("repo", repoName);
+      addIndexValue("repo", repoName, orgRepoSuggestions);
+      addIndexValue("package", best["package-id"] || "");
+      const branchModels = Object.keys(repoInfo.branches).sort(branchSort).map((branchName) => {
+        const entry = repoInfo.branches[branchName];
+        addIndexValue("branch", branchName);
+        return {
+          name: branchName,
+          lower: branchName.toLowerCase(),
+          entry,
+          status: statusName(entry),
+          isDefault: DEFAULT_BRANCHES.has(branchName),
+          id: safeId("b", orgName, repoName, branchName),
+        };
+      });
+      return {
+        name: repoName,
+        lower: repoName.toLowerCase(),
+        best,
+        packageIdLower: (best["package-id"] || "").toLowerCase(),
+        searchText: [
+          orgName,
+          repoName,
+          best.title || "",
+          best["package-id"] || "",
+          best.name || "",
+          ...branchModels.map((branch) => branch.name),
+        ].join(" ").toLowerCase(),
+        branchModels,
+        id: safeId("r", orgName, repoName),
+      };
+    });
+    return {
+      name: orgName,
+      lower: orgName.toLowerCase(),
+      repos,
+      id: safeId("o", orgName),
+      countId: safeId("oc", orgName),
+    };
+  });
+  for (const suggestions of index.orgRepoMap.values()) {
+    suggestions.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
+  }
+  index.repo.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
+  index.org.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
+  index.branch.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
+  index.package.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase()));
+  orgModels.forEach((orgModel) => {
+    const suggestions = [];
+    for (const repoModel of orgModel.repos) {
+      const key = repoModel.lower;
+      if (suggestions.some((repo) => repo.valueLower === key)) continue;
+      suggestions.push({ label: repoModel.name, valueLower: key });
+    }
+    index.orgRepoMap.set(orgModel.lower, suggestions);
+  });
+  return { orgs: orgModels, index };
+}
+
+function renderMarkup(preparedOrgs, sc) {
+  const colgroup = '<colgroup><col class="col-branch"><col class="col-status"><col class="col-built"></colgroup>';
+  let html = "";
+  for (const orgModel of preparedOrgs) {
+    let inner = "";
+
+    for (const repoModel of orgModel.repos) {
+      const best = repoModel.best;
+      const repoHref = `/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/`;
+
+      let header = `<div class="repo-hdr" id="${repoModel.id}">`;
+      header += `<span class="rn"><a href="${repoHref}">${esc(repoModel.name)}</a></span>`;
+      header += '<span class="repo-tags">';
+      if (best["ig-ver"]) header += `<span>v${esc(best["ig-ver"])}</span>`;
+      if (best.version) header += `<span>FHIR R${esc(best.version.split(".")[0])}</span>`;
+      if (best["package-id"]) header += `<span>${esc(best["package-id"])}</span>`;
+      header += `<span>${repoModel.branchModels.length} branch${repoModel.branchModels.length !== 1 ? "es" : ""}</span>`;
+      header += "</span>";
+      if (best.title) header += `<span class="repo-meta">${esc(best.title)}</span>`;
+      header += "</div>";
+
+      let rows = "";
+      for (const branchModel of repoModel.branchModels) {
+        rows += `<tr id="${branchModel.id}"><td><span class="bn ${branchModel.isDefault ? "bn-def" : "bn-other"}"><a href="/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/branches/${encSeg(branchModel.name)}/">${esc(branchModel.name)}</a></span></td>`;
+        rows += `<td>${statusBadge(branchModel.entry)}</td>`;
+        rows += `<td class="tt">${relativeTime(branchModel.entry.dateISO8601)}</td></tr>`;
+      }
+
+      inner += `<div class="repo-block" id="${repoModel.id}_block">${header}<table class="bt">${colgroup}${rows}</table></div>`;
+    }
+
+    html += `<div class="org" id="${orgModel.id}">`;
+    html += '<div class="oh" onclick="this.parentElement.classList.toggle(\'shut\')">';
+    html += `<span class="ch">▼</span><img class="oav" src="${avatarUrl(orgModel.name)}" alt="" loading="lazy" onerror="this.style.display='none'"> ${esc(orgModel.name)} <span class="om" id="${orgModel.countId}">${orgModel.repos.length} repo${orgModel.repos.length !== 1 ? "s" : ""}</span></div>`;
+    html += `<div class="ob">${inner}</div></div>`;
+  }
+  return html;
+}
+
+function attachRefs(preparedOrgs) {
+  for (const orgModel of preparedOrgs) {
+    orgModel.el = document.getElementById(orgModel.id);
+    orgModel.countEl = document.getElementById(orgModel.countId);
+    for (const repoModel of orgModel.repos) {
+      repoModel.blockEl = document.getElementById(`${repoModel.id}_block`);
+      for (const branchModel of repoModel.branchModels) {
+        branchModel.rowEl = document.getElementById(branchModel.id);
+      }
+    }
+  }
+}
+
+function setHidden(el, hidden) {
+  if (el && el.hidden !== hidden) el.hidden = hidden;
+}
+
+function renderStats(orgCount, repoCount, buildCount) {
+  return [
+    `<span class="st-metric"><b>${orgCount}</b><span>orgs</span></span>`,
+    '<span class="st-sep">&middot;</span>',
+    `<span class="st-metric"><b>${repoCount}</b><span>repos</span></span>`,
+    '<span class="st-sep">&middot;</span>',
+    `<span class="st-metric"><b>${buildCount}</b><span>builds</span></span>`,
+  ].join("");
+}
+
+async function main() {
+  let data;
+  try {
+    const response = await fetch(DATA_URL);
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    data = await response.json();
+  } catch (error) {
+    document.getElementById("ld").textContent = `Failed: ${error.message}`;
+    return;
+  }
+
+  const orgs = parseData(data);
+  const prepared = prepareData(orgs);
+  const preparedOrgs = prepared.orgs;
+  const filterIndex = prepared.index;
+  const sc = scope();
+  const out = document.getElementById("out");
+  out.innerHTML = renderMarkup(preparedOrgs, sc);
+  attachRefs(preparedOrgs);
+  const q = document.getElementById("q");
+  const chipsEl = document.getElementById("chips");
+  const suggestionsEl = document.getElementById("sg");
+  const hintEl = document.getElementById("sh");
+
+  let bc = "";
+  if (sc.org) {
+    bc = '<a href="/ig/">all</a> / ';
+    if (sc.repo) bc += `<a href="/ig/${encSeg(sc.org)}/">${esc(sc.org)}</a> / ${esc(sc.repo)}`;
+    else bc += esc(sc.org);
+  }
+  document.getElementById("bc").innerHTML = bc;
+
+  let repoCount = 0;
+  let buildCount = 0;
+  for (const orgModel of preparedOrgs) {
+    repoCount += orgModel.repos.length;
+    for (const repoModel of orgModel.repos) buildCount += repoModel.branchModels.length;
+  }
+  document.getElementById("st").innerHTML = renderStats(preparedOrgs.length, repoCount, buildCount);
+
+  const state = {
+    chips: splitTokens(initialFilter(sc)).map(parseToken).filter((token) => token && token.kind !== "pending"),
+    activeSuggestion: 0,
+  };
+  let queuedRefresh = 0;
+
+  function queueRefresh() {
+    cancelAnimationFrame(queuedRefresh);
+    queuedRefresh = requestAnimationFrame(() => {
+      queuedRefresh = 0;
+      refresh();
+    });
+  }
+
+function suggestionSource(key, parsed) {
+  if (key === "repo" && parsed.org.length === 1 && filterIndex.orgSet.has(parsed.org[0])) {
+    return filterIndex.orgRepoMap.get(parsed.org[0]) || [];
+  }
+  return filterIndex[key] || [];
+}
+
+function suggestionsForCurrentInput(input, parsed) {
+  const token = currentInputToken(input);
+  if (!token || token.kind !== "pending" && token.kind !== "tag") return [];
+  if (!FILTER_KEYS.has(token.key)) return [];
+  if (token.kind === "pending") return suggestionSource(token.key, parsed).slice(0, 10);
+  const prefix = token.kind === "tag" ? token.valueLower : "";
+  const used = new Set(state.chips.filter((chip) => chip.kind === "tag" && chip.key === token.key).map((chip) => chip.valueLower));
+  if (token.kind === "tag" && used.has(token.valueLower)) return [];
+  return suggestionSource(token.key, parsed)
+      .filter((item) => !used.has(item.valueLower) && (prefix === "" || item.valueLower.startsWith(prefix)))
+      .slice(0, 10);
+}
+
+  function renderChips() {
+    chipsEl.textContent = "";
+    chipsEl.hidden = state.chips.length === 0;
+    for (const [idx, chip] of state.chips.entries()) {
+      const chipEl = document.createElement("span");
+      chipEl.className = "chip";
+      const label = document.createElement("span");
+      if (chip.kind === "tag") {
+        const keyEl = document.createElement("span");
+        keyEl.className = "chip-key";
+        keyEl.textContent = `${chip.key}:`;
+        const valueEl = document.createElement("span");
+        valueEl.textContent = chip.value;
+        label.appendChild(keyEl);
+        label.appendChild(valueEl);
+      } else {
+        label.textContent = chip.raw;
+      }
+      const remove = document.createElement("button");
+      remove.className = "chip-remove";
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Remove ${chip.raw}`);
+      remove.textContent = "×";
+      remove.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+      });
+      remove.addEventListener("click", () => {
+        state.chips.splice(idx, 1);
+        queueRefresh();
+      });
+      chipEl.appendChild(label);
+      chipEl.appendChild(remove);
+      chipsEl.appendChild(chipEl);
+    }
+  }
+
+  function renderSuggestions(input, parsed) {
+    const suggestions = suggestionsForCurrentInput(input, parsed);
+    if (state.activeSuggestion >= suggestions.length) state.activeSuggestion = 0;
+    suggestionsEl.textContent = "";
+    suggestionsEl.hidden = suggestions.length === 0;
+    for (const [idx, item] of suggestions.entries()) {
+      const token = currentInputToken(input);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `suggestion${idx === state.activeSuggestion ? " active" : ""}`;
+      const strong = document.createElement("strong");
+      strong.textContent = `${token.key}:`;
+      button.appendChild(strong);
+      button.appendChild(document.createTextNode(item.label));
+      if (token.kind === "pending") {
+        const note = document.createElement("small");
+        note.textContent = "click or Tab to add";
+        button.appendChild(note);
+      }
+      button.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        commitSuggestion(token.key, item);
+      });
+      suggestionsEl.appendChild(button);
+    }
+
+    const token = currentInputToken(input);
+    const article = token && /^[aeiou]/i.test(token.key) ? "an" : "a";
+    if (token && FILTER_KEYS.has(token.key)) {
+      hintEl.textContent = suggestions.length > 0
+        ? token.kind === "pending"
+          ? `Pick ${article} ${token.key} filter directly, or keep typing to narrow the list.`
+          : "Tab, Enter, or click to commit a suggestion. Space commits the typed token."
+        : token.kind === "pending"
+          ? `Keep typing after ${token.key}: to search ${token.key} values.`
+          : "Space, Tab, or blur commits the current token as a chip.";
+    } else {
+      hintEl.textContent = state.chips.length > 0
+        ? "Backspace on an empty box pulls the last chip back into the input."
+        : "Type plain text or tagged filters like org:HL7 repo:cgm.";
+    }
+  }
+
+  function commitChip(chip) {
+    if (!chip || chip.kind === "pending") return false;
+    const signature = chipSignature(chip);
+    if (state.chips.some((existing) => chipSignature(existing) === signature)) return false;
+    state.chips.push(chip);
+    return true;
+  }
+
+  function commitSuggestion(key, item) {
+    commitChip({
+      kind: "tag",
+      key,
+      raw: suggestionLabel(key, item),
+      value: item.label,
+      valueLower: item.valueLower,
+    });
+    q.value = "";
+    state.activeSuggestion = 0;
+    queueRefresh();
+    q.focus();
+  }
+
+  function commitInputTokens(commitTrailingPartial) {
+    const raw = q.value;
+    const endedWithBoundary = /\s$/.test(raw);
+    const tokens = splitTokens(raw);
+    if (tokens.length === 0) {
+      q.value = "";
+      return false;
+    }
+    const commitCount = endedWithBoundary || commitTrailingPartial ? tokens.length : Math.max(0, tokens.length - 1);
+    if (commitCount === 0) return false;
+    let changed = false;
+    for (const token of tokens.slice(0, commitCount)) {
+      changed = commitChip(parseToken(token)) || changed;
+    }
+    q.value = endedWithBoundary || commitTrailingPartial ? "" : tokens[tokens.length - 1];
+    state.activeSuggestion = 0;
+    return changed;
+  }
+
+  function applyFilter(parsed) {
+    const hasBranchScopedFilter = sc.repo || parsed.repo.length > 0 || parsed.branch.length > 0 || parsed.status.length > 0;
+    let shownOrgCount = 0;
+    let shownRepoCount = 0;
+    let shownBranchCount = 0;
+
+    for (const orgModel of preparedOrgs) {
+      let visibleRepoCount = 0;
+
+      for (const repoModel of orgModel.repos) {
+        if (!repoMatches(parsed, orgModel, repoModel, filterIndex)) {
+          setHidden(repoModel.blockEl, true);
+          continue;
+        }
+        let visibleBranchCount = 0;
+        for (const branchModel of repoModel.branchModels) {
+          const visible = hasBranchScopedFilter ? branchMatches(parsed, branchModel, filterIndex) : true;
+          setHidden(branchModel.rowEl, !visible);
+          if (visible) visibleBranchCount += 1;
+        }
+        const repoVisible = visibleBranchCount > 0;
+        setHidden(repoModel.blockEl, !repoVisible);
+        if (!repoVisible) continue;
+        visibleRepoCount += 1;
+        shownRepoCount += 1;
+        shownBranchCount += visibleBranchCount;
+      }
+
+      const orgVisible = visibleRepoCount > 0;
+      setHidden(orgModel.el, !orgVisible);
+      if (!orgVisible) continue;
+      shownOrgCount += 1;
+      if (orgModel.countEl) {
+        orgModel.countEl.textContent = `${visibleRepoCount} repo${visibleRepoCount !== 1 ? "s" : ""}`;
+      }
+    }
+
+    out.querySelector(".no-matches")?.remove();
+    if (shownRepoCount === 0) {
+      const empty = document.createElement("p");
+      empty.className = "no-matches";
+      empty.style.padding = "20px";
+      empty.style.color = "var(--muted)";
+      empty.textContent = "No matches.";
+      out.appendChild(empty);
+    }
+    document.getElementById("st").innerHTML = renderStats(shownOrgCount, shownRepoCount, shownBranchCount);
+  }
+
+  function refresh() {
+    const parsed = buildParsedFilter(state.chips, q.value);
+    renderChips();
+    renderSuggestions(q.value, parsed);
+    applyFilter(parsed);
+  }
+
+  document.getElementById("ld").style.display = "none";
+  q.value = "";
+  refresh();
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  q.focus({ preventScroll: true });
+
+  let pendingFrame = 0;
+  q.addEventListener("input", () => {
+    commitInputTokens(false);
+    cancelAnimationFrame(pendingFrame);
+    pendingFrame = requestAnimationFrame(refresh);
+  });
+
+  q.addEventListener("blur", () => {
+    commitInputTokens(true);
+    refresh();
+  });
+
+  q.addEventListener("keydown", (event) => {
+    const parsed = buildParsedFilter(state.chips, q.value);
+    const suggestions = suggestionsForCurrentInput(q.value, parsed);
+
+    if (event.key === "ArrowDown" && suggestions.length > 0) {
+      event.preventDefault();
+      state.activeSuggestion = (state.activeSuggestion + 1) % suggestions.length;
+      renderSuggestions(q.value, parsed);
+      return;
+    }
+    if (event.key === "ArrowUp" && suggestions.length > 0) {
+      event.preventDefault();
+      state.activeSuggestion = (state.activeSuggestion + suggestions.length - 1) % suggestions.length;
+      renderSuggestions(q.value, parsed);
+      return;
+    }
+    if ((event.key === "Enter" || event.key === "Tab") && suggestions.length > 0) {
+      event.preventDefault();
+      const token = currentInputToken(q.value);
+      commitSuggestion(token.key, suggestions[state.activeSuggestion]);
+      return;
+    }
+    if (event.key === " " && q.value.trim()) {
+      event.preventDefault();
+      commitInputTokens(true);
+      refresh();
+      return;
+    }
+    if ((event.key === "Enter" || event.key === "Tab") && q.value.trim()) {
+      event.preventDefault();
+      commitInputTokens(true);
+      refresh();
+      return;
+    }
+    if (event.key === "Backspace" && !q.value && state.chips.length > 0) {
+      const chip = state.chips.pop();
+      q.value = chip.raw;
+      state.activeSuggestion = 0;
+      queueRefresh();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "/" && document.activeElement !== q) {
+      event.preventDefault();
+      q.focus();
+    }
+    if (event.key === "Escape") {
+      q.blur();
+      if (q.value || state.chips.length > 0) {
+        q.value = "";
+        state.chips = splitTokens(initialFilter(sc)).map(parseToken).filter((token) => token && token.kind !== "pending");
+        refresh();
+      }
+    }
+  });
+
+  window.applyIgIndexFilter = (query) => {
+    state.chips = [];
+    q.value = query || "";
+    commitInputTokens(true);
+    refresh();
+  };
+}
+
+main();
+</script>
+</body>
+</html>

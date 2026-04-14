@@ -19,7 +19,7 @@ spec:
         - name: BUILD_NUMBER
           value: "1"
         - name: AUTOCLEAN_EXEMPTION_REGEX
-          value: ./\(HL7\|FHIR\|IHE\|argonautproject\)/[^/]*/branches/\(main\|master\)
+          value: ./\(HL7\|FHIR\|IHE\|CodeX-HL7-FHIR-Accelerator\|argonautproject\)/[^/]*/branches/\(main\|master\)
         - name: SSH_AUTHORIZED_KEY
           valueFrom:
             configMapKeyRef:
@@ -37,6 +37,9 @@ spec:
         - name: fhir-ci-build-disk
           mountPath: /var/www
           subPath: www
+        - name: ig-index-volume
+          mountPath: /opt/ig-index
+          readOnly: true
         - name: caddy-cert-disk
           mountPath: /data
         - name: caddy-conf-volume
@@ -68,3 +71,7 @@ spec:
           defaultMode: 420
           name: caddy-conf-volume
         name: caddy-conf-volume
+      - configMap:
+          defaultMode: 420
+          name: ig-index-volume
+        name: ig-index-volume
