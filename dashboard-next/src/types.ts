@@ -17,6 +17,7 @@ export interface Build {
 
 export interface QA {
   repo: string
+  branch: string
   master: boolean
   failure: boolean
   date: Date
@@ -25,16 +26,20 @@ export interface QA {
   [key: string]: unknown
 }
 
-export interface MergedRow {
-  org: string
-  repoName: string
-  repo: string
+export interface BranchRow {
+  branch: string
   date: Date
   version: string | null
-  success: boolean
-  build: Build | undefined
+  failing: boolean
   qa: QA | undefined
-  branches: Branch[]
+}
+
+export interface RepoGroup {
+  repo: string
+  org: string
+  repoName: string
+  latestDate: Date
+  branches: BranchRow[]
 }
 
 export type SortColumn = 'repo' | 'version' | 'date' | 'status'

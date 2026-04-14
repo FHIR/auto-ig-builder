@@ -47,24 +47,27 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const q = params.get('q')
     const status = params.get('status')
+    const days = params.get('days')
     const sort = params.get('sort')
     const asc = params.get('asc')
     if (q) useStore.getState().setSearch(q)
     if (status && ['all', 'success', 'failure'].includes(status))
       useStore.getState().setStatusFilter(status as StatusFilter)
+    if (days) useStore.getState().setTimeWindowDays(parseInt(days, 10))
     if (sort && ['repo', 'version', 'date', 'status'].includes(sort))
       useStore.setState({ sortColumn: sort as SortColumn, sortAsc: asc === '1' })
   }, [])
 
   useEffect(() => {
-    let prev = { search: '', statusFilter: 'all' as StatusFilter, sortColumn: 'date' as SortColumn, sortAsc: false }
+    let prev = { search: '', statusFilter: 'all' as StatusFilter, timeWindowDays: 14, sortColumn: 'date' as SortColumn, sortAsc: false }
     return useStore.subscribe(state => {
-      const cur = { search: state.search, statusFilter: state.statusFilter, sortColumn: state.sortColumn, sortAsc: state.sortAsc }
-      if (cur.search === prev.search && cur.statusFilter === prev.statusFilter && cur.sortColumn === prev.sortColumn && cur.sortAsc === prev.sortAsc) return
+      const cur = { search: state.search, statusFilter: state.statusFilter, timeWindowDays: state.timeWindowDays, sortColumn: state.sortColumn, sortAsc: state.sortAsc }
+      if (cur.search === prev.search && cur.statusFilter === prev.statusFilter && cur.timeWindowDays === prev.timeWindowDays && cur.sortColumn === prev.sortColumn && cur.sortAsc === prev.sortAsc) return
       prev = cur
       const params = new URLSearchParams()
       if (cur.search) params.set('q', cur.search)
       if (cur.statusFilter !== 'all') params.set('status', cur.statusFilter)
+      if (cur.timeWindowDays !== 14) params.set('days', String(cur.timeWindowDays))
       if (cur.sortColumn !== 'date' || cur.sortAsc) {
         params.set('sort', cur.sortColumn)
         if (cur.sortAsc) params.set('asc', '1')

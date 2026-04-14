@@ -1,15 +1,9 @@
 import { useMemo, useCallback } from 'react'
 import { useStore } from '../store'
-import { mergeData } from '../merge'
-import { BuildRow } from './BuildRow'
-import type { SortColumn } from '../types'
+import { mergeGroupedData } from '../merge'
+import { RepoGroupView } from './RepoGroupView'
 
-const columns: { key: SortColumn; label: string }[] = [
-  { key: 'repo', label: 'IG' },
-  { key: 'version', label: 'Version' },
-  { key: 'date', label: 'Date' },
-  { key: 'status', label: 'Status' },
-]
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export function BuildTable() {
   const builds = useStore(s => s.builds)
@@ -17,74 +11,70 @@ export function BuildTable() {
   const branches = useStore(s => s.branches)
   const search = useStore(s => s.search)
   const statusFilter = useStore(s => s.statusFilter)
-  const sortColumn = useStore(s => s.sortColumn)
-  const sortAsc = useStore(s => s.sortAsc)
-  const toggleSort = useStore(s => s.toggleSort)
-  const expandedRow = useStore(s => s.expandedRow)
-  const toggleExpanded = useStore(s => s.toggleExpanded)
+  const timeWindowDays = useStore(s => s.timeWindowDays)
+  const expandedRepos = useStore(s => s.expandedRepos)
+  const toggleRepoExpanded = useStore(s => s.toggleRepoExpanded)
 
-  const onToggle = useCallback((repo: string) => toggleExpanded(repo), [toggleExpanded])
+  const onToggle = useCallback((repo: string) => toggleRepoExpanded(repo), [toggleRepoExpanded])
 
-  const rows = useMemo(() => {
-    let merged = mergeData(builds, qas, branches)
+  const cutoff = new Date(Date.now() - timeWindowDays * DAY_MS)
+
+  const { groups, totalBranches, failingBranches } = useMemo(() => {
+    let groups = mergeGroupedData(builds, qas, branches)
+
+    // Only show repos with any activity within the time window
+    groups = groups.filter(g => g.latestDate.getTime() > cutoff.getTime())
 
     if (search) {
       const q = search.toLowerCase()
-      merged = merged.filter(r => r.repo.toLowerCase().includes(q))
+      groups = groups.filter(g => g.repo.toLowerCase().includes(q))
     }
     if (statusFilter !== 'all') {
-      merged = merged.filter(r => (statusFilter === 'success') === r.success)
+      groups = groups.filter(g =>
+        g.branches.some(b => statusFilter === 'failure' ? b.failing : !b.failing)
+      )
     }
 
-    merged.sort((a, b) => {
-      let cmp = 0
-      switch (sortColumn) {
-        case 'repo': cmp = a.repo.localeCompare(b.repo); break
-        case 'version': cmp = (a.version ?? '').localeCompare(b.version ?? ''); break
-        case 'date': cmp = a.date.getTime() - b.date.getTime(); break
-        case 'status': cmp = (a.success ? 1 : 0) - (b.success ? 1 : 0); break
-      }
-      return sortAsc ? cmp : -cmp
-    })
+    let totalBranches = 0
+    let failingBranches = 0
+    for (const g of groups) {
+      totalBranches += g.branches.length
+      failingBranches += g.branches.filter(b => b.failing).length
+    }
 
-    return merged
-  }, [builds, qas, branches, search, statusFilter, sortColumn, sortAsc])
-
-  const passCount = rows.filter(r => r.success).length
+    return { groups, totalBranches, failingBranches }
+  }, [builds, qas, branches, search, statusFilter, cutoff.getTime()])
 
   return (
     <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th style={{ width: 28 }}></th>
-            {columns.map(col => (
-              <th key={col.key} onClick={() => toggleSort(col.key)}>
-                {col.label}
-                {sortColumn === col.key && (
-                  <span className="sort-arrow">{sortAsc ? '\u25B2' : '\u25BC'}</span>
-                )}
-              </th>
-            ))}
+            <th>Branch</th>
+            <th>Version</th>
+            <th>Date</th>
+            <th>Status</th>
             <th>Links</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(row => (
-            <BuildRow
-              key={row.repo}
-              row={row}
-              expanded={expandedRow === row.repo}
+          {groups.map(group => (
+            <RepoGroupView
+              key={group.repo}
+              group={group}
+              expanded={expandedRepos.has(group.repo)}
               onToggle={onToggle}
+              cutoff={cutoff}
+              statusFilter={statusFilter}
             />
           ))}
-          {rows.length === 0 && (
-            <tr><td colSpan={6} className="empty">No matching IGs</td></tr>
+          {groups.length === 0 && (
+            <tr><td colSpan={5} className="empty">No matching IGs</td></tr>
           )}
         </tbody>
       </table>
       <div className="table-footer">
-        {rows.length} IGs &middot; {passCount} passing &middot; {rows.length - passCount} failing
+        {groups.length} IGs &middot; {totalBranches} branches &middot; {failingBranches} failing
       </div>
     </div>
   )

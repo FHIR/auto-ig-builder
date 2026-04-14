@@ -7,11 +7,21 @@ const filters: { value: StatusFilter; label: string }[] = [
   { value: 'failure', label: 'Failing' },
 ]
 
+const timeWindows: { days: number; label: string }[] = [
+  { days: 7, label: '1w' },
+  { days: 14, label: '2w' },
+  { days: 30, label: '1m' },
+  { days: 90, label: '3m' },
+  { days: 365, label: '1y' },
+]
+
 export function FilterBar() {
   const search = useStore(s => s.search)
   const statusFilter = useStore(s => s.statusFilter)
+  const timeWindowDays = useStore(s => s.timeWindowDays)
   const setSearch = useStore(s => s.setSearch)
   const setStatusFilter = useStore(s => s.setStatusFilter)
+  const setTimeWindowDays = useStore(s => s.setTimeWindowDays)
 
   return (
     <div className="filter-bar">
@@ -29,6 +39,17 @@ export function FilterBar() {
             onClick={() => setStatusFilter(f.value)}
           >
             {f.label}
+          </button>
+        ))}
+      </div>
+      <div className="toggle-group">
+        {timeWindows.map(tw => (
+          <button
+            key={tw.days}
+            className={`toggle-btn${timeWindowDays === tw.days ? ' active' : ''}`}
+            onClick={() => setTimeWindowDays(tw.days)}
+          >
+            {tw.label}
           </button>
         ))}
       </div>

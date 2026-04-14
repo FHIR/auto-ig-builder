@@ -14,9 +14,10 @@ interface Store {
 
   search: string
   statusFilter: StatusFilter
+  timeWindowDays: number
   sortColumn: SortColumn
   sortAsc: boolean
-  expandedRow: string | null
+  expandedRepos: Set<string>
 
   setBranches: (branches: Record<string, BranchInfo>) => void
   setBuildsJsonFetched: () => void
@@ -24,8 +25,9 @@ interface Store {
   setQas: (qas: QA[]) => void
   setSearch: (search: string) => void
   setStatusFilter: (filter: StatusFilter) => void
+  setTimeWindowDays: (days: number) => void
   toggleSort: (column: SortColumn) => void
-  toggleExpanded: (repo: string) => void
+  toggleRepoExpanded: (repo: string) => void
   setBuildProgress: (done: number, total: number) => void
 }
 
@@ -40,9 +42,10 @@ export const useStore = create<Store>((set, get) => ({
   buildProgress: { done: 0, total: 0 },
   search: '',
   statusFilter: 'all',
+  timeWindowDays: 14,
   sortColumn: 'date',
   sortAsc: false,
-  expandedRow: null,
+  expandedRepos: new Set(),
 
   setBranches: (branches) => set({ branches, branchesLoaded: true }),
   setBuildsJsonFetched: () => set({ buildsJsonFetched: true }),
@@ -50,6 +53,7 @@ export const useStore = create<Store>((set, get) => ({
   setQas: (qas) => set({ qas, qasLoaded: true }),
   setSearch: (search) => set({ search }),
   setStatusFilter: (filter) => set({ statusFilter: filter }),
+  setTimeWindowDays: (days) => set({ timeWindowDays: days }),
   toggleSort: (column) => {
     const { sortColumn, sortAsc } = get()
     if (sortColumn === column) {
@@ -58,8 +62,11 @@ export const useStore = create<Store>((set, get) => ({
       set({ sortColumn: column, sortAsc: column === 'repo' })
     }
   },
-  toggleExpanded: (repo) => {
-    set({ expandedRow: get().expandedRow === repo ? null : repo })
+  toggleRepoExpanded: (repo) => {
+    const next = new Set(get().expandedRepos)
+    if (next.has(repo)) next.delete(repo)
+    else next.add(repo)
+    set({ expandedRepos: next })
   },
   setBuildProgress: (done, total) => set({ buildProgress: { done, total } }),
 }))

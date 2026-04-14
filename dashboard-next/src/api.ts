@@ -111,13 +111,17 @@ async function fetchBuilds(builds: string[]): Promise<Build[]> {
 // ---------- parse qas.json ----------
 
 function parseQas(raw: Record<string, unknown>[]): QA[] {
-  return raw.map(qa => ({
+  return raw.map(qa => {
+    const repoPath = qa.repo as string
+    const parts = repoPath.split('/')
+    return {
     ...qa,
     date: new Date(qa.date as string),
-    master: /\/master\//.test(qa.repo as string),
-    failure: /\/failure\//.test(qa.repo as string),
-    repo: (qa.repo as string).split('/').slice(0, 2).join('/'),
-  })) as QA[]
+    master: /\/master\//.test(repoPath),
+    failure: /\/failure\//.test(repoPath),
+    branch: parts[3] || 'master',
+    repo: parts.slice(0, 2).join('/'),
+  }}) as QA[]
 }
 
 // ---------- kick off both parallel fetch paths ----------
