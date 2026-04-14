@@ -25,13 +25,11 @@ a { color: var(--red); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* Header */
-.header { background: var(--red-dark); color: #fff; padding: 10px 0; }
+.header { background: #c00; color: #fff; padding: 10px 0; }
 .header-inner { max-width: 1400px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
 .header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
-.header-right { display: flex; align-items: center; gap: 10px; }
-.header .subtitle { font-size: 13px; opacity: 0.7; }
 .prompt-btn { background: transparent; color: #fff; border-color: rgba(255,255,255,0.3); font-size: 11px; }
-.prompt-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.prompt-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 /* Container */
 .container { max-width: 1400px; margin: 0 auto; padding: 16px; overflow: hidden; }

@@ -96,11 +96,8 @@ export default function App() {
     <>
       <header className="header">
         <div className="header-inner">
-          <h1>FHIR IG Builds</h1>
-          <div className="header-right">
-            <LLMPromptButton />
-            <span className="subtitle">build.fhir.org</span>
-          </div>
+          <h1>FHIR CI-Build</h1>
+          <LLMPromptButton />
         </div>
       </header>
       <div className="container">

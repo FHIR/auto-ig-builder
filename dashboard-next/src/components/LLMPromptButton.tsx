@@ -17,7 +17,7 @@ export function LLMPromptButton() {
 
   return (
     <button className="link-btn prompt-btn" onClick={handleCopy} title="Copy a prompt for an LLM to help you create a custom view">
-      {copied ? 'Copied!' : 'Copy LLM prompt'}
+      {copied ? 'Copied!' : 'Copy LLM customization prompt'}
     </button>
   )
 }
