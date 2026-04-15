@@ -139,17 +139,22 @@ a:hover { text-decoration: underline; }
 .repo-hdr { padding: 6px 12px 4px; border-bottom: 1px solid #e8ecf0; background: #f9fafb; scroll-margin-top: 80px; }
 .rn { font-weight: 600; font-size: 14px; }
 .rn a { color: var(--link); }
+.row-links { font-size: 11px; white-space: nowrap; }
+.gh-link { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: #f6f8fa; text-decoration: none; line-height: 15px; }
+.gh-link:hover { color: var(--link); border-color: var(--link); background: #eaf2ff; text-decoration: none; }
 .repo-meta { font-size: 12px; color: var(--muted); margin-left: 10px; }
 .repo-tags { display: inline-flex; gap: 8px; margin-left: 10px; font-size: 12px; color: var(--muted); vertical-align: baseline; }
 .repo-tags span { white-space: nowrap; }
 
-.bt { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.bt { width: 100%; border-collapse: collapse; table-layout: auto; }
 .bt td { padding: 2px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
 .bt tr:last-child td { border-bottom: none; }
 .bt tr:hover { background: #f8f9fb; }
 
+col.col-branch { width: auto; }
 col.col-status { width: 76px; }
 col.col-built { width: 48px; }
+col.col-links { width: 44px; }
 
 .bn { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 12px; padding-left: 8px; }
 .bn-def { font-weight: 600; color: var(--text); }
@@ -157,7 +162,8 @@ col.col-built { width: 48px; }
 .bn a { color: inherit; }
 .bn a:hover { color: var(--link); }
 
-.badge { display: inline-block; padding: 0 5px; border-radius: 10px; font-size: 11px; font-weight: 500; line-height: 17px; white-space: nowrap; }
+.badge { display: inline-block; padding: 0 5px; border-radius: 10px; font-size: 11px; font-weight: 500; line-height: 17px; white-space: nowrap; text-decoration: none; }
+a.badge:hover { filter: brightness(0.85); }
 .bg { background: var(--gbg); color: var(--green); }
 .by { background: var(--ybg); color: var(--yellow); }
 .br { background: var(--rbg); color: var(--red); }
@@ -226,12 +232,12 @@ function relativeTime(iso) {
   return `${Math.floor(months / 12)}y`;
 }
 
-function statusBadge(entry) {
+function statusBadge(entry, qaUrl) {
   const errors = entry.errs || 0;
   const warnings = entry.warnings || 0;
-  if (errors) return `<span class="badge br">${errors} err</span>`;
-  if (warnings) return `<span class="badge by">${warnings} warn</span>`;
-  return '<span class="badge bg">ok</span>';
+  if (errors) return `<a class="badge br" href="${qaUrl}">${errors} err</a>`;
+  if (warnings) return `<a class="badge by" href="${qaUrl}">${warnings} warn</a>`;
+  return `<a class="badge bg" href="${qaUrl}">ok</a>`;
 }
 
 function statusName(entry) {
@@ -498,7 +504,7 @@ function prepareData(orgs) {
 }
 
 function renderMarkup(preparedOrgs, sc) {
-  const colgroup = '<colgroup><col class="col-branch"><col class="col-status"><col class="col-built"></colgroup>';
+  const colgroup = '<colgroup><col class="col-branch"><col class="col-status"><col class="col-built"><col class="col-links"></colgroup>';
   let html = "";
   for (const orgModel of preparedOrgs) {
     let inner = "";
@@ -520,9 +526,13 @@ function renderMarkup(preparedOrgs, sc) {
 
       let rows = "";
       for (const branchModel of repoModel.branchModels) {
-        rows += `<tr id="${branchModel.id}"><td><span class="bn ${branchModel.isDefault ? "bn-def" : "bn-other"}"><a href="/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/branches/${encSeg(branchModel.name)}/">${esc(branchModel.name)}</a></span></td>`;
-        rows += `<td>${statusBadge(branchModel.entry)}</td>`;
-        rows += `<td class="tt">${relativeTime(branchModel.entry.dateISO8601)}</td></tr>`;
+        const branchBase = `/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/branches/${encSeg(branchModel.name)}/`;
+        const qaUrl = `${branchBase}qa.html`;
+        const ghBranchUrl = `https://github.com/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/tree/${encSeg(branchModel.name)}`;
+        rows += `<tr id="${branchModel.id}"><td><span class="bn ${branchModel.isDefault ? "bn-def" : "bn-other"}"><a href="${branchBase}">${esc(branchModel.name)}</a></span></td>`;
+        rows += `<td>${statusBadge(branchModel.entry, qaUrl)}</td>`;
+        rows += `<td class="tt">${relativeTime(branchModel.entry.dateISO8601)}</td>`;
+        rows += `<td class="row-links"><a class="gh-link" href="${branchBase}" target="_blank" rel="noopener">ci</a> <a class="gh-link" href="${ghBranchUrl}" target="_blank" rel="noopener">gh</a></td></tr>`;
       }
 
       inner += `<div class="repo-block" id="${repoModel.id}_block">${header}<table class="bt">${colgroup}${rows}</table></div>`;
