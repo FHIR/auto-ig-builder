@@ -524,15 +524,22 @@ function renderMarkup(preparedOrgs, sc) {
       if (best.title) header += `<span class="repo-meta">${esc(best.title)}</span>`;
       header += "</div>";
 
+      const repoCiRoot = `https://build.fhir.org/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/`;
       let rows = "";
       for (const branchModel of repoModel.branchModels) {
         const branchBase = `/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/branches/${encSeg(branchModel.name)}/`;
         const qaUrl = `${branchBase}qa.html`;
         const ghBranchUrl = `https://github.com/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/tree/${encSeg(branchModel.name)}`;
+        let diffLink = "";
+        if (!branchModel.isDefault) {
+          const branchCiUrl = `https://build.fhir.org${branchBase}`;
+          const diffUrl = `https://fhir.org/diff/?old=${encodeURIComponent(repoCiRoot)}&new=${encodeURIComponent(branchCiUrl)}`;
+          diffLink = ` <a class="gh-link" href="${diffUrl}" target="_blank" rel="noopener">diff</a>`;
+        }
         rows += `<tr id="${branchModel.id}"><td><span class="bn ${branchModel.isDefault ? "bn-def" : "bn-other"}"><a href="${branchBase}">${esc(branchModel.name)}</a></span></td>`;
         rows += `<td>${statusBadge(branchModel.entry, qaUrl)}</td>`;
         rows += `<td class="tt">${relativeTime(branchModel.entry.dateISO8601)}</td>`;
-        rows += `<td class="row-links"><a class="gh-link" href="${branchBase}" target="_blank" rel="noopener">ci</a> <a class="gh-link" href="${ghBranchUrl}" target="_blank" rel="noopener">gh</a></td></tr>`;
+        rows += `<td class="row-links"><a class="gh-link" href="${branchBase}" target="_blank" rel="noopener">ci</a> <a class="gh-link" href="${ghBranchUrl}" target="_blank" rel="noopener">gh</a>${diffLink}</td></tr>`;
       }
 
       inner += `<div class="repo-block" id="${repoModel.id}_block">${header}<table class="bt">${colgroup}${rows}</table></div>`;
