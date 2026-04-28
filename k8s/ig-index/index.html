@@ -142,19 +142,28 @@ a:hover { text-decoration: underline; }
 .row-links { font-size: 11px; white-space: nowrap; }
 .gh-link { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: #f6f8fa; text-decoration: none; line-height: 15px; }
 .gh-link:hover { color: var(--link); border-color: var(--link); background: #eaf2ff; text-decoration: none; }
+.repo-failing { color: var(--red); font-weight: 600; }
+.fail-badge { font-weight: 600; }
+.row-failing { background: #fff5f5; }
+.row-failing:hover { background: #ffe9e9 !important; }
+.badge.muted { background: #eef0f2; color: var(--muted); }
 .repo-meta { font-size: 12px; color: var(--muted); margin-left: 10px; }
 .repo-tags { display: inline-flex; gap: 8px; margin-left: 10px; font-size: 12px; color: var(--muted); vertical-align: baseline; }
 .repo-tags span { white-space: nowrap; }
 
-.bt { width: 100%; border-collapse: collapse; table-layout: auto; }
+.bt { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .bt td { padding: 2px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
 .bt tr:last-child td { border-bottom: none; }
 .bt tr:hover { background: #f8f9fb; }
 
 col.col-branch { width: auto; }
-col.col-status { width: 76px; }
-col.col-built { width: 48px; }
-col.col-links { width: 44px; }
+col.col-status { width: 80px; }
+col.col-fail { width: 76px; }
+col.col-built { width: 56px; }
+col.col-links { width: 110px; }
+.status-cell { white-space: nowrap; }
+.fail-cell { white-space: nowrap; }
+.row-links { text-align: left; }
 
 .bn { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-size: 12px; padding-left: 8px; }
 .bn-def { font-weight: 600; color: var(--text); }
@@ -205,7 +214,9 @@ a.badge:hover { filter: brightness(0.85); }
   <div id="out"></div>
 </div>
 <script>
-const DATA_URL = "/ig/qas.json";
+const BASE_URL = location.hostname === "build.fhir.org" ? "/ig" : "https://build.fhir.org/ig";
+const QAS_URL = `${BASE_URL}/qas.json`;
+const BUILDS_URL = `${BASE_URL}/builds.json`;
 const DEFAULT_BRANCHES = new Set(["__default", "master", "main"]);
 const FILTER_KEYS = new Set(["org", "repo", "branch", "package", "status"]);
 const avatarUrl = (org) => `https://avatars.githubusercontent.com/${encodeURIComponent(org)}?size=48`;
@@ -233,6 +244,7 @@ function relativeTime(iso) {
 }
 
 function statusBadge(entry, qaUrl) {
+  if (entry._failOnly) return '<span class="badge muted">no qa</span>';
   const errors = entry.errs || 0;
   const warnings = entry.warnings || 0;
   if (errors) return `<a class="badge br" href="${qaUrl}">${errors} err</a>`;
@@ -392,7 +404,7 @@ function repoMatches(parsed, orgModel, repoModel, index) {
   return true;
 }
 
-function parseData(entries) {
+function parseData(entries, failures) {
   const orgs = {};
   for (const entry of entries) {
     const match = (entry.repo || "").match(/^([^/]+)\/([^/]+)\/branches\/([^/]+)\//);
@@ -405,6 +417,27 @@ function parseData(entries) {
     const isDefault = DEFAULT_BRANCHES.has(branch);
     if (!repoEntry.best || (isDefault && !repoEntry.best._default)) {
       repoEntry.best = { ...entry, _default: isDefault };
+    }
+  }
+  if (failures) {
+    for (const key of failures) {
+      const [org, repo, branch] = key.split("/");
+      orgs[org] ||= {};
+      orgs[org][repo] ||= { branches: {}, best: null };
+      const repoEntry = orgs[org][repo];
+      if (!repoEntry.branches[branch]) {
+        repoEntry.branches[branch] = { repo: `${org}/${repo}/branches/${branch}/`, _failOnly: true };
+      }
+      repoEntry.branches[branch]._failing = true;
+    }
+    for (const org of Object.keys(orgs)) {
+      for (const repo of Object.keys(orgs[org])) {
+        const repoEntry = orgs[org][repo];
+        if (!repoEntry.best) {
+          const firstBranch = Object.values(repoEntry.branches)[0];
+          repoEntry.best = { ...firstBranch, _default: false };
+        }
+      }
     }
   }
   return orgs;
@@ -455,10 +488,13 @@ function prepareData(orgs) {
           lower: branchName.toLowerCase(),
           entry,
           status: statusName(entry),
+          failing: !!entry._failing,
+          failOnly: !!entry._failOnly,
           isDefault: DEFAULT_BRANCHES.has(branchName),
           id: safeId("b", orgName, repoName, branchName),
         };
       });
+      const failingCount = branchModels.filter((b) => b.failing).length;
       return {
         name: repoName,
         lower: repoName.toLowerCase(),
@@ -473,6 +509,7 @@ function prepareData(orgs) {
           ...branchModels.map((branch) => branch.name),
         ].join(" ").toLowerCase(),
         branchModels,
+        failingCount,
         id: safeId("r", orgName, repoName),
       };
     });
@@ -504,14 +541,14 @@ function prepareData(orgs) {
 }
 
 function renderMarkup(preparedOrgs, sc) {
-  const colgroup = '<colgroup><col class="col-branch"><col class="col-status"><col class="col-built"><col class="col-links"></colgroup>';
+  const colgroup = '<colgroup><col class="col-branch"><col class="col-status"><col class="col-fail"><col class="col-built"><col class="col-links"></colgroup>';
   let html = "";
   for (const orgModel of preparedOrgs) {
     let inner = "";
 
     for (const repoModel of orgModel.repos) {
       const best = repoModel.best;
-      const repoHref = `/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/`;
+      const repoHref = `${BASE_URL}/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/`;
 
       let header = `<div class="repo-hdr" id="${repoModel.id}">`;
       header += `<span class="rn"><a href="${repoHref}">${esc(repoModel.name)}</a></span>`;
@@ -527,19 +564,26 @@ function renderMarkup(preparedOrgs, sc) {
       const repoCiRoot = `https://build.fhir.org/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/`;
       let rows = "";
       for (const branchModel of repoModel.branchModels) {
-        const branchBase = `/ig/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/branches/${encSeg(branchModel.name)}/`;
+        const branchBase = `${BASE_URL}/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/branches/${encSeg(branchModel.name)}/`;
         const qaUrl = `${branchBase}qa.html`;
+        const failLogUrl = `${branchBase}failure/build.log`;
         const ghBranchUrl = `https://github.com/${encSeg(orgModel.name)}/${encSeg(repoModel.name)}/tree/${encSeg(branchModel.name)}`;
         let diffLink = "";
-        if (!branchModel.isDefault) {
-          const branchCiUrl = `https://build.fhir.org${branchBase}`;
+        if (!branchModel.isDefault && !branchModel.failOnly) {
+          const branchCiUrl = `https://build.fhir.org${branchBase.replace(BASE_URL, "/ig")}`;
           const diffUrl = `https://fhir.org/diff/?old=${encodeURIComponent(repoCiRoot)}&new=${encodeURIComponent(branchCiUrl)}`;
           diffLink = ` <a class="gh-link" href="${diffUrl}" target="_blank" rel="noopener">diff</a>`;
         }
-        rows += `<tr id="${branchModel.id}"><td><span class="bn ${branchModel.isDefault ? "bn-def" : "bn-other"}"><a href="${branchBase}">${esc(branchModel.name)}</a></span></td>`;
-        rows += `<td>${statusBadge(branchModel.entry, qaUrl)}</td>`;
+        const rowClass = branchModel.failing ? "row-failing" : "";
+        rows += `<tr id="${branchModel.id}" class="${rowClass}"><td><span class="bn ${branchModel.isDefault ? "bn-def" : "bn-other"}"><a href="${branchBase}">${esc(branchModel.name)}</a></span></td>`;
+        rows += `<td class="status-cell">${statusBadge(branchModel.entry, qaUrl)}</td>`;
+        rows += `<td class="fail-cell">`;
+        if (branchModel.failing) rows += `<a class="badge br fail-badge" href="${failLogUrl}" title="Latest build attempt failed">fail</a>`;
+        rows += `</td>`;
         rows += `<td class="tt">${relativeTime(branchModel.entry.dateISO8601)}</td>`;
-        rows += `<td class="row-links"><a class="gh-link" href="${branchBase}" target="_blank" rel="noopener">ci</a> <a class="gh-link" href="${ghBranchUrl}" target="_blank" rel="noopener">gh</a>${diffLink}</td></tr>`;
+        rows += `<td class="row-links">`;
+        if (!branchModel.failOnly) rows += `<a class="gh-link" href="${branchBase}" target="_blank" rel="noopener">ci</a> `;
+        rows += `<a class="gh-link" href="${ghBranchUrl}" target="_blank" rel="noopener">gh</a>${diffLink}</td></tr>`;
       }
 
       inner += `<div class="repo-block" id="${repoModel.id}_block">${header}<table class="bt">${colgroup}${rows}</table></div>`;
@@ -580,18 +624,36 @@ function renderStats(orgCount, repoCount, buildCount) {
   ].join("");
 }
 
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: ${response.status} ${response.statusText}`);
+  return response.json();
+}
+
+function parseFailures(buildPaths) {
+  const failures = new Set();
+  for (const path of buildPaths || []) {
+    const match = path.match(/^([^/]+)\/([^/]+)\/branches\/([^/]+)\/failure\//);
+    if (!match) continue;
+    failures.add(`${match[1]}/${match[2]}/${match[3]}`);
+  }
+  return failures;
+}
+
 async function main() {
-  let data;
+  let qaData, buildPaths;
   try {
-    const response = await fetch(DATA_URL);
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    data = await response.json();
+    [qaData, buildPaths] = await Promise.all([
+      fetchJson(QAS_URL),
+      fetchJson(BUILDS_URL).catch(() => []),
+    ]);
   } catch (error) {
     document.getElementById("ld").textContent = `Failed: ${error.message}`;
     return;
   }
 
-  const orgs = parseData(data);
+  const failures = parseFailures(buildPaths);
+  const orgs = parseData(qaData, failures);
   const prepared = prepareData(orgs);
   const preparedOrgs = prepared.orgs;
   const filterIndex = prepared.index;
