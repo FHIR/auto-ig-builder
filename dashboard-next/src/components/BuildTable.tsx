@@ -5,7 +5,8 @@ import { applyViewConfig } from '../applyView'
 import { RepoGroupView } from './RepoGroupView'
 import { FlatRowView } from './FlatRowView'
 
-const PAGE_SIZE = 100
+const INITIAL_LIMIT = 5000
+const PAGE_SIZE = 500
 
 export function BuildTable() {
   const builds = useStore(s => s.builds)
@@ -33,9 +34,9 @@ export function BuildTable() {
   )
 
   // Progressive rendering: cap how many rows we render
-  const [renderLimit, setRenderLimit] = useState(PAGE_SIZE)
+  const [renderLimit, setRenderLimit] = useState(INITIAL_LIMIT)
   const viewKey = deferredConfig.id + deferredSearch
-  useMemo(() => setRenderLimit(PAGE_SIZE), [viewKey])
+  useMemo(() => setRenderLimit(INITIAL_LIMIT), [viewKey])
 
   if (result.mode === 'flat') {
     const totalCount = result.rows.length
@@ -145,6 +146,10 @@ export function BuildTable() {
             {' '}&middot;{' '}
             <button className="show-more-btn" onClick={() => setRenderLimit(r => r + PAGE_SIZE)}>
               show {Math.min(remainingGroups, PAGE_SIZE)} more
+            </button>
+            {' or '}
+            <button className="show-more-btn" onClick={() => setRenderLimit(Infinity)}>
+              show all
             </button>
           </>
         )}
