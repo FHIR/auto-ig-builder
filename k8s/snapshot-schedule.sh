@@ -52,7 +52,7 @@ echo
 echo "Current snapshots for: $DISKS"
 filter=$(echo "$DISKS" | tr ' ' '|')
 gcloud compute snapshots list --project="$PROJECT" \
-  --filter="sourceDisk~($filter)" \
+  --filter="sourceDisk~\"$filter\"" \
   --format="table(name, sourceDisk.basename(), diskSizeGb, storageBytes, creationTimestamp, storageLocations.list())" \
   --sort-by=creationTimestamp
 
