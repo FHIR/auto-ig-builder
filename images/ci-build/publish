@@ -3,7 +3,10 @@
 set -e
 
 function finish {
-  kill $KEEPALIVE_PID
+  [ -n "$KEEPALIVE_PID" ] && kill "$KEEPALIVE_PID" 2>/dev/null
+  # Clean the staging dir (and any half-rotated .old) if we exited before the final
+  # mv into www/. Guard prevents an unset $TARGET from expanding to ~/uploading.
+  [ -n "$TARGET" ] && rm -rf ~/uploading/"$TARGET" ~/uploading/fhir."$TARGET".old 2>/dev/null
 }
 trap finish EXIT
 

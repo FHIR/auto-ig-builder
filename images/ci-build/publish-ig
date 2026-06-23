@@ -3,7 +3,12 @@
 set -e
 
 function finish_upload_keepalive {
-  kill $KEEPALIVE_PID
+  [ -n "$KEEPALIVE_PID" ] && kill "$KEEPALIVE_PID" 2>/dev/null
+  # If the run failed/was interrupted before the final mv into www/, the staging dir
+  # (and any half-rotated .old) are still here. Remove them so orphaned per-build
+  # dirs don't accumulate at the root of ~/uploading forever. The guard keeps an
+  # unset $TARGET from ever expanding to ~/uploading itself.
+  [ -n "$TARGET" ] && rm -rf ~/uploading/"$TARGET" ~/uploading/branch."$TARGET".old 2>/dev/null
 }
 trap finish_upload_keepalive EXIT
 
