@@ -1,4 +1,5 @@
 gcloud compute disks create fhir-ci-build-disk --size 100GB
+# Set up automated, retention-bounded backups for this disk: ./snapshot-schedule.sh
 
 kubectl  -n fhir create secret generic zulip-secrets --from-literal=email=$ZULIP_EMAIL --from-literal=api_key=$ZULIP_API_KEY
 
