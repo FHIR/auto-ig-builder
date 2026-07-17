@@ -25,6 +25,27 @@ reindex_files() {
     done
 }
 
+gc_stale_uploads() {
+    # Sweep orphaned per-build staging dirs left at the root of ~/uploading when a
+    # publish/publish-ig run was interrupted before its final mv (Spot preemption,
+    # pod restart, tar/mv failure). Belt-and-suspenders to the EXIT traps in those
+    # scripts. The served site lives under www/ and is never touched; ctime +N keeps
+    # in-flight uploads safe.
+    GC_AFTER_DAYS=${GC_AFTER_DAYS:-2}
+    find ~/uploading -maxdepth 1 -mindepth 1 -type d \
+        ! -name www ! -name 'lost+found' -ctime +"$GC_AFTER_DAYS" \
+        -exec rm -rf {} \; 2>/dev/null || true
+}
+
+maybe_gc() {
+    # Run the sweep at most once per hour, independent of reindex traffic.
+    local marker=~/.last_upload_gc
+    if [ ! -f "$marker" ] || [ $(( $(date +%s) - $(stat -c %Y "$marker") )) -ge 3600 ]; then
+        gc_stale_uploads
+        touch "$marker"
+    fi
+}
+
 process_reindexing() {
     # Get the most recent semaphore file
     cd ~/reindex_queue
@@ -49,5 +70,6 @@ process_reindexing() {
 
 while true; do
     process_reindexing
+    maybe_gc
     sleep 10
 done
