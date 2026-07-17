@@ -35,7 +35,10 @@ build.fhir.org:80, build.fhir.org {
 			window 1m
 		}
 	}
-
+    @options method OPTIONS
+    handle @options {
+       respond 204
+    }
 	map {header.Accept} {fextension} {
 		"text/turtle" ".ttl"
 		"application/fhir+xml" ".xml"
