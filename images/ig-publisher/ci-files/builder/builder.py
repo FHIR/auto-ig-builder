@@ -11,6 +11,7 @@ GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
 TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org')
+PLATFORM_URL = os.environ.get('IG_PLATFORM_URL', 'https://github.com')
 
 temp_dir = SCRATCH_SPACE
 clone_dir = os.path.join(temp_dir, 'repo')
@@ -59,10 +60,10 @@ def build(config):
     default_branch = default_branch_full.split('/')[-1]
     return bool(default_branch == config['branch'])
 
-  cloned_exit = do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
+  cloned_exit = do(['git', 'clone', '--recursive', os.environ.get('IG_CLONE_URL', GITHUB%config), '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
   os.makedirs(clone_dir, exist_ok=True)
 
-  message_header = "**[{org}/{repo}: {branch}](https://github.com/{org}/{repo}/tree/{branch})** ".format(**config)
+  message_header = "**[{org}/{repo}: {branch}]({platform_url}/{org}/{repo}/tree/{branch})** ".format(**config, platform_url=PLATFORM_URL)
 
   def early_failure(msg):
     config["msg"] = msg

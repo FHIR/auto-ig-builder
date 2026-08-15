@@ -1,6 +1,6 @@
 # ig-commit-trigger
 
-Google Cloud Function that receives GitHub push webhooks and schedules
+Google Cloud Function that receives GitHub and GitLab push webhooks and schedules
 FHIR IG builds as Kubernetes Jobs.
 
 See [SOLUTION.md](../../investigations/2026-03-27-ig-trigger-concurrency/SOLUTION.md)
@@ -12,7 +12,7 @@ successor pinning, and flood-collapse behavior.
 ```bash
 npm install
 npm run typecheck   # tsc --noEmit (JSDoc + @ts-check, no build step)
-npm test            # node test-scheduling.js
+npm test            # node test-scheduling.js && node test-sweep.js && node test-gitlab.js
 npm start           # run locally via functions-framework (uses sa.kubeconfig → real cluster)
 ```
 
@@ -22,9 +22,23 @@ npm start           # run locally via functions-framework (uses sa.kubeconfig �
 to talk to the real K8s cluster, so webhooks sent via curl will create real jobs:
 
 ```bash
+# GitHub-style payload
 curl -X POST http://localhost:8080 \
   -H 'Content-Type: application/json' \
   -d '{"repository":{"full_name":"org/repo"},"ref":"refs/heads/main","after":"abc"}'
+
+# GitLab-style payload
+curl -X POST http://localhost:8080 \
+  -H 'Content-Type: application/json' \
+  -H 'X-Gitlab-Event: Push Hook' \
+  -d '{
+    "object_kind": "push",
+    "ref": "refs/heads/main",
+    "project": {
+      "path_with_namespace": "org/my-ig",
+      "git_http_url": "https://gitlab.com/org/my-ig.git"
+    }
+  }'
 ```
 
 The same process can also exercise the prototype sweep path through the same trigger:
@@ -33,6 +47,30 @@ The same process can also exercise the prototype sweep path through the same tri
 curl 'http://localhost:8080?action=sweep'
 curl -X POST 'http://localhost:8080?action=sweep&apply=1&jobName=igbuild-...'
 ```
+
+### Platform detection
+
+The trigger detects the source platform using HTTP headers:
+
+| Header | Platform |
+|--------|----------|
+| `X-Gitlab-Event: Push Hook` | GitLab |
+| `X-GitHub-Event: push` (or no header) | GitHub |
+
+GitLab payloads use `project.path_with_namespace` for the repo identity and
+`project.git_http_url` for the clone URL. Nested groups (e.g. `org/sub/project`)
+are supported — the last path segment is the project name, everything before is
+the namespace.
+
+### Environment variables injected into build jobs
+
+| Variable | Description | Example (GitLab) | Example (GitHub) |
+|----------|-------------|-------------------|------------------|
+| `IG_ORG` | Org/namespace (platform-prefixed for GitLab) | `gitlab.com/csiro` | `HL7` |
+| `IG_REPO` | Project/repository name | `my-ig` | `US-Core` |
+| `IG_BRANCH` | Branch name | `main` | `master` |
+| `IG_CLONE_URL` | Full HTTPS clone URL | `https://gitlab.com/csiro/my-ig.git` | `https://github.com/HL7/US-Core` |
+| `IG_PLATFORM_URL` | Base URL of the forge | `https://gitlab.com` | `https://github.com` |
 
 ## Deploy
 
@@ -115,9 +153,11 @@ Notes:
 ## Files
 
 - `index.js` — GCF HTTP handler (webhook parsing, ig.ini check, HEAD resolution, sweep routing)
+- `platform.js` — Platform detection and webhook payload normalisation (GitHub + GitLab)
 - `scheduling.js` — branch state machine, job construction, reconciliation loop
 - `sweep.js` — prototype stale-pin sweep logic for `action=sweep`
 - `job.json` — K8s Job template
 - `test-scheduling.js` — unit tests with mock K8s clients
 - `test-sweep.js` — stale-pin classifier tests
+- `test-gitlab.js` — GitLab payload parsing and env injection tests
 - `sa.kubeconfig` — service account credentials for K8s access (not in git)

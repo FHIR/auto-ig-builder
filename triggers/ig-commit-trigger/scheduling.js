@@ -255,7 +255,7 @@ export function createScheduler({
    * @param {string} repo
    * @param {string} branch
    * @param {string} headSha
-   * @param {{ role?: string, pinnedNode?: string }} [buildOpts]
+   * @param {{ role?: string, pinnedNode?: string, cloneUrl?: string, platformUrl?: string }} [buildOpts]
    * @returns {V1Job}
    */
   function buildJob(branchKey, slot, org, repo, branch, headSha, buildOpts = {}) {
@@ -285,13 +285,25 @@ export function createScheduler({
     if (buildOpts.pinnedNode) {
       job.metadata.annotations["build.fhir.org/pinned-node"] = buildOpts.pinnedNode;
     }
+    if (buildOpts.platformUrl && buildOpts.platformUrl !== "https://github.com") {
+      job.metadata.annotations["build.fhir.org/platform"] = buildOpts.platformUrl;
+    }
+
+    /** @type {Array<{name: string, value: string}>} */
+    const extraEnv = [
+      { name: "IG_ORG", value: org },
+      { name: "IG_REPO", value: repo },
+      { name: "IG_BRANCH", value: branch },
+    ];
+    if (buildOpts.cloneUrl) {
+      extraEnv.push({ name: "IG_CLONE_URL", value: buildOpts.cloneUrl });
+    }
+    if (buildOpts.platformUrl) {
+      extraEnv.push({ name: "IG_PLATFORM_URL", value: buildOpts.platformUrl });
+    }
 
     for (const container of job.spec.template.spec.containers) {
-      container.env = container.env.concat([
-        { name: "IG_ORG", value: org },
-        { name: "IG_REPO", value: repo },
-        { name: "IG_BRANCH", value: branch },
-      ]);
+      container.env = container.env.concat(extraEnv);
     }
 
     if (buildOpts.pinnedNode) {
@@ -351,7 +363,7 @@ export function createScheduler({
    * @param {string} branch
    * @param {string} headSha
    */
-  async function reconcile(branchKey, org, repo, branch, headSha) {
+  async function reconcile(branchKey, org, repo, branch, headSha, webhookOpts = {}) {
     const slug = branchSlug(org, repo, branch);
     const { current, queued, extras, terminal, occupiedNames } =
       await reduceBranchState(branchKey);
@@ -399,7 +411,7 @@ export function createScheduler({
         return { ok: false, retry: true, reason: "Slot freed after wait; re-reconciling from fresh state" };
       }
       console.log(`State A (idle): creating initial job in slot ${slot}`);
-      const job = buildJob(branchKey, slot, org, repo, branch, headSha);
+      const job = buildJob(branchKey, slot, org, repo, branch, headSha, webhookOpts);
       await k8sBatch.createNamespacedJob({ namespace: NAMESPACE, body: job });
       return { ok: true, created: true, state: "A", jobId: job.metadata?.name, org, repo, branch };
     }
@@ -429,6 +441,7 @@ export function createScheduler({
         `State C (running): successor ${slotName(branchKey, successorSlot, slug, jobNamePrefix)} pinned to ${current.node}, cancel ${currentName}`
       );
       const job = buildJob(branchKey, successorSlot, org, repo, branch, headSha, {
+        ...webhookOpts,
         role: "successor",
         pinnedNode: current.node,
       });
@@ -465,7 +478,7 @@ export function createScheduler({
           // The name we just deleted may not be free yet. Signal retry.
           return { ok: false, retry: true, reason: "Deleted stale successor; re-reconciling" };
         }
-        const job = buildJob(branchKey, freeSlot, org, repo, branch, headSha);
+        const job = buildJob(branchKey, freeSlot, org, repo, branch, headSha, webhookOpts);
         await k8sBatch.createNamespacedJob({ namespace: NAMESPACE, body: job });
         return { ok: true, created: true, state: "E-stale", jobId: job.metadata?.name, org, repo, branch };
       }
@@ -485,8 +498,9 @@ export function createScheduler({
    * @param {string} repo
    * @param {string} branch
    * @param {string} headSha
+   * @param {{ cloneUrl?: string, platformUrl?: string }} [webhookOpts]
    */
-  async function handleWebhook(org, repo, branch, headSha) {
+  async function handleWebhook(org, repo, branch, headSha, webhookOpts = {}) {
     const branchKey = computeBranchKey(org, repo, branch, branchKeyScope);
     console.log(
       `Webhook: ${org}/${repo}@${branch} head=${headSha.slice(0, 8)} key=${branchKey.slice(0, 12)}`
@@ -494,7 +508,7 @@ export function createScheduler({
 
     for (let attempt = 1; attempt <= MAX_RECONCILE_ATTEMPTS; attempt++) {
       try {
-        const result = await reconcile(branchKey, org, repo, branch, headSha);
+        const result = await reconcile(branchKey, org, repo, branch, headSha, webhookOpts);
         if (result.retry) {
           console.log(`Retry after slot wait on attempt ${attempt}/${MAX_RECONCILE_ATTEMPTS}`);
           if (attempt === MAX_RECONCILE_ATTEMPTS) {
