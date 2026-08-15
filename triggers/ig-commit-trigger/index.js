@@ -5,6 +5,9 @@ import * as k8s from "@kubernetes/client-node";
 import jobSource from "./job.json" with { type: "json" };
 import { createScheduler } from "./scheduling.js";
 import { createSweepHandler } from "./sweep.js";
+import { detectPlatform, parseGitlabPayload, parseGithubPayload } from "./platform.js";
+
+/** @import { BuildRequest } from "./platform.js" */
 
 const kc = new k8s.KubeConfig();
 kc.loadFromFile("sa.kubeconfig");
@@ -43,12 +46,43 @@ const sweepHandler = createSweepHandler({
   managedByLabel: MANAGED_BY_LABEL,
 });
 
+// --- ig.ini and HEAD resolution ---
+
 /**
- * @param {string} org
- * @param {string} repo
- * @param {string} branch
+ * @param {BuildRequest} buildReq
  */
-async function resolveHead(org, repo, branch) {
+async function hasIgIni(buildReq) {
+  const { platform, baseUrl, org, repo, branch } = buildReq;
+  let url;
+  if (platform === "gitlab") {
+    // org is "gitlab.com/namespace" — extract just the namespace path
+    const pathWithNamespace = `${org.replace(/^[^/]+\//, "")}/${repo}`;
+    url = `${baseUrl}/${pathWithNamespace}/-/raw/${encodeURIComponent(branch)}/ig.ini`;
+  } else {
+    url = `https://raw.githubusercontent.com/${org}/${repo}/${encodeURIComponent(branch)}/ig.ini`;
+  }
+  const resp = await fetch(url);
+  return resp.status === 200;
+}
+
+/**
+ * @param {BuildRequest} buildReq
+ */
+async function resolveHead(buildReq) {
+  const { platform, baseUrl, org, repo, branch } = buildReq;
+
+  if (platform === "gitlab") {
+    // org is "gitlab.com/namespace" — extract the namespace path for the API
+    const pathWithNamespace = `${org.replace(/^[^/]+\//, "")}/${repo}`;
+    const encodedPath = encodeURIComponent(pathWithNamespace);
+    const url = `${baseUrl}/api/v4/projects/${encodedPath}/repository/commits/${encodeURIComponent(branch)}`;
+    const resp = await fetch(url);
+    if (resp.status !== 200) return null;
+    const data = await resp.json();
+    return /** @type {string | null} */ (data.id ?? null);
+  }
+
+  // GitHub
   const resp = await fetch(
     `https://api.github.com/repos/${org}/${repo}/commits/${encodeURIComponent(branch)}`,
     { headers: { Accept: "application/vnd.github.sha" } }
@@ -57,17 +91,7 @@ async function resolveHead(org, repo, branch) {
   return (await resp.text()).trim();
 }
 
-/**
- * @param {string} org
- * @param {string} repo
- * @param {string} branch
- */
-async function hasIgIni(org, repo, branch) {
-  const resp = await fetch(
-    `https://raw.githubusercontent.com/${org}/${repo}/${encodeURIComponent(branch)}/ig.ini`
-  );
-  return resp.status === 200;
-}
+// --- HTTP handler ---
 
 functions.http("ig-commit-trigger", async function (req, res) {
   res.header("Access-Control-Allow-Method", "POST, OPTIONS");
@@ -82,34 +106,51 @@ functions.http("ig-commit-trigger", async function (req, res) {
     return res.status(200).json({});
   }
 
-  let org, repo, branch;
-  try {
-    [org, repo] = req.body.repository.full_name.split("/");
-    branch = req.body.ref.split("/").slice(-1)[0];
-    if (!org || !repo || !branch) throw new Error("Bad inputs");
-  } catch (e) {
-    console.error(e);
-    return res.json({
-      created: false,
-      reason: `Could not parse webhook: repository=${req?.body?.repository?.full_name} ref=${req?.body?.ref}`,
-    });
+  // Detect platform and parse payload
+  const platform = detectPlatform(req.headers);
+
+  // Reject non-push GitLab events early
+  if (platform === "gitlab") {
+    const gitlabEvent = req.headers["x-gitlab-event"];
+    if (gitlabEvent && gitlabEvent !== "Push Hook") {
+      return res.json({
+        created: false,
+        reason: "Only push events are supported",
+      });
+    }
   }
 
-  if (!(await hasIgIni(org, repo, branch))) {
+  /** @type {BuildRequest | { error: string }} */
+  const parsed = platform === "gitlab"
+    ? parseGitlabPayload(req.body)
+    : parseGithubPayload(req.body);
+
+  if ("error" in parsed) {
+    console.error(parsed.error);
+    return res.json({ created: false, reason: parsed.error });
+  }
+
+  const buildReq = /** @type {BuildRequest} */ (parsed);
+
+  if (!(await hasIgIni(buildReq))) {
     return res.json({ created: false, reason: "No ig.ini found" });
   }
 
-  const headSha = await resolveHead(org, repo, branch);
+  const headSha = await resolveHead(buildReq);
   if (!headSha) {
-    console.error(`Failed to resolve HEAD for ${org}/${repo}@${branch}`);
+    const platformName = buildReq.platform === "gitlab" ? "GitLab" : "GitHub";
+    console.error(`Failed to resolve HEAD for ${buildReq.org}/${buildReq.repo}@${buildReq.branch}`);
     return res.status(502).json({
       created: false,
-      reason: "Could not resolve branch HEAD from GitHub; not scheduling to avoid stale preemption",
+      reason: `Could not resolve branch HEAD from ${platformName}; not scheduling to avoid stale preemption`,
     });
   }
 
   try {
-    const result = await scheduler.handleWebhook(org, repo, branch, headSha);
+    const result = await scheduler.handleWebhook(
+      buildReq.org, buildReq.repo, buildReq.branch, headSha,
+      { cloneUrl: buildReq.cloneUrl, platformUrl: buildReq.baseUrl }
+    );
     if (!result.ok) {
       return res.status(500).json(result);
     }

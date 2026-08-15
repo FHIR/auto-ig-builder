@@ -2,11 +2,11 @@
 
 ## About Auto-Builder
 
-Use this tool if you're working on an FHIR Implementation Guide in a **public GitHub repository** and want your work-in-progress to be visible as part of the FHIR Continuous Integration (CI) build service at https://build.fhir.org/ig/.
+Use this tool if you're working on an FHIR Implementation Guide in a **public GitHub or GitLab repository** and want your work-in-progress to be visible as part of the FHIR Continuous Integration (CI) build service at https://build.fhir.org/ig/.
 
-By following the instructions below, you can configure your GitHub repository to auto-build every time you make a commit (on any branch), and the resulting output (successful IG content, or debugging logs) will automatically be pushed to https://build.fhir.org/ig/.
+By following the instructions below, you can configure your repository to auto-build every time you make a commit (on any branch), and the resulting output (successful IG content, or debugging logs) will automatically be pushed to https://build.fhir.org/ig/.
 
-## Quick start guide
+## Quick start guide (GitHub)
 
 0. **Create an IG** in a new folder, including a file called `ig.ini` alongside any other content (for example a `pages` folder) that your IG requires. See https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation for full documentation.
 1. **Put your IG on GitHub**: create a public GitHub repository within your own organization, and push your content to GitHub.
@@ -30,6 +30,62 @@ Click "Add webhook".
 Note: first webhook call will of type `ping` and will fail. That is (currently) OK. Once you make a commit and a push, a call of type `push` will be made and that should be successful if your setup is correct.
 
 </details>
+
+## Quick start guide (GitLab)
+
+0. **Create an IG** in a new folder, including a file called `ig.ini` alongside any other content that your IG requires. See https://confluence.hl7.org/display/FHIR/IG+Publisher+Documentation for full documentation.
+1. **Put your IG on GitLab**: create a **public** GitLab project (on gitlab.com or a publicly-accessible self-hosted instance) and push your content.
+2. **Add a webhook**: In your project, go to **Settings → Webhooks → Add new webhook**:
+   - **URL**: `https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger`
+   - **Trigger**: Check **Push events** only
+   - Leave "Secret token" blank
+   - Click **Add webhook**
+
+**Now GitLab will automatically trigger a build whenever you push changes. :-)**
+
+### GitLab Important Notes
+* Only **public** repositories are supported (the builder clones without authentication)
+* Branches are `[A-Za-z0-9_-]` only — same restriction as GitHub
+* Nested groups are supported (e.g. `org/subgroup/my-ig`)
+* Builds take 2-3 minutes to complete
+* Build notifications appear at https://chat.fhir.org/#narrow/stream/179297-committers.2Fnotification/topic/ig-build
+
+### Finding your GitLab IG build output
+
+Your rendered IG will be available at:
+
+```
+https://build.fhir.org/ig/gitlab.com/:namespace/:project/branches/:branch
+```
+
+For example, if your project is at `gitlab.com/csiro/my-fhir-ig` on branch `main`:
+
+```
+https://build.fhir.org/ig/gitlab.com/csiro/my-fhir-ig/branches/main
+```
+
+The default branch is also available at:
+```
+https://build.fhir.org/ig/gitlab.com/:namespace/:project
+```
+
+### Manually triggering a GitLab build
+
+You can `POST` a GitLab-style payload directly:
+
+```
+curl -X POST "https://us-central1-fhir-org-starter-project.cloudfunctions.net/ig-commit-trigger" \
+  -H "Content-Type: application/json" \
+  -H "X-Gitlab-Event: Push Hook" \
+  --data '{
+    "object_kind": "push",
+    "ref": "refs/heads/main",
+    "project": {
+      "path_with_namespace": "myorg/my-ig",
+      "git_http_url": "https://gitlab.com/myorg/my-ig.git"
+    }
+  }'
+```
 
 
 
