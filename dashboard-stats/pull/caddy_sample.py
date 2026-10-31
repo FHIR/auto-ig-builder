@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Sampled egress breakdown from the build.fhir.org Caddy access logs (read-only, Cloud Logging API).
 
-Sample: the first SAMPLE_MIN minutes of every hour, over the given UTC days. Entries are streamed
+Sample: the first SAMPLE_MIN minutes of every hour, over the given UTC days. Since
+2026-10-31T22:34Z a Cloud Logging exclusion (caddy-access-keep-1pct) keeps only 1% of access
+lines, so for later days whole hours are read; sample_minutes_per_hour records the effective
+sample (0.6 = 60 min x 1%). Shares are unaffected; absolute counts scale by 60/that value. Entries are streamed
 and aggregated in memory; only aggregates are written (no IPs, no raw user agents, no headers).
 Output NDJSON rows: {day, org, repo, branch, ftype, client, bot, status, n, bytes}
 Usage: pull/pull_egress.sh [DAY DAY]   (default: the last two full UTC days)
 """
 import collections, json, re, subprocess, sys, time, urllib.parse, urllib.request
 
-SAMPLE_MIN = 1
+SAMPLE_MIN = 1          # minutes per hour read while every access line was logged
+LOG_KEEP_FROM = "2026-11-01"   # first full UTC day with only 1% of lines kept
+LOG_KEEP_FRACTION = 0.01
 import datetime as _dt
 _today = _dt.datetime.now(_dt.timezone.utc).date()
 days = sys.argv[1:] or [str(_today - _dt.timedelta(days=2)), str(_today - _dt.timedelta(days=1))]  # last two full UTC days
@@ -61,8 +66,12 @@ def token():
 agg = collections.defaultdict(lambda: [0, 0])
 tok, t0, total = token(), time.time(), 0
 for day in days:
+    sampled = day >= LOG_KEEP_FROM
+    minutes = 60 if sampled else SAMPLE_MIN
+    effective = minutes * (LOG_KEEP_FRACTION if sampled else 1)
     for hr in range(24):
-        a = f"{day}T{hr:02d}:00:00Z"; b = f"{day}T{hr:02d}:{SAMPLE_MIN:02d}:00Z"
+        a = f"{day}T{hr:02d}:00:00Z"
+        b = f"{day}T{hr + 1:02d}:00:00Z" if minutes == 60 and hr < 23 else (f"{day}T23:59:59.999Z" if minutes == 60 else f"{day}T{hr:02d}:{minutes:02d}:00Z")
         body = {"resourceNames": ["projects/" + PROJECT], "orderBy": "timestamp asc", "pageSize": 1000,
                 "filter": f'resource.type="k8s_container" AND resource.labels.container_name="caddy" AND timestamp>="{a}" AND timestamp<"{b}"'}
         url = "https://logging.googleapis.com/v2/entries:list?fields=nextPageToken," + urllib.parse.quote(f"entries({FIELDS})")
@@ -81,12 +90,12 @@ for day in days:
                 client, bot = classify(ua)
                 org, repo, branch, ftype = parse(rq.get("uri"))
                 st = j.get("status") or 0
-                k = (day, org, repo, branch, ftype, client, bot, f"{st // 100}xx")
+                k = (day, org, repo, branch, ftype, client, bot, f"{st // 100}xx", effective)
                 agg[k][0] += 1; agg[k][1] += int(j.get("size") or 0); total += 1
             if not r.get("nextPageToken"): break
             body["pageToken"] = r["nextPageToken"]; time.sleep(1.05)
         print(f"{day} {hr:02d}h: {total} entries so far", file=sys.stderr, flush=True)
-for (day, org, repo, branch, ftype, client, bot, st), (n, by) in agg.items():
+for (day, org, repo, branch, ftype, client, bot, st, eff), (n, by) in agg.items():
     print(json.dumps({"day": day, "org": org, "repo": repo, "branch": branch, "ftype": ftype, "client": client,
-                      "bot": bot, "status": st, "n": n, "bytes": by, "sample_minutes_per_hour": SAMPLE_MIN}))
+                      "bot": bot, "status": st, "n": n, "bytes": by, "sample_minutes_per_hour": eff}))
 print(f"done: {total} entries, {len(agg)} aggregate rows", file=sys.stderr)

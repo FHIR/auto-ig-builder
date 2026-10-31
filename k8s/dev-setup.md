@@ -92,6 +92,17 @@ The build service uses Caddy with the `caddy-ratelimit` plugin to limit requests
 
 This prevents abuse while allowing internal monitoring systems unlimited access.
 
+## Access logs
+
+Caddy writes one JSON line per request to stdout (~15 GiB/day). A Cloud Logging
+exclusion on the `_Default` sink, `caddy-access-keep-1pct` (added 2026-10-31),
+drops 99% of those `handled request` lines before ingestion; Caddy's errors and
+all other logs are kept. This cut logging cost from ~$140–190/month to a few
+dollars. To see or remove it: `gcloud logging sinks describe _Default` /
+`gcloud logging sinks update _Default --remove-exclusions=caddy-access-keep-1pct`.
+Absolute request counts from the logs must be multiplied by 100 after the cutover;
+shares are unaffected (`dashboard-stats/pull/caddy_sample.py` accounts for it).
+
 ## Growing the site disk
 
 `fhir-ci-build-disk` holds everything build.fhir.org serves; check it with
