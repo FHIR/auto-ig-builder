@@ -21,8 +21,9 @@ for pool in $(jq -r '.nodePools[].name' <<<"$c"); do
     p=$(jq --arg p "$pool" '.nodePools[] | select(.name == $p)' <<<"$c")
     check "$pool: metadata server hidden (GKE_METADATA)" "$(jq -r '.config.workloadMetadataConfig.mode' <<<"$p")" "GKE_METADATA"
     check "$pool: integrity monitoring" "$(jq -r '.config.shieldedInstanceConfig.enableIntegrityMonitoring // false' <<<"$p")" "true"
+    # The API omits false values, so absent = off (the cluster default is checked above).
     check "$pool: kubelet read-only port off" \
-        "$(jq -r '.config.kubeletConfig.insecureKubeletReadonlyPortEnabled // "unset"' <<<"$p")" "false"
+        "$(jq -r '.config.kubeletConfig.insecureKubeletReadonlyPortEnabled // false' <<<"$p")" "false"
 done
 
 check "fhir namespace enforces baseline Pod Security" \
