@@ -14,7 +14,9 @@ fi
 attempt=1
 while true; do
     echo "Starting publish attempt ${attempt}/${attempts} for $* from $(pwd)"
-    if tar czf - * | ssh ci-build ./publish-ig "$@"; then
+    # ssh joins its arguments into one string for the remote shell, so quote
+    # each one or text from the build (or a branch name) could run commands.
+    if tar czf - * | ssh ci-build ./publish-ig $(printf '%q ' "$@"); then
         echo "Publish completed on attempt ${attempt}/${attempts}"
         exit 0
     else

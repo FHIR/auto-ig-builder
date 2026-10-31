@@ -2,17 +2,24 @@
 
 set -e
 
-function finish_upload_keepalive {
-  kill $KEEPALIVE_PID
-}
-trap finish_upload_keepalive EXIT
-
-
 IG_ORG=$1
 IG_REPO=$2
 DEPLOY_TO_BRANCH=${3:-master}
 FAILURE_FLAG=${4:-success}
 IS_DEFAUT_BRANCH=${5:-nondefault}
+
+# These name directories under the web root; refuse anything else.
+for name in "$IG_ORG" "$IG_REPO" "$DEPLOY_TO_BRANCH"; do
+    if ! [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || [ "$name" == "." ] || [ "$name" == ".." ]; then
+        echo "Refusing unsafe name: $name" >&2
+        exit 2
+    fi
+done
+
+function finish_upload_keepalive {
+  kill $KEEPALIVE_PID
+}
+trap finish_upload_keepalive EXIT
 
 TARGET="${RANDOM}_${IG_ORG}_${IG_REPO}"
 
