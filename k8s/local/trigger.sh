@@ -19,7 +19,8 @@ RUN="$STATE/trigger"
 
 mkdir -p "$RUN"
 rsync -a --delete --exclude node_modules --exclude sa.kubeconfig "$SRC/" "$RUN/"
-cp "$STATE/sa.kubeconfig" "$RUN/sa.kubeconfig"
+# Older trigger sources (before KUBECONFIG_PATH) read ./sa.kubeconfig.
+grep -q KUBECONFIG_PATH "$RUN/index.js" || cp "$STATE/sa.kubeconfig" "$RUN/sa.kubeconfig"
 
 # Local images, and memory that fits a laptop VM.
 jq '(.spec.template.spec.containers[] | .imagePullPolicy) = "IfNotPresent"
@@ -35,5 +36,6 @@ mv "$RUN/job.json.new" "$RUN/job.json"
 
 cd "$RUN"
 [ -d node_modules ] && [ package-lock.json -ot node_modules ] || npm ci --silent
+KUBECONFIG_PATH="$STATE/sa.kubeconfig" \
 IG_BUILD_IMAGE="${IG_BUILD_IMAGE:-local/ig-build:prod}" PORT="${PORT:-8080}" \
     exec npx functions-framework --target=ig-commit-trigger --signature-type=http

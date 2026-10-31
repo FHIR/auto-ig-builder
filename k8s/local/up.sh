@@ -77,8 +77,10 @@ yaml.safe_dump_all([dep, svc], sys.stdout, sort_keys=False)
 EOF
 k apply -f "$STATE/ci-build.yaml"
 
-# The trigger's service account, bound to "admin" in fhir as in production.
+# The trigger's service account, with exactly production's permissions.
 k -n fhir create serviceaccount igbuild --dry-run=client -o yaml | k apply -f -
+k apply -f "$K8S/ig-trigger.rbac.yaml"
+k -n fhir delete rolebinding ig-build-rolebinding --ignore-not-found
 k apply -f - <<EOF
 apiVersion: v1
 kind: Secret
@@ -87,12 +89,6 @@ metadata:
   namespace: fhir
   annotations: {kubernetes.io/service-account.name: igbuild}
 type: kubernetes.io/service-account-token
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata: {name: ig-build-rolebinding, namespace: fhir}
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: admin}
-subjects: [{kind: ServiceAccount, name: igbuild, namespace: fhir}]
 EOF
 for _ in $(seq 30); do
     token=$(k -n fhir get secret igbuild-token -o jsonpath='{.data.token}' 2>/dev/null | base64 -d)

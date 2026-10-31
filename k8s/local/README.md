@@ -15,6 +15,8 @@ them to a local ci-build pod.
 | LoadBalancer with a static IP | ClusterIP; reach it from inside the cluster |
 | Cloud Function (1st gen) | `functions-framework` on localhost:8080 |
 | Real secrets | Placeholders, and a fresh SSH key pair in the state directory |
+| Trigger credential mounted from Secret Manager | A kubeconfig in the state directory, via the same `KUBECONFIG_PATH`; same RBAC (`../ig-trigger.rbac.yaml`) |
+| Workload Identity hides the node's Google token | No metadata server at all; same effect for pods |
 | Build memory 22–30 GiB | 4–10 GiB (`JAVA_MEMORY` 6000m) |
 
 GitHub webhook and App delivery can't be tested locally; post the webhook
@@ -31,6 +33,9 @@ minikube start -p igb --driver=qemu2 --qemu-firmware-path=/usr/share/edk2/x64/OV
   --network=builtin --container-runtime=containerd --kubernetes-version=v1.35.0 \
   --cpus=8 --memory=18g --disk-size=40g --keep-context
 ```
+
+Pass `--qemu-firmware-path` again when restarting a stopped cluster
+(`minikube start -p igb --qemu-firmware-path=… --keep-context`).
 
 `--keep-context` leaves your default kubectl context alone. Everything here
 uses `--context igb` explicitly, and `up.sh` refuses a GKE context.
