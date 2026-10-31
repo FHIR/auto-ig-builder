@@ -21,9 +21,6 @@ build.fhir.org:80, build.fhir.org {
 	file_server browse
 
 	header {
-		# CI output changes at any time: let clients keep copies but revalidate
-		# each use (ETag / If-None-Match), so unchanged files cost a 304.
-		Cache-Control "no-cache"
 		Access-Control-Allow-Origin "*"
 		Access-Control-Allow-Methods "GET, POST, OPTIONS"
 		Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type"
