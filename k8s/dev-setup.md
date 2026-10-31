@@ -102,7 +102,7 @@ gcloud compute disks resize fhir-ci-build-disk --zone us-east1-d --size <GB>
 NODE=$(kubectl -n fhir get pod -l run=ci-build -o jsonpath='{.items[0].spec.nodeName}')
 # The disk is mounted directly (not through a PVC), so grow the filesystem from the node:
 kubectl debug node/$NODE -n default --profile=sysadmin --image=busybox:1.37.0 -- chroot /host resize2fs /dev/sdc
-kubectl -n default delete pod -l app.kubernetes.io/name!=x --field-selector=status.phase=Succeeded  # the debug pod
+kubectl -n default get pods -o name | grep node-debugger | xargs kubectl -n default delete   # remove the debug pod
 ```
 
 Check the device first (`ls -l /dev/disk/by-id/google-fhir-ci-build-disk` on
