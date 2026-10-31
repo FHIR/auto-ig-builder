@@ -52,6 +52,11 @@ runs untrusted code. The setup assumes that:
   `restrict,command=` in `authorized_keys`. The dispatcher runs `publish` or
   `publish-ig` without a shell, and both scripts refuse names outside letters,
   digits and `. _ + , -`.
+- **Pod Security Admission** on the `fhir` namespace: `enforce=baseline`
+  (no privileged, host-path, host-network or host-PID pods, even for someone
+  holding the trigger's job-creating credential), `warn=restricted`
+  (informational; ci-build and the capacity placeholders run as root, so they
+  warn). Set in `k8s/create.sh`.
 - **The ci-build pod** (`k8s/ci-build.deployment.yaml`) runs sshd and supervisord as
   root, so it keeps root's capabilities, but it has RuntimeDefault seccomp and
   `allowPrivilegeEscalation: false`.

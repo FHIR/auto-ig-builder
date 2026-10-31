@@ -16,6 +16,9 @@ kubectl apply -f ci-build.configmap.yaml
 kubectl apply -f ci-build.deployment.yaml
 kubectl apply -f ci-build.service.yaml
 
+# Refuse privileged, host-path and host-network pods in fhir (see dev-setup.md "Cluster security setup")
+kubectl label --overwrite ns fhir pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/enforce-version=latest pod-security.kubernetes.io/warn=restricted
+
 kubectl create serviceaccount igbuild --namespace fhir
 # The trigger's permissions; nothing broader (see dev-setup.md "Cluster security setup")
 kubectl apply -f ig-trigger.rbac.yaml

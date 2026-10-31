@@ -25,6 +25,8 @@ mkdir -p "$STATE"
 [ -f "$STATE/id" ] || ssh-keygen -q -t ed25519 -N "" -C ci-build-local -f "$STATE/id"
 
 k create namespace fhir --dry-run=client -o yaml | k apply -f -
+k label --overwrite ns fhir pod-security.kubernetes.io/enforce=baseline \
+    pod-security.kubernetes.io/enforce-version=latest pod-security.kubernetes.io/warn=restricted >/dev/null
 
 # Secrets: same names and keys as production, placeholder values.
 k -n fhir create secret generic ci-build-keys --from-file=id="$STATE/id" --from-file=id.pub="$STATE/id.pub" \
