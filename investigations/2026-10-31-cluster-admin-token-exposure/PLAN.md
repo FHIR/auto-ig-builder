@@ -128,5 +128,5 @@ Original step:
 ## Rollback
 - **RBAC:** re-create the deleted bindings from this file's description. Only do this
   if the trigger breaks and can't be fixed forward.
-- **Trigger:** redeploy the previous version from git (`31b1070`). It needs an
+- **Trigger:** redeploy the previous version from git (`6aa586d`). It needs an
   `sa.kubeconfig` file again.

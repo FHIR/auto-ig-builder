@@ -4,7 +4,7 @@
 
 | Piece | Now in production |
 |---|---|
-| Trigger | Cloud Function version 53 (from `31b1070`): name validation and hardened `job.json` |
+| Trigger | Cloud Function version 53 (from `6aa586d`): name validation and hardened `job.json` |
 | `ig-build:latest` | `sha256:dcdd24400683…` = April image + fixed `publish` and `watch-and-publish` (also tagged `hotfix-20261031`) |
 | `ci-build:latest` | `sha256:439eea842025…` = February image + `publish-ig` name check (also tagged `hotfix-20261031`) |
 | ci-build Deployment | RuntimeDefault seccomp, `allowPrivilegeEscalation: false` on both containers, busybox init |
@@ -29,7 +29,7 @@ Later the same day (all verified in production):
 - **Disk:** grown 1000 → 1500 GB (`resize2fs` online). Failed builds no longer upload the publisher's `temp/`, and interrupted uploads clean up their staging directory (80 leftovers, 5.6 GiB, removed).
 
 Found and fixed along the way:
-- **Upload sidecar hang (`1e7bbd6`):** the builder renames `done.temp` to `done`, and inotify reports that as `moved_to`, which the sidecar didn't watch for. On 2026-10-27, ansforge/interop-ig-fhir-document-patient-summary built but was never published, and its job held 22 GiB for 10 h.
+- **Upload sidecar hang (`db4eb0e`):** the builder renames `done.temp` to `done`, and inotify reports that as `moved_to`, which the sidecar didn't watch for. On 2026-10-27, ansforge/interop-ig-fhir-document-patient-summary built but was never published, and its job held 22 GiB for 10 h.
 - **Deploy order matters:** an unfixed sender against the fixed `publish-ig` is still injectable, because the remote shell splits the command before `publish-ig` runs. The trigger validation and the sender's quoting are the real fixes.
 - **`setup-secret.sh`** relies on the current kubectl context's namespace being `fhir`. Run it with `--context … -n fhir`.
 
@@ -41,7 +41,7 @@ Follow-ups, not done:
 
 Previous `latest` digests, for rollback: `ig-build@sha256:1125be02639f…`, `ci-build@sha256:536804945519…`; the trigger's previous code is `26b8de5`.
 
-Branch: `fix/webhook-name-injection` (from `origin/master`), commits `0c235d6`, `73150f6`.
+Branch: `fix/webhook-name-injection` (from `origin/master`), commits `58c7226`, `01f79c8`.
 
 ## The problem
 
