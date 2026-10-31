@@ -102,12 +102,11 @@ It can be grown online, with no restart:
 gcloud compute disks resize fhir-ci-build-disk --zone us-east1-d --size <GB>
 NODE=$(kubectl -n fhir get pod -l run=ci-build -o jsonpath='{.items[0].spec.nodeName}')
 # The disk is mounted directly (not through a PVC), so grow the filesystem from the node:
-kubectl debug node/$NODE -n default --profile=sysadmin --image=busybox:1.37.0 -- chroot /host resize2fs /dev/sdc
+kubectl debug node/$NODE -n default --profile=sysadmin --image=busybox:1.37.0 -- chroot /host resize2fs /dev/disk/by-id/google-fhir-ci-build-disk
 kubectl -n default get pods -o name | grep node-debugger | xargs kubectl -n default delete   # remove the debug pod
 ```
 
-Check the device first (`ls -l /dev/disk/by-id/google-fhir-ci-build-disk` on
-the node). The filesystem's root reserve is 1% (`tune2fs -m 1`), not the
+The by-id name finds the disk whatever device letter it got on that node. The filesystem's root reserve is 1% (`tune2fs -m 1 /dev/disk/by-id/google-fhir-ci-build-disk`), not the
 default 5%: nothing writing to this disk runs as root, so a 5% reserve would only
 hide space.
 
