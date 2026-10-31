@@ -227,6 +227,10 @@ curl "${FUNCTION_URL}?action=sweep"
 ```
 
 
+11. Refresh the build statistics dashboard
+
+The public dashboard at https://build.fhir.org/ig/_dashboard/ is a static page that queries a SQLite file in the browser. `dashboard-stats/` holds the whole pipeline: `./rebuild.sh all` pulls Cloud Logging, BigQuery billing (dry-run guarded), GitHub commits, a sampled access-log mix and a read-only disk scan into the git-ignored `dashboard-stats/work/`, then builds `site/data/igstats.sqlite`; `./deploy.sh` publishes it and `node test/smoke_test.mjs` checks the live page. Put the billing export table name (it embeds the billing-account id) in the git-ignored `dashboard-stats/config.env`, and don't run the disk scan during a ci-build restart. Details in `dashboard-stats/README.md`.
+
 ---
 
 ## Testing locally with minikube

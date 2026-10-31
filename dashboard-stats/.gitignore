@@ -1,0 +1,11 @@
+# Never commit data or secrets (see README "Privacy").
+work/
+config.env
+site/data/
+*.sqlite
+*.duckdb
+*.duckdb.wal
+*.csv
+*.ndjson
+*.tsv
+__pycache__/

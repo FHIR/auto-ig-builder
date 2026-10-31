@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IG Build Retrospective</title>
+<meta name="description" content="Live, cross-filtered retrospective of a year of FHIR Implementation Guide builds on build.fhir.org">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%222%22 y=%228%22 width=%223%22 height=%226%22 fill=%22%232a78d6%22/%3E%3Crect x=%226.5%22 y=%224%22 width=%223%22 height=%2210%22 fill=%22%232a78d6%22/%3E%3Crect x=%2211%22 y=%222%22 width=%223%22 height=%2212%22 fill=%22%232a78d6%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<button class="theme-btn" id="theme" type="button" aria-label="Switch colour theme">Theme: auto</button>
+<main id="app">
+  <header class="top">
+    <p class="eyebrow">build.fhir.org &middot; draft community retrospective</p>
+    <h1>A year of IG builds</h1>
+    <p class="lede" id="lede">Loading the database…</p>
+  </header>
+  <noscript>This page runs SQL in your browser and needs JavaScript.</noscript>
+</main>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+<script src="vendor/sql-wasm.js"></script>
+<script src="charts.js"></script>
+<script src="queries.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
