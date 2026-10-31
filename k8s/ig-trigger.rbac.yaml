@@ -1,0 +1,52 @@
+# What the ig-commit-trigger Cloud Function may do, as fhir/igbuild.
+# Anything that can create Jobs can create pods, so keep this credential out
+# of anything a pod can read (see investigations/2026-10-31-cluster-admin-token-exposure).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ig-trigger
+  namespace: fhir
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create", "get", "list", "watch", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "events"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ig-trigger
+  namespace: fhir
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ig-trigger
+subjects:
+- kind: ServiceAccount
+  name: igbuild
+  namespace: fhir
+---
+# The stale-pin sweep checks whether a pinned node still exists.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ig-trigger-nodes
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ig-trigger-nodes
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ig-trigger-nodes
+subjects:
+- kind: ServiceAccount
+  name: igbuild
+  namespace: fhir

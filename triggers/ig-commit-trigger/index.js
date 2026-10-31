@@ -7,7 +7,9 @@ import { createScheduler } from "./scheduling.js";
 import { createSweepHandler } from "./sweep.js";
 
 const kc = new k8s.KubeConfig();
-kc.loadFromFile("sa.kubeconfig");
+// Deployed, this is a Secret Manager secret mounted as a file; the kubeconfig
+// must never be in the uploaded source, which every node can read.
+kc.loadFromFile(process.env.KUBECONFIG_PATH ?? "sa.kubeconfig");
 
 const k8sBatch = kc.makeApiClient(k8s.BatchV1Api);
 const k8sCore = kc.makeApiClient(k8s.CoreV1Api);

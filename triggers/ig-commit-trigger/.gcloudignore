@@ -16,3 +16,8 @@
 node_modules
 test-*.js
 tsconfig.json
+
+# Credentials come from Secret Manager at runtime; never upload them.
+sa.kubeconfig
+*.kubeconfig
+secret.json
