@@ -40,9 +40,10 @@ runs untrusted code. The setup assumes that:
   bucket in the project. Nothing in `fhir` needs Google credentials. New node
   pools must be created with `--workload-metadata=GKE_METADATA`. To check:
   `gcloud container node-pools describe POOL --cluster fhir-k8s --zone us-east1-d --format='value(config.workloadMetadataConfig.mode)'`.
-- **Nodes:** Shielded GKE Nodes (cluster `--enable-shielded-nodes`) with Secure
-  Boot and integrity monitoring on every pool (`--shielded-secure-boot
-  --shielded-integrity-monitoring`), and the kubelet's unauthenticated
+- **Nodes:** Shielded GKE Nodes (cluster `--enable-shielded-nodes`) with
+  integrity monitoring on every pool. Secure Boot is deliberately off: it can only
+  be set when a pool is created, and recreating the pools wasn't judged worth it
+  (2026-10-31). The kubelet's unauthenticated
   read-only port (10255) off, both as the cluster default
   (`--no-enable-insecure-kubelet-readonly-port`) and on each pool. Before
   this, any pod could list every pod on its node from that port. Changing any

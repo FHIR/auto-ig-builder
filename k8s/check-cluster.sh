@@ -20,7 +20,7 @@ check "kubelet read-only port off (pool default)" \
 for pool in $(jq -r '.nodePools[].name' <<<"$c"); do
     p=$(jq --arg p "$pool" '.nodePools[] | select(.name == $p)' <<<"$c")
     check "$pool: metadata server hidden (GKE_METADATA)" "$(jq -r '.config.workloadMetadataConfig.mode' <<<"$p")" "GKE_METADATA"
-    check "$pool: Secure Boot" "$(jq -r '.config.shieldedInstanceConfig.enableSecureBoot // false' <<<"$p")" "true"
+    check "$pool: integrity monitoring" "$(jq -r '.config.shieldedInstanceConfig.enableIntegrityMonitoring // false' <<<"$p")" "true"
     check "$pool: kubelet read-only port off" \
         "$(jq -r '.config.kubeletConfig.insecureKubeletReadonlyPortEnabled // "unset"' <<<"$p")" "false"
 done
