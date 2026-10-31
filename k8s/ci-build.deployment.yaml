@@ -14,6 +14,11 @@ spec:
         run: ci-build
       namespace: fhir
     spec:
+      # sshd and supervisord need root and its capabilities, so these
+      # containers keep them; this only filters syscalls and stops setuid gains.
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - env:
         - name: BUILD_NUMBER
@@ -28,11 +33,15 @@ spec:
         image: gcr.io/fhir-org-starter-project/ci-build
         imagePullPolicy: Always
         name: ci-build
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - mountPath: /home/fhir_upload/uploading
           name: fhir-ci-build-disk
       - image: gcr.io/fhir-org-starter-project/caddy-ratelimit:latest
         name: caddy
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - name: fhir-ci-build-disk
           mountPath: /var/www
@@ -50,7 +59,7 @@ spec:
         - sh
         - -c
         - mkdir -p /disk/www && chmod a+rwx /disk /disk/www
-        image: ubuntu:16.04
+        image: busybox:1.37.0
         imagePullPolicy: IfNotPresent
         name: permissions
         volumeMounts:
