@@ -20,6 +20,9 @@ done
 
 function finish_upload_keepalive {
   kill $KEEPALIVE_PID
+  # A failed or cut-off upload leaves its staging directory behind; after a
+  # successful publish it has already been moved into place.
+  if [ -n "${TARGET:-}" ] && [ -d ~/uploading/"$TARGET" ]; then rm -rf ~/uploading/"$TARGET"; fi
 }
 trap finish_upload_keepalive EXIT
 

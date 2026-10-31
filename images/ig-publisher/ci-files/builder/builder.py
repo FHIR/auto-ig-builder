@@ -31,6 +31,10 @@ def get_qa_score(build_dir):
 
 
 def finalize(result_dir, message, pubargs):
+  if result_dir == clone_dir:
+    # A failure publishes the whole working tree for debugging; the
+    # publisher's temp/ is intermediate files only, often GBs for large IGs.
+    shutil.rmtree(os.path.join(clone_dir, 'temp'), ignore_errors=True)
   shutil.copy(logfile, result_dir)
   os.rename(result_dir, upload_dir)
   message_path = os.path.join(SCRATCH_SPACE, 'message')
