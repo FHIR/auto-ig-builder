@@ -15,7 +15,7 @@ By following the instructions below, you can configure your GitHub repository to
 **Now GitHub will automatically trigger a build whenever you commit changes. :-)**
 
 ### Important Notes
-* branches are `[A-Za-z0-9_-]` only. Other characters such as **`/` will not work in branch names**
+* org, repo and branch names may use only letters, digits and `. _ + , -`. Other characters such as **`/` will not work in branch names**
 * build notifications at https://chat.fhir.org/#narrow/stream/179297-committers.2Fnotification/topic/ig-build
 * builds takes 2-3 minutes to complete
 
