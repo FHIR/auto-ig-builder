@@ -14,9 +14,44 @@ gcloud container clusters get-credentials fhir-k8s --zone us-east1-d
 
 ```
 git clone https://github.com/FHIR/auto-ig-builder/
-cd auto-ig-builder/triggers/ig-commit-trigger
-./setup-secret.sh
 ```
+
+The trigger's Kubernetes credential lives in Secret Manager, not in the
+checkout; see "Cluster security setup" below.
+
+## Cluster security setup
+
+Anyone on GitHub can make the cluster build their content, so every build pod
+runs untrusted code. The setup assumes that:
+
+- **The trigger's credential.** The Cloud Function acts as `fhir/igbuild` with only
+  the permissions in `k8s/ig-trigger.rbac.yaml` (`kubectl apply -f k8s/ig-trigger.rbac.yaml`).
+  Never bind `igbuild` to `admin` or `cluster-admin`: anything that can create
+  Jobs can create pods. Its kubeconfig is the Secret Manager secret
+  `ig-trigger-kubeconfig`, readable only by the function's runtime account and
+  mounted into the function at deploy time. Create or rotate it with
+  `triggers/ig-commit-trigger/setup-secret.sh`. Never put a kubeconfig in the
+  function's source directory: uploaded sources sit in a bucket that GKE nodes
+  can read.
+- **Workload Identity on every node pool** (`--workload-metadata=GKE_METADATA`,
+  cluster `--workload-pool=fhir-org-starter-project.svc.id.goog`). Without it,
+  any pod can fetch the node's Google token from the metadata server. The nodes
+  run as the project's shared default compute account, which can read every
+  bucket in the project. Nothing in `fhir` needs Google credentials. New node
+  pools must be created with `--workload-metadata=GKE_METADATA`. To check:
+  `gcloud container node-pools describe POOL --cluster fhir-k8s --zone us-east1-d --format='value(config.workloadMetadataConfig.mode)'`.
+- **Build jobs** (`triggers/ig-commit-trigger/job.json`) run as uid 1000 with the
+  RuntimeDefault seccomp profile, `allowPrivilegeEscalation: false` and all
+  capabilities dropped.
+- **The ci-build pod** (`k8s/ci-build.deployment.yaml`) runs sshd and supervisord as
+  root, so it keeps root's capabilities, but it has RuntimeDefault seccomp and
+  `allowPrivilegeEscalation: false`.
+- **Names reaching shells.** Org, repo and branch names are limited to letters,
+  digits and `. _ + , -` by the trigger, quoted by the upload sidecar, and checked
+  again by `publish-ig` on ci-build.
+
+Background and verification: `investigations/2026-10-31-webhook-name-injection/`
+and `investigations/2026-10-31-cluster-admin-token-exposure/`.
 
 ## Rate Limiting
 
@@ -84,6 +119,7 @@ npm test
 npm run typecheck
 
 gcloud functions deploy ig-commit-trigger \
+  --no-gen2 \
   --region=us-central1 \
   --runtime=nodejs22 \
   --trigger-http \
@@ -91,8 +127,14 @@ gcloud functions deploy ig-commit-trigger \
   --entry-point=ig-commit-trigger \
   --memory=256MB \
   --timeout=60s \
+  --set-secrets=/etc/ig-trigger/kubeconfig=ig-trigger-kubeconfig:VERSION \
+  --set-env-vars=KUBECONFIG_PATH=/etc/ig-trigger/kubeconfig \
   --source=.
 ```
+
+`VERSION` is the Secret Manager version of the trigger's credential; see
+`triggers/ig-commit-trigger/README.md`. `job.json` is bundled with the function,
+so build-pod changes also ship this way.
 
 Note: Node.js 22 is GA and recommended.
 

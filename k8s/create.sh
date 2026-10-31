@@ -17,6 +17,6 @@ kubectl apply -f ci-build.deployment.yaml
 kubectl apply -f ci-build.service.yaml
 
 kubectl create serviceaccount igbuild --namespace fhir
-
-# Now create a secret for it (needed for k8s > 1.23)
-https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#manually-create-a-long-lived-api-token-for-a-serviceaccount
+# The trigger's permissions; nothing broader (see dev-setup.md "Cluster security setup")
+kubectl apply -f ig-trigger.rbac.yaml
+# Then store its credential in Secret Manager: ../triggers/ig-commit-trigger/setup-secret.sh
