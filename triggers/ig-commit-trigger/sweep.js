@@ -379,7 +379,7 @@ export function createSweepHandler({
       console.log(
         `Sweep recovery: deleting stale pinned successor ${queuedName} for ${org}/${repo}@${branch} pinned to ${verdict.pinnedNode}`
       );
-      await scheduler.deleteJob(queuedName);
+      await scheduler.deleteJob(queuedJob);
       const recreate = await scheduler.handleWebhook(org, repo, branch, headSha);
       recovered.push({
         branchKey: key,

@@ -42,7 +42,16 @@ runs untrusted code. The setup assumes that:
   `gcloud container node-pools describe POOL --cluster fhir-k8s --zone us-east1-d --format='value(config.workloadMetadataConfig.mode)'`.
 - **Build jobs** (`triggers/ig-commit-trigger/job.json`) run as uid 1000 with the
   RuntimeDefault seccomp profile, `allowPrivilegeEscalation: false` and all
-  capabilities dropped.
+  capabilities dropped, and get no Kubernetes API token
+  (`automountServiceAccountToken: false`). Their pods are marked
+  `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`, so a scale-down
+  doesn't kill a running build (a rebuild starts over and uses the job's only
+  retry).
+- **The upload ssh key** (shared by the IG upload sidecar and the core FHIR
+  build's Azure pipeline) may run only `/usr/local/bin/ssh-dispatch`, set by
+  `restrict,command=` in `authorized_keys`. The dispatcher runs `publish` or
+  `publish-ig` without a shell, and both scripts refuse names outside letters,
+  digits and `. _ + , -`.
 - **The ci-build pod** (`k8s/ci-build.deployment.yaml`) runs sshd and supervisord as
   root, so it keeps root's capabilities, but it has RuntimeDefault seccomp and
   `allowPrivilegeEscalation: false`.

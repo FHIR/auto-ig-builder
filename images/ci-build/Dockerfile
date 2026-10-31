@@ -19,6 +19,9 @@ ADD publish publish-ig reindex /home/fhir_upload/
 RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY --chmod=755 ssh-dispatch /usr/local/bin/ssh-dispatch
 
 EXPOSE 22
-CMD echo $SSH_AUTHORIZED_KEY >> /home/fhir_upload/.ssh/authorized_keys && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+# The upload key may only run ssh-dispatch (publish or publish-ig), with no
+# shell, pty or forwarding.
+CMD echo "restrict,command=\"/usr/local/bin/ssh-dispatch\" $SSH_AUTHORIZED_KEY" > /home/fhir_upload/.ssh/authorized_keys && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

@@ -100,6 +100,10 @@ Result over the full Admin Activity retention (2025-10-31 to 2026-10-31,
   the publish reset).
 
 No write came from a node or internal address, and none touched anything outside `fhir`.
+Every one of the 60,039 Job specs `igbuild` created over the same window is the
+standard build job: the `ig-build` image (two used the `:testing` tag, the
+maintainer's April tests), `watch-and-publish`, only emptyDir and secret
+volumes, nothing privileged, no host network or PID.
 Reads, such as of secrets, are not in these logs.
 
 Original step:

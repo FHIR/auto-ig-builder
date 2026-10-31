@@ -148,17 +148,34 @@ export function createScheduler({
     );
   }
 
-  /** @param {string} name */
-  async function deleteJob(name) {
+  /**
+   * Delete a job seen in an earlier read. Given the job (not just its name),
+   * delete only that exact object: a concurrent webhook may already have
+   * replaced it with a new job of the same name, which must survive. A
+   * precondition failure (409) means it is gone already.
+   * @param {V1Job | string} jobOrName
+   */
+  async function deleteJob(jobOrName) {
+    const name = typeof jobOrName === "string" ? jobOrName : jobOrName.metadata?.name ?? "";
+    const uid = typeof jobOrName === "string" ? undefined : jobOrName.metadata?.uid;
     try {
       await k8sBatch.deleteNamespacedJob({
         name,
         namespace: NAMESPACE,
         gracePeriodSeconds: 0,
         propagationPolicy: "Background",
+        // With a body, the server takes the delete options from it; leaving
+        // propagationPolicy out would orphan the job's pods (the Job default).
+        ...(uid
+          ? { body: { preconditions: { uid }, propagationPolicy: "Background", gracePeriodSeconds: 0 } }
+          : {}),
       });
     } catch (e) {
       const code = /** @type {any} */ (e)?.code ?? /** @type {any} */ (e)?.body?.code;
+      if (code === 409 && uid) {
+        console.log(`Not deleting ${name}: already replaced`);
+        return;
+      }
       if (code !== 404) throw e;
     }
   }
@@ -333,7 +350,7 @@ export function createScheduler({
       const { terminal: staleTerminal, occupiedNames } =
         await reduceBranchState(branchKey);
       for (const job of staleTerminal) {
-        if (job.metadata?.name) await deleteJob(job.metadata.name);
+        if (job.metadata?.name) await deleteJob(job);
       }
       for (const s of ["a", "b"]) {
         if (!occupiedNames.has(slotName(branchKey, s, slug, jobNamePrefix))) return s;
@@ -360,14 +377,14 @@ export function createScheduler({
       const name = entry.job.metadata?.name;
       if (name) {
         console.log(`Cleanup extra: ${name}`);
-        await deleteJob(name);
+        await deleteJob(entry.job);
       }
     }
     for (const job of terminal) {
       const name = job.metadata?.name;
       if (name) {
         console.log(`Cleanup terminal: ${name}`);
-        await deleteJob(name);
+        await deleteJob(job);
       }
     }
 
@@ -433,7 +450,7 @@ export function createScheduler({
         pinnedNode: current.node,
       });
       await k8sBatch.createNamespacedJob({ namespace: NAMESPACE, body: job });
-      await deleteJob(currentName);
+      await deleteJob(current.job);
       return { ok: true, created: true, state: "C", jobId: job.metadata?.name, canceled: currentName, org, repo, branch };
     }
 
@@ -444,7 +461,7 @@ export function createScheduler({
       await patchAnnotations(queuedName, intentAnnotations);
       const currentName = current.job.metadata?.name;
       if (currentName && !current.job.metadata?.deletionTimestamp) {
-        await deleteJob(currentName);
+        await deleteJob(current.job);
       }
       return { ok: true, created: false, state: "D", patched: queuedName, org, repo, branch };
     }
@@ -459,7 +476,7 @@ export function createScheduler({
       if (isStalePinned) {
         // Pinned node likely disappeared. Delete and recreate unpinned.
         console.log(`State E (stale pinned): deleting ${queuedName} pinned to ${pinnedNode}, recreating unpinned`);
-        await deleteJob(queuedName);
+        await deleteJob(queued.job);
         const freeSlot = findFreeSlot("a");
         if (!freeSlot) {
           // The name we just deleted may not be free yet. Signal retry.

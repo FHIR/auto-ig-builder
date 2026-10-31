@@ -1,0 +1,26 @@
+#!/bin/bash
+# The only command the upload key may run (authorized_keys command=, see the
+# Dockerfile). sshd puts what the client asked for in SSH_ORIGINAL_COMMAND;
+# run it as publish or publish-ig without ever handing it to a shell.
+#
+# Clients send plain words, with spaces and punctuation backslash-escaped
+# (the IG uploader uses printf %q; the core build sends "./publish BRANCH").
+# Within the characters allowed below, bash's read splits and unescapes
+# exactly as the shell would, and nothing can expand or chain commands.
+
+set -euo pipefail
+
+cmd="${SSH_ORIGINAL_COMMAND:-}"
+# Bytes 0x80-0xFF admit UTF-8 letters in branch names.
+allowed="^[A-Za-z0-9._+,=/ \\"$'\x80'"-"$'\xff'"-]*\$"
+if ! LC_ALL=C bash -c '[[ "$1" =~ $2 ]]' _ "$cmd" "$allowed"; then
+    echo "Refusing command: $cmd" >&2
+    exit 2
+fi
+
+read -a words <<< "$cmd"
+case "${words[0]:-}" in
+    ./publish-ig|publish-ig) exec "$HOME/publish-ig" "${words[@]:1}" ;;
+    ./publish|publish) exec "$HOME/publish" "${words[@]:1}" ;;
+    *) echo "Refusing command: $cmd" >&2; exit 2 ;;
+esac

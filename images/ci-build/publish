@@ -2,12 +2,23 @@
 
 set -e
 
+DEPLOY_TO_BRANCH=$1
+
+# Names a directory under the web root; refuse anything else (empty means the
+# main build). Same rule as publish-ig.
+SAFE_NAME="^[A-Za-z0-9._+,"$'\x80'"-"$'\xff'"-]+\$"
+if [ -n "$DEPLOY_TO_BRANCH" ]; then
+    if ! LC_ALL=C bash -c '[[ "$1" =~ $2 ]]' _ "$DEPLOY_TO_BRANCH" "$SAFE_NAME" || [ "$DEPLOY_TO_BRANCH" == "." ] || [ "$DEPLOY_TO_BRANCH" == ".." ]; then
+        echo "Refusing unsafe name: $DEPLOY_TO_BRANCH" >&2
+        exit 2
+    fi
+fi
+
 function finish {
   kill $KEEPALIVE_PID
 }
 trap finish EXIT
 
-DEPLOY_TO_BRANCH=$1
 TARGET=$RANDOM
 
 mkdir -p ~/uploading/$TARGET

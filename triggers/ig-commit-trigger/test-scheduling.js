@@ -68,6 +68,7 @@ const k8sBatch = {
       throw err;
     }
     const j = JSON.parse(JSON.stringify(body));
+    j.metadata.uid = `uid-${++uidCounter}`;
     j.metadata.creationTimestamp = new Date().toISOString();
     j.status = {};
     jobs.push(j);
@@ -86,8 +87,15 @@ const k8sBatch = {
     return j;
   },
 
-  deleteNamespacedJob: async ({ name }) => {
+  deleteNamespacedJob: async ({ name, body }) => {
     calls.push({ op: "deleteJob", name });
+    const expectedUid = body?.preconditions?.uid;
+    const existing = jobs.find((j) => j.metadata.name === name);
+    if (expectedUid && existing && existing.metadata.uid !== expectedUid) {
+      const err = new Error("Precondition failed: UID mismatch");
+      err.code = 409;
+      throw err;
+    }
     jobs = jobs.filter((j) => j.metadata.name !== name);
     pods = pods.filter((p) => p.metadata?.labels?.["job-name"] !== name);
     return {};
@@ -123,10 +131,13 @@ const defaultScheduler = makeScheduler();
 
 // ── Helpers to set up cluster state ─────────────────────────────────────────
 
+let uidCounter = 0;
+
 function addJob(name, branchKey, slot, opts = {}) {
   const job = {
     metadata: {
       name,
+      uid: `uid-${++uidCounter}`,
       creationTimestamp: opts.createdAt || new Date().toISOString(),
       labels: {
         "build.fhir.org/managed-by": opts.managedBy || DEFAULT_MANAGED_BY,
@@ -672,6 +683,55 @@ async function testIsolatedSchedulerUsesCustomIdentity() {
   console.log("  PASS\n");
 }
 
+
+async function testStaleCancelSparesReplacement() {
+  console.log(
+    "TEST Concurrent webhooks: a cancel based on a stale read must not delete the job that replaced it"
+  );
+  reset();
+  // Slot b runs; slot a is its queued successor.
+  const bName = slotName(BKEY, "b", SLUG);
+  const aName = slotName(BKEY, "a", SLUG);
+  addJob(bName, BKEY, "b", { role: "current" });
+  addPod(bName, { node: "node-X", phase: "Running" });
+  addJob(aName, BKEY, "a", { role: "successor", annotations: { "build.fhir.org/pinned-node": "node-X" } });
+
+  // Webhook 1 reads this state (State D: will cancel b)...
+  const origList = k8sBatch.listNamespacedJob;
+  let pause;
+  const paused = new Promise((r) => (pause = r));
+  let release;
+  const released = new Promise((r) => (release = r));
+  let first = true;
+  k8sBatch.listNamespacedJob = async (opts) => {
+    const result = await origList(opts);
+    if (first && opts.labelSelector?.includes("branch-key")) {
+      first = false;
+      const snapshot = JSON.parse(JSON.stringify(result));
+      pause();
+      await released;
+      return snapshot;
+    }
+    return result;
+  };
+  const w1 = trigger("sha-1");
+  await paused;
+
+  // ...meanwhile another webhook replaces b with a new job of the same name.
+  jobs = jobs.filter((j) => j.metadata.name !== bName);
+  pods = pods.filter((p) => p.metadata?.labels?.["job-name"] !== bName);
+  const replacement = addJob(bName, BKEY, "b", { role: "successor" });
+  release();
+  await w1;
+  k8sBatch.listNamespacedJob = origList;
+
+  assert.ok(
+    jobs.some((j) => j.metadata.uid === replacement.metadata.uid),
+    "The replacement job must survive the stale cancel"
+  );
+  console.log("  PASS\n");
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 console.log("=== Branch-Head Scheduling Tests ===\n");
@@ -691,4 +751,5 @@ await testSlotWaitReReconcilesOnStateChange();
 await testStalePinnedSuccessorRecreatedUnpinned();
 await testFreshPinnedSuccessorNotStale();
 await testIsolatedSchedulerUsesCustomIdentity();
+await testStaleCancelSparesReplacement();
 console.log("All tests passed.");
