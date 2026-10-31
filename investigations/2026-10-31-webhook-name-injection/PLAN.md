@@ -16,6 +16,18 @@ How it was verified:
 - **Hardening:** checked in `/proc` on GKE. Build containers run as uid 1000 with no capabilities, `NoNewPrivs: 1` and `Seccomp: 2`. The ci-build containers run as root with no_new_privs and seccomp.
 - **Real IGs under the hardened job spec, built locally:** sample-ig, testMermaid, FHIRPath, cds-hooks and MADFSH match production's QA counts with no permission errors. MADFSH has one extra error: a tx.fhir.org cache that expired after 30 idle minutes, because the local VM's disk made the build slow.
 
+Later the same day (all verified in production):
+- **Images rebuilt from their Dockerfiles** (Phase C) as `:rebuild-20261031`, now `latest`:
+  - `ci-build`: OpenSSH updates, plus an ssh dispatcher. The upload key may only run `publish`/`publish-ig`, with no shell, pty or forwarding.
+  - `caddy-ratelimit`
+  - `ig-build`: Java 21.0.13.
+
+  An A/B of four IGs against the previous image gave identical file lists, QA counts and content, apart from timestamp/ordering noise.
+- **Trigger version 56:** delete-race fix (UID precondition), no API token in build pods, safe-to-evict false. `k8s/local/test-burst.sh` passes in production.
+- **Pod Security Admission** `enforce=baseline` on `fhir`.
+- **Caddy:** zstd compression; `Cache-Control: no-cache` on HTML pages only. Measured in Chromium: no-cache on assets as well would turn 1–3 requests per page view into ~45.
+- **Disk:** grown 1000 → 1500 GB (`resize2fs` online). Failed builds no longer upload the publisher's `temp/`, and interrupted uploads clean up their staging directory (80 leftovers, 5.6 GiB, removed).
+
 Found and fixed along the way:
 - **Upload sidecar hang (`1e7bbd6`):** the builder renames `done.temp` to `done`, and inotify reports that as `moved_to`, which the sidecar didn't watch for. On 2026-10-27, ansforge/interop-ig-fhir-document-patient-summary built but was never published, and its job held 22 GiB for 10 h.
 - **Deploy order matters:** an unfixed sender against the fixed `publish-ig` is still injectable, because the remote shell splits the command before `publish-ig` runs. The trigger validation and the sender's quoting are the real fixes.
@@ -24,7 +36,7 @@ Found and fixed along the way:
 Follow-ups, not done:
 - [ ] The cluster autoscaler (OPTIMIZE_UTILIZATION) evicts running build pods during scale-down. That happened to a test job today and to one real build in the last 14 days; jobs retry once. Consider the pod annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on build jobs.
 - [ ] Watch real builds for a few days for permission errors: grep build logs for `Operation not permitted`/`EPERM`.
-- [ ] Phase C (full image rebuilds) and Phase D (node upgrade to ≥1.35.9-gke.1390000 when the Regular channel has it; not urgent).
+- [x] Phase C (full image rebuilds). [ ] Phase D (node upgrade to ≥1.35.9-gke.1390000 when the Regular channel has it; not urgent).
 - [ ] Optional: make ci-build's sshd parse `SSH_ORIGINAL_COMMAND` itself (authorized_keys `command=`), so even an unquoted sender can't reach a shell.
 
 Previous `latest` digests, for rollback: `ig-build@sha256:1125be02639f…`, `ci-build@sha256:536804945519…`; the trigger's previous code is `26b8de5`.
