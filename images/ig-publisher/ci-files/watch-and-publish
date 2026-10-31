@@ -54,9 +54,11 @@ echo "Waiting for the builder to complete"
 
 cd /scratch
 
+# The builder renames done.temp to done, which is a moved_to event, not create;
+# the timeout re-checks in case the event lands between the test and the wait.
 while true; do
     [ -f done ] && break
-    inotifywait -e create -q -q .
+    inotifywait -e create -e moved_to -t 30 -q -q . || true
 done
 echo "Builder completed; uploading"
 
