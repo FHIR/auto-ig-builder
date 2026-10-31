@@ -18,6 +18,12 @@ build.fhir.org:80, build.fhir.org {
 		zstd better
 		gzip
 	}
+
+	# Pages change with every CI build: browsers keep them but revalidate (ETag)
+	# on each view. Assets keep heuristic caching (measured: no-cache on
+	# everything turned 1-3 requests per page view into ~45).
+	@html path_regexp html (\.html|/[^/.]*)$
+	header @html Cache-Control "no-cache"
 	file_server browse
 
 	header {
