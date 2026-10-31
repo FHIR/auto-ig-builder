@@ -69,6 +69,7 @@ for c in spec["containers"] + spec.get("initContainers", []):
     elif c["name"] == "caddy":
         c["image"] = caddy_image
     c["imagePullPolicy"] = "IfNotPresent"
+spec.pop("nodeSelector", None)   # GKE node pools don't exist locally
 for v in spec["volumes"]:
     if "gcePersistentDisk" in v:
         v["persistentVolumeClaim"] = {"claimName": v.pop("gcePersistentDisk")["pdName"]}

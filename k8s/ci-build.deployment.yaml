@@ -16,6 +16,10 @@ spec:
     spec:
       # sshd and supervisord need root and its capabilities, so these
       # containers keep them; this only filters syscalls and stops setuid gains.
+      # The web server must not land on the spot build pool (preempted ~20x a
+      # day there); build-fhir-org is its dedicated on-demand pool.
+      nodeSelector:
+        cloud.google.com/gke-nodepool: build-fhir-org
       securityContext:
         seccompProfile:
           type: RuntimeDefault
