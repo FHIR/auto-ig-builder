@@ -3,8 +3,9 @@ import os
 import shutil
 import string
 import subprocess
+import zipfile
 
-from .util  import do, SCRATCH_SPACE
+from .util  import do, do_retry, SCRATCH_SPACE
 from os.path import normpath
 
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
@@ -63,7 +64,8 @@ def build(config):
     default_branch = default_branch_full.split('/')[-1]
     return bool(default_branch == config['branch'])
 
-  cloned_exit = do(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir, deadline=True)
+  cloned_exit = do_retry(['git', 'clone', '--recursive', GITHUB%config, '--branch', config['branch'], 'repo'], temp_dir,
+                         before_retry=lambda: shutil.rmtree(clone_dir, ignore_errors=True))
   os.makedirs(clone_dir, exist_ok=True)
 
   message_header = "**[{org}/{repo}: {branch}](https://github.com/{org}/{repo}/tree/{branch})** ".format(**config)
@@ -79,12 +81,18 @@ def build(config):
   if cloned_exit != 0:
     return early_failure("Failed to clone git repository")
 
-  dl_publisher_exit = do(['wget', '-q', PUBLISHER_JAR_URL, '-O', 'publisher.jar'], temp_dir, deadline=True)
-  if dl_publisher_exit != 0:
+  # Download to a temporary name and require a valid jar (zip), so a truncated
+  # download is retried instead of failing later inside Java.
+  jar_part = os.path.join(temp_dir, 'publisher.jar.part')
+  dl_publisher_exit = do_retry(['wget', '-q', PUBLISHER_JAR_URL, '-O', jar_part], temp_dir,
+                               ok=lambda: zipfile.is_zipfile(jar_part))
+  if dl_publisher_exit == 0:
+    os.rename(jar_part, os.path.join(temp_dir, 'publisher.jar'))
+  else:
     return early_failure("Failed to download publisher")
 
 
-  install_sushi_exit = do(['npm', '-g', 'install', 'fsh-sushi'], temp_dir, deadline=True)
+  install_sushi_exit = do_retry(['npm', '-g', 'install', 'fsh-sushi'], temp_dir)
   if install_sushi_exit != 0:
     return early_failure("Failed to install sushi")
 
