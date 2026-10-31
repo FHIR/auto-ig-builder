@@ -1,4 +1,5 @@
-gcloud compute disks create fhir-ci-build-disk --size 100GB
+# Published site (1500 GB since 2026-10-31; see dev-setup.md "Growing the site disk")
+gcloud compute disks create fhir-ci-build-disk --size 1500GB
 
 kubectl  -n fhir create secret generic zulip-secrets --from-literal=email=$ZULIP_EMAIL --from-literal=api_key=$ZULIP_API_KEY
 

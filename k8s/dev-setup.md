@@ -40,6 +40,21 @@ runs untrusted code. The setup assumes that:
   bucket in the project. Nothing in `fhir` needs Google credentials. New node
   pools must be created with `--workload-metadata=GKE_METADATA`. To check:
   `gcloud container node-pools describe POOL --cluster fhir-k8s --zone us-east1-d --format='value(config.workloadMetadataConfig.mode)'`.
+- **Nodes:** Shielded GKE Nodes (cluster `--enable-shielded-nodes`) with Secure
+  Boot and integrity monitoring on every pool (`--shielded-secure-boot
+  --shielded-integrity-monitoring`), and the kubelet's unauthenticated
+  read-only port (10255) off, both as the cluster default
+  (`--no-enable-insecure-kubelet-readonly-port`) and on each pool. Before
+  this, any pod could list every pod on its node from that port. Changing any
+  of these recreates the nodes. New pools must be created with all of them,
+  plus `--workload-metadata=GKE_METADATA`.
+- **Node pools:** `ig-build-pool` (spot e2-highmem-4, autoscaled, build jobs),
+  `ig-buid-on-demand-failover` (on-demand, when spot is unavailable) and
+  `build-fhir-org` (one on-demand e2-standard-2). The ci-build Deployment is
+  pinned to `build-fhir-org` with a `nodeSelector`; otherwise the scheduler can
+  put the web server on a spot node, which is preempted many times a day.
+- **Check it all:** `k8s/check-cluster.sh` (read-only) verifies the settings in
+  this section and exits non-zero on any drift.
 - **Build jobs** (`triggers/ig-commit-trigger/job.json`) run as uid 1000 with the
   RuntimeDefault seccomp profile, `allowPrivilegeEscalation: false` and all
   capabilities dropped, and get no Kubernetes API token
@@ -75,6 +90,25 @@ The build service uses Caddy with the `caddy-ratelimit` plugin to limit requests
 - **Implementation**: Custom Caddy image with rate limiting configured in `k8s/Caddyfile`
 
 This prevents abuse while allowing internal monitoring systems unlimited access.
+
+## Growing the site disk
+
+`fhir-ci-build-disk` holds everything build.fhir.org serves; check it with
+`kubectl -n fhir exec <ci-build pod> -c ci-build -- df -h /home/fhir_upload/uploading`.
+It can be grown online, with no restart:
+
+```bash
+gcloud compute disks resize fhir-ci-build-disk --zone us-east1-d --size <GB>
+NODE=$(kubectl -n fhir get pod -l run=ci-build -o jsonpath='{.items[0].spec.nodeName}')
+# The disk is mounted directly (not through a PVC), so grow the filesystem from the node:
+kubectl debug node/$NODE -n default --profile=sysadmin --image=busybox:1.37.0 -- chroot /host resize2fs /dev/sdc
+kubectl -n default delete pod -l app.kubernetes.io/name!=x --field-selector=status.phase=Succeeded  # the debug pod
+```
+
+Check the device first (`ls -l /dev/disk/by-id/google-fhir-ci-build-disk` on
+the node). The filesystem's root reserve is 1% (`tune2fs -m 1`), not the
+default 5%: nothing writing to this disk runs as root, so a 5% reserve would only
+hide space.
 
 ## Recurring tasks
 5. Deploy updates to the `ig-build` image
