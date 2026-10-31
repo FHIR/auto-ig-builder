@@ -14,7 +14,7 @@ How it was verified:
 - **Local copy (`k8s/local/`):** the exploit ran on the old code (a command executed on ci-build as `fhir_upload`) and failed on the new.
 - **Production:** the trigger returns 400 for every attack shape. `jmandel/ig-build-test` builds publish on master, `t+ü,x` and the failure path, with QA counts identical to before. `check-hosting.sh` passes, and OPTIONS returns 204.
 - **Hardening:** checked in `/proc` on GKE. Build containers run as uid 1000 with no capabilities, `NoNewPrivs: 1` and `Seccomp: 2`. The ci-build containers run as root with no_new_privs and seccomp.
-- **Real IGs under the hardened job spec, built locally:** sample-ig, testMermaid, FHIRPath and cds-hooks match production's QA counts with no permission errors. MADFSH was still running when this was written; the slow VM disk was the cause.
+- **Real IGs under the hardened job spec, built locally:** sample-ig, testMermaid, FHIRPath, cds-hooks and MADFSH match production's QA counts with no permission errors. MADFSH has one extra error: a tx.fhir.org cache that expired after 30 idle minutes, because the local VM's disk made the build slow.
 
 Found and fixed along the way:
 - **Upload sidecar hang (`1e7bbd6`):** the builder renames `done.temp` to `done`, and inotify reports that as `moved_to`, which the sidecar didn't watch for. On 2026-10-27, ansforge/interop-ig-fhir-document-patient-summary built but was never published, and its job held 22 GiB for 10 h.
@@ -22,7 +22,6 @@ Found and fixed along the way:
 - **`setup-secret.sh`** relies on the current kubectl context's namespace being `fhir`. Run it with `--context … -n fhir`.
 
 Follow-ups, not done:
-- [ ] MADFSH local hardened build: compare with production (4/16/3).
 - [ ] The cluster autoscaler (OPTIMIZE_UTILIZATION) evicts running build pods during scale-down. That happened to a test job today and to one real build in the last 14 days; jobs retry once. Consider the pod annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on build jobs.
 - [ ] Watch real builds for a few days for permission errors: grep build logs for `Operation not permitted`/`EPERM`.
 - [ ] Phase C (full image rebuilds) and Phase D (node upgrade to ≥1.35.9-gke.1390000 when the Regular channel has it; not urgent).
