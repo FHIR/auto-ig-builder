@@ -38,8 +38,12 @@ The bucket is not public: an anonymous read returns 403.
 - **Old token:** `igbuild-token-hh2sz` is deleted. The copy in old source zips now gets
   "Unauthorized".
 - **Removed bindings:** saved next to this file (`removed-*.yaml`).
-- **Still open:** build pods can still fetch the node token and read every bucket in the
-  project (see step 5). That token no longer leads to the cluster.
+- **Step 5, first part (done):** Workload Identity is on for the cluster and all three
+  node pools. From a build pod, the metadata server now issues only an
+  unmapped `fhir-org-starter-project.svc.id.goog` identity. Every private bucket
+  returns 403, `kube-env` returns 404, and only public buckets (which anyone can
+  read) still answer. Hosting checks and an end-to-end build pass on the recreated
+  nodes.
 
 The node account is the project's shared default compute account, also used by
 `tx-fhir-org-64`, `tx-dev-fhir-org`, `www-fhir-org`, `npm-fhir-org`,
@@ -83,7 +87,22 @@ No pod runs as `igbuild`; the audit logs show only the Cloud Function using it.
 - [x] Test again: trigger, sweep, and that `igbuild` can no longer read secrets or act
       outside `fhir`.
 
-### 4. Look for past abuse
+### 4. Look for past abuse (done; writes only)
+
+Result over the full Admin Activity retention (2025-10-31 to 2026-10-31,
+65,337 writes by `igbuild`). Every write was a Job create, delete or patch in
+`fhir`, apart from 20 `pods/exec` calls. Sources:
+- Cloud Function egress (34.96/16, 136.124/16, 34.34/16), with user agent `node-fetch` or,
+  before November 2025, none.
+- `162.199.149.210`, the maintainer's own address, on 2025-11-14 (hl7 cgm test jobs),
+  2026-03-27/28 (trigger concurrency work), and 2026-04-13 (`igbuildtest-jmandel-…`
+  jobs, plus `kubectl exec` into two transitions-of-care build pods while debugging
+  the publish reset).
+
+No write came from a node or internal address, and none touched anything outside `fhir`.
+Reads, such as of secrets, are not in these logs.
+
+Original step:
 - [ ] Audit logs of `igbuild` writes, by source IP and user agent, over the
       retention window. Cloud Function egress uses `node-fetch` from Google IPs;
       look for anything else, for any method other than job create/patch/delete,
@@ -91,7 +110,7 @@ No pod runs as `igbuild`; the audit logs show only the Cloud Function using it.
       audited by default, so a clean result is only partial assurance.
 
 ### 5. Close the metadata path (recreates nodes)
-- [ ] Enable Workload Identity on the cluster (`--workload-pool=fhir-org-starter-project.svc.id.goog`)
+- [x] Enable Workload Identity on the cluster (`--workload-pool=fhir-org-starter-project.svc.id.goog`)
       and set `--workload-metadata=GKE_METADATA` on all three node pools. Pods then
       get no node token. Nothing in `fhir` needs Google credentials.
 - [ ] Later, give GKE nodes their own least-privilege service account instead of
