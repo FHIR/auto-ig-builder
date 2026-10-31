@@ -1,5 +1,35 @@
 # Webhook name injection: fix, hardening, deploy and test plan
 
+## Status (2026-10-31): Phases A and B deployed and verified
+
+| Piece | Now in production |
+|---|---|
+| Trigger | Cloud Function version 53 (from `31b1070`): name validation and hardened `job.json` |
+| `ig-build:latest` | `sha256:dcdd24400683…` = April image + fixed `publish` and `watch-and-publish` (also tagged `hotfix-20261031`) |
+| `ci-build:latest` | `sha256:439eea842025…` = February image + `publish-ig` name check (also tagged `hotfix-20261031`) |
+| ci-build Deployment | RuntimeDefault seccomp, `allowPrivilegeEscalation: false` on both containers, busybox init |
+| Caddyfile | master's, including the OPTIONS → 204 change (`26b8de5`) |
+
+How it was verified:
+- **Local copy (`k8s/local/`):** the exploit ran on the old code (a command executed on ci-build as `fhir_upload`) and failed on the new.
+- **Production:** the trigger returns 400 for every attack shape. `jmandel/ig-build-test` builds publish on master, `t+ü,x` and the failure path, with QA counts identical to before. `check-hosting.sh` passes, and OPTIONS returns 204.
+- **Hardening:** checked in `/proc` on GKE. Build containers run as uid 1000 with no capabilities, `NoNewPrivs: 1` and `Seccomp: 2`. The ci-build containers run as root with no_new_privs and seccomp.
+- **Real IGs under the hardened job spec, built locally:** sample-ig, testMermaid, FHIRPath and cds-hooks match production's QA counts with no permission errors. MADFSH was still running when this was written; the slow VM disk was the cause.
+
+Found and fixed along the way:
+- **Upload sidecar hang (`1e7bbd6`):** the builder renames `done.temp` to `done`, and inotify reports that as `moved_to`, which the sidecar didn't watch for. On 2026-10-27, ansforge/interop-ig-fhir-document-patient-summary built but was never published, and its job held 22 GiB for 10 h.
+- **Deploy order matters:** an unfixed sender against the fixed `publish-ig` is still injectable, because the remote shell splits the command before `publish-ig` runs. The trigger validation and the sender's quoting are the real fixes.
+- **`setup-secret.sh`** relies on the current kubectl context's namespace being `fhir`. Run it with `--context … -n fhir`.
+
+Follow-ups, not done:
+- [ ] MADFSH local hardened build: compare with production (4/16/3).
+- [ ] The cluster autoscaler (OPTIMIZE_UTILIZATION) evicts running build pods during scale-down. That happened to a test job today and to one real build in the last 14 days; jobs retry once. Consider the pod annotation `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on build jobs.
+- [ ] Watch real builds for a few days for permission errors: grep build logs for `Operation not permitted`/`EPERM`.
+- [ ] Phase C (full image rebuilds) and Phase D (node upgrade to ≥1.35.9-gke.1390000 when the Regular channel has it; not urgent).
+- [ ] Optional: make ci-build's sshd parse `SSH_ORIGINAL_COMMAND` itself (authorized_keys `command=`), so even an unquoted sender can't reach a shell.
+
+Previous `latest` digests, for rollback: `ig-build@sha256:1125be02639f…`, `ci-build@sha256:536804945519…`; the trigger's previous code is `26b8de5`.
+
 Branch: `fix/webhook-name-injection` (from `origin/master`), commits `0c235d6`, `73150f6`.
 
 ## The problem
