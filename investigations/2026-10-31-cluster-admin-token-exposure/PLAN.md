@@ -28,6 +28,26 @@ scripts, so code execution in a build is assumed.
 
 The bucket is not public: an anonymous read returns 403.
 
+## Status (2026-10-31, steps 1–3 done)
+
+- **Trigger:** Cloud Function version 54 reads its kubeconfig from Secret Manager
+  (`ig-trigger-kubeconfig`, mounted at `/etc/ig-trigger/kubeconfig`). Its uploaded
+  source contains no credentials (checked).
+- **RBAC:** `igbuild` holds only `k8s/ig-trigger.rbac.yaml`. `kubectl auth can-i` confirms
+  jobs, pods and events in `fhir` plus node listing, and nothing else.
+- **Old token:** `igbuild-token-hh2sz` is deleted. The copy in old source zips now gets
+  "Unauthorized".
+- **Removed bindings:** saved next to this file (`removed-*.yaml`).
+- **Still open:** build pods can still fetch the node token and read every bucket in the
+  project (see step 5). That token no longer leads to the cluster.
+
+The node account is the project's shared default compute account, also used by
+`tx-fhir-org-64`, `tx-dev-fhir-org`, `www-fhir-org`, `npm-fhir-org`,
+`fhir-validator`, `ecosystem-hl7-org` and `core-build-fhir-4`. Its role
+`roles/container.nodeServiceAccount` itself includes project-wide
+`storage.objects.get/list`. So the fix is to stop pods from reaching the node
+token (Workload Identity), not to change that account.
+
 ## What the trigger needs
 
 From the code (`scheduling.js`, `sweep.js`):
@@ -40,27 +60,27 @@ No pod runs as `igbuild`; the audit logs show only the Cloud Function using it.
 ## Steps
 
 ### 1. Least-privilege RBAC (additive first, no outage)
-- [ ] Role `ig-trigger` in `fhir` covering the verbs above, and ClusterRole
+- [x] Role `ig-trigger` in `fhir` covering the verbs above, and ClusterRole
       `ig-trigger-nodes` (nodes: get, list). Bind both to `fhir/igbuild`.
 
 ### 2. A new credential kept out of the source zip
-- [ ] Enable the Secret Manager API.
-- [ ] Create a new token secret for `igbuild`, build a kubeconfig from it, and store
+- [x] Enable the Secret Manager API.
+- [x] Create a new token secret for `igbuild`, build a kubeconfig from it, and store
       it as Secret Manager secret `ig-trigger-kubeconfig`. Only the function's runtime
       account (`fhir-org-starter-project@appspot.gserviceaccount.com`) gets
       `secretAccessor` on it. The node account has no Secret Manager access.
-- [ ] Trigger code: read the kubeconfig path from `KUBECONFIG_PATH` (default
+- [x] Trigger code: read the kubeconfig path from `KUBECONFIG_PATH` (default
       `sa.kubeconfig` for local runs). Add `sa.kubeconfig` to `.gcloudignore`, so it
       can never be uploaded again.
-- [ ] Deploy with `--set-secrets` mounting the secret as a file. Test with
+- [x] Deploy with `--set-secrets` mounting the secret as a file. Test with
       `jmandel/ig-build-test` (build, sweep, rejection paths).
 
 ### 3. Revoke
-- [ ] Delete the legacy secret `igbuild-token-hh2sz`. Every copy of the old token,
+- [x] Delete the legacy secret `igbuild-token-hh2sz`. Every copy of the old token,
       including those in old source zips, stops working.
-- [ ] Delete `kubelet-node-binding` (cluster-admin) and `ig-build-rolebinding`
+- [x] Delete `kubelet-node-binding` (cluster-admin) and `ig-build-rolebinding`
       (namespace admin).
-- [ ] Test again: trigger, sweep, and that `igbuild` can no longer read secrets or act
+- [x] Test again: trigger, sweep, and that `igbuild` can no longer read secrets or act
       outside `fhir`.
 
 ### 4. Look for past abuse
@@ -70,12 +90,14 @@ No pod runs as `igbuild`; the audit logs show only the Cloud Function using it.
       and for any write outside `fhir`. Reads (such as secret reads) are not
       audited by default, so a clean result is only partial assurance.
 
-### 5. Later, separately (each recreates nodes or may affect image pulls)
-- [ ] Enable Workload Identity (GKE_METADATA) on the cluster and node pools, so
-      pods cannot get the node token at all.
-- [ ] Remove project-wide `storage.objectViewer` from the node account, after
-      confirming image pulls work without it (gcr.io is on Artifact Registry; the
-      node account needs `artifactregistry.reader` instead).
+### 5. Close the metadata path (recreates nodes)
+- [ ] Enable Workload Identity on the cluster (`--workload-pool=fhir-org-starter-project.svc.id.goog`)
+      and set `--workload-metadata=GKE_METADATA` on all three node pools. Pods then
+      get no node token. Nothing in `fhir` needs Google credentials.
+- [ ] Later, give GKE nodes their own least-privilege service account instead of
+      the shared default compute account. That needs new node pools. Image pulls
+      need only `artifactregistry.reader` on the `gcr.io` repository, which the
+      node account already has.
 - [ ] Consider rotating secrets the old token could have read: the ci-build ssh key,
       Zulip bot keys, the tx API key.
 - [ ] Disable the kubelet read-only port (10255).
