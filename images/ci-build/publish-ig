@@ -8,9 +8,11 @@ DEPLOY_TO_BRANCH=${3:-master}
 FAILURE_FLAG=${4:-success}
 IS_DEFAUT_BRANCH=${5:-nondefault}
 
-# These name directories under the web root; refuse anything else.
+# These name directories under the web root; refuse anything else. Bytes
+# 0x80-0xFF admit UTF-8 letters (branch names like 5-unchanged-vs-unverändert).
+SAFE_NAME="^[A-Za-z0-9._+,"$'\x80'"-"$'\xff'"-]+\$"
 for name in "$IG_ORG" "$IG_REPO" "$DEPLOY_TO_BRANCH"; do
-    if ! [[ "$name" =~ ^[A-Za-z0-9._-]+$ ]] || [ "$name" == "." ] || [ "$name" == ".." ]; then
+    if ! LC_ALL=C bash -c '[[ "$1" =~ $2 ]]' _ "$name" "$SAFE_NAME" || [ "$name" == "." ] || [ "$name" == ".." ]; then
         echo "Refusing unsafe name: $name" >&2
         exit 2
     fi

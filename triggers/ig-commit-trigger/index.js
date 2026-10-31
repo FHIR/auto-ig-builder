@@ -59,7 +59,7 @@ async function resolveHead(org, repo, branch) {
 
 /** @param {string} name */
 export function isSafeName(name) {
-  return /^[A-Za-z0-9._-]+$/.test(name) && name !== "." && name !== "..";
+  return /^[\p{L}\p{N}._+,-]+$/u.test(name) && name !== "." && name !== "..";
 }
 
 /**
@@ -93,11 +93,12 @@ functions.http("ig-commit-trigger", async function (req, res) {
     branch = req.body.ref.split("/").slice(-1)[0];
     if (!org || !repo || !branch) throw new Error("Bad inputs");
     // Anyone can call this endpoint, and these names end up in shell commands
-    // and web paths downstream, so admit only GitHub's org/repo characters.
+    // and web paths downstream, so admit only letters, digits and . _ + , -
+    // (+ , and non-ASCII letters appear in real branch names).
     if (![org, repo, branch].every(isSafeName)) {
       return res.status(400).json({
         created: false,
-        reason: "Org, repo and branch names must use only letters, digits, '.', '_' and '-'",
+        reason: "Org, repo and branch names must use only letters, digits, '.', '_', '+', ',' and '-'",
       });
     }
   } catch (e) {
