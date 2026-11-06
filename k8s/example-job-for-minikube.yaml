@@ -48,7 +48,7 @@ spec:
         - name: PUBLISHER_JAR_URL
           value: https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar
         - name: TX_SERVER_URL
-          value: http://tx.fhir.org
+          value: https://tx.fhir.org
         - name: TX_ECOSYSTEM_URL
           value: https://ecosystem.hl7.org/tx-reg
         - name: DEADLINE_SECONDS

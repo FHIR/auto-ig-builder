@@ -11,7 +11,7 @@ from os.path import normpath
 GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
-TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org')
+TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'https://tx.fhir.org')
 # nominating -tx turns the publisher's terminology ecosystem off unless -ecosystem is given too
 TX_ECOSYSTEM_URL = os.environ.get('TX_ECOSYSTEM_URL', 'https://ecosystem.hl7.org/tx-reg')
 
