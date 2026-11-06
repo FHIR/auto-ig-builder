@@ -39,6 +39,10 @@
                 "value": "http://tx.fhir.org"
               },
               {
+                "name": "TX_ECOSYSTEM_URL",
+                "value": "https://ecosystem.hl7.org/tx-reg"
+              },
+              {
                 "name": "DEADLINE_SECONDS",
                 "value": "36000"
               },
