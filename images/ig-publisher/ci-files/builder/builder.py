@@ -12,6 +12,8 @@ GITHUB = 'https://github.com/%(org)s/%(repo)s'
 HOSTED_ROOT = os.environ.get('HOSTED_ROOT', 'https://build.fhir.org/ig')
 PUBLISHER_JAR_URL = os.environ.get('PUBLISHER_JAR_URL', 'https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar')
 TX_SERVER_URL = os.environ.get('TX_SERVER_URL', 'http://tx.fhir.org')
+# nominating -tx turns the publisher's terminology ecosystem off unless -ecosystem is given too
+TX_ECOSYSTEM_URL = os.environ.get('TX_ECOSYSTEM_URL', 'https://ecosystem.hl7.org/tx-reg')
 
 temp_dir = SCRATCH_SPACE
 clone_dir = os.path.join(temp_dir, 'repo')
@@ -115,6 +117,7 @@ def build(config):
          '-fhir-settings', '/etc/fhir-settings.json',
          '-auto-ig-build',
          '-tx', TX_SERVER_URL,
+         '-ecosystem', TX_ECOSYSTEM_URL,
          '-target', 'https://build.fhir.org/ig/{org}/{repo}/'.format(**details),
          '-out', clone_dir], clone_dir, deadline=True)
 
