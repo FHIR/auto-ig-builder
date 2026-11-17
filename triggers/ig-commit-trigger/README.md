@@ -42,6 +42,40 @@ curl 'http://localhost:8080?action=sweep'
 curl -X POST 'http://localhost:8080?action=sweep&apply=1&jobName=igbuild-...'
 ```
 
+### Isolated test against production
+
+To try a new `job.json` or `ig-build` image on the real cluster without
+touching anyone else's builds, give the local trigger its own job label, name
+prefix and branch-state scope. Its jobs then never collapse into or block real
+ones; the publish still lands on build.fhir.org under the test repo's path.
+
+```bash
+KC=$(mktemp); (umask 077; gcloud secrets versions access latest --secret ig-trigger-kubeconfig > "$KC")
+KUBECONFIG_PATH=$KC \
+IG_TRIGGER_MANAGED_BY=ig-trigger-test IG_TRIGGER_JOB_PREFIX=igtest IG_TRIGGER_BRANCH_KEY_SCOPE=test \
+IG_BUILD_IMAGE=gcr.io/fhir-org-starter-project/ig-build:<tag> \
+  npm start
+```
+
+Leave out `IG_BUILD_IMAGE` to test a `job.json` change against the current
+`latest` image. `job.json` is read once at startup, so restart the trigger
+after editing it. The usual test repo is `jmandel/ig-build-test` (a fork of
+`FHIR/sample-ig`, default branch `master`):
+
+```bash
+SHA=$(gh api repos/jmandel/ig-build-test/commits/master --jq .sha)
+curl -s -X POST localhost:8080 -H 'Content-Type: application/json' \
+  -d "{\"repository\":{\"full_name\":\"jmandel/ig-build-test\"},\"ref\":\"refs/heads/master\",\"after\":\"$SHA\"}"
+```
+
+Then check that the job spec has the change
+(`kubectl --context fhir-org -n fhir get job <jobId> -o json`), the pod ran the
+intended image digest (`.status.containerStatuses[].imageID`), `ig-build` exited
+0, and `https://build.fhir.org/ig/jmandel/ig-build-test/branches/master/qa.json`
+shows the new build. The publisher's own output is not in the container log;
+it is published as `.../branches/master/build.log`. A build takes several minutes, mostly node scale-up and
+image pull.
+
 ## Deploy
 
 The function is 1st gen (`--no-gen2` is required). Its Kubernetes credential is

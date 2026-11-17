@@ -54,6 +54,9 @@ runs untrusted code. The setup assumes that:
   `build-fhir-org` (one on-demand e2-standard-2). The ci-build Deployment is
   pinned to `build-fhir-org` with a `nodeSelector`; otherwise the scheduler can
   put the web server on a spot node, which is preempted many times a day.
+  E2 does not pin a CPU generation, which matters for CPU-specific bugs (for
+  example Java4Shell needs AVX-512 VBMI). To see what the nodes are on:
+  `gcloud compute instances list --filter="name~gke-fhir-k8s" --format="value(name,cpuPlatform)"`.
 - **Check it all:** `k8s/check-cluster.sh` (read-only) verifies the settings in
   this section and exits non-zero on any drift.
 - **Build jobs** (`triggers/ig-commit-trigger/job.json`) run as uid 1000 with the
@@ -124,10 +127,25 @@ hide space.
 ## Recurring tasks
 5. Deploy updates to the `ig-build` image
 
+Production is the `ci` target of `images/ig-publisher/Dockerfile`, for amd64
+(`images/ig-publisher/ci-files/Dockerfile` is legacy). Settings that only change
+how the job runs, such as env vars or JVM flags, belong in
+`triggers/ig-commit-trigger/job.json` and ship with a trigger deploy instead,
+with no rebuild.
+
+Push under a dated tag, test that tag in isolation (see "Isolated test against
+production" in `triggers/ig-commit-trigger/README.md`), then retag it as
+`latest`. Jobs use `imagePullPolicy: Always`, so the next build picks it up, and
+the older tags stay as a rollback.
+
 ```
-cd images/ig-build
-docker build -t gcr.io/fhir-org-starter-project/ig-build  -f Dockerfile .
-gcloud docker -- push gcr.io/fhir-org-starter-project/ig-build
+gcloud auth configure-docker gcr.io
+cd images/ig-publisher
+TAG=gcr.io/fhir-org-starter-project/ig-build:<what>-$(date +%Y%m%d)
+docker build --pull --platform linux/amd64 --target ci -t $TAG .
+docker push $TAG
+# after the isolated test passes:
+gcloud container images add-tag $TAG gcr.io/fhir-org-starter-project/ig-build:latest
 ```
 
 6. Deploy updates to `ci-build` image
