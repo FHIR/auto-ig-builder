@@ -19,6 +19,7 @@ if [ ! -f publisher.jar ]; then
   base=https://github.com/HL7/fhir-ig-publisher/releases
   curl -fsSL -o publisher.jar "$([ "$PUBLISHER" = latest ] && echo "$base/latest/download" || echo "$base/download/$PUBLISHER")/publisher.jar"
 fi
+mkdir -p src runs/A runs/B
 for ig in $IGS; do d=src/${ig//\//__}; [ -d "$d" ] || git clone -q --depth 1 "https://github.com/$ig" "$d"; done
 
 run_one() {  # A|B org/repo
