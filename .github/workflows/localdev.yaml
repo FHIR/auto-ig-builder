@@ -1,5 +1,8 @@
 name: Build and Push Candidate Docker Images
 
+# Builds the localdev image natively per architecture (no emulation), pushes
+# each by digest, then joins them into one multi-arch candidate tag on GHCR and
+# Docker Hub. Promote a tested candidate with promote-localdev.yaml.
 on:
   workflow_dispatch:
     inputs:
@@ -13,28 +16,39 @@ on:
     paths:
       - 'images/ig-publisher/**'
 
+env:
+  GHCR_IMAGE: ghcr.io/fhir/ig-publisher-localdev
+  DOCKERHUB_IMAGE: docker.io/hl7fhir/ig-publisher-base
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    env:
-      GHCR_IMAGE: ghcr.io/fhir/ig-publisher-localdev
-      DOCKERHUB_IMAGE: hl7fhir/ig-publisher-base
-
-    permissions:
-      contents: read
-      packages: write
-
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      candidate_tag: ${{ steps.tag.outputs.candidate_tag }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.ref || github.ref }}
 
+    - name: Set candidate tag
+      id: tag
+      run: echo "candidate_tag=candidate-$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-
-    - name: Set candidate tag
-      run: echo "CANDIDATE_TAG=candidate-$(git rev-parse --short=12 HEAD)" >> "$GITHUB_ENV"
 
     - name: Log in to GHCR
       uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
@@ -49,17 +63,63 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build and push candidate images
+    - name: Build and push by digest
       run: |
         set -euo pipefail
-        docker buildx build --push \
-          --platform linux/amd64,linux/arm64 \
+        docker buildx build \
+          --platform linux/${{ matrix.arch }} \
           --target localdev \
-          -t "${GHCR_IMAGE}:${CANDIDATE_TAG}" \
-          -t "${DOCKERHUB_IMAGE}:${CANDIDATE_TAG}" \
+          --metadata-file "$RUNNER_TEMP/meta.json" \
+          --output "type=image,\"name=${GHCR_IMAGE},${DOCKERHUB_IMAGE}\",push-by-digest=true,name-canonical=true,push=true" \
           images/ig-publisher
+        digest=$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/meta.json")
+        echo "pushed linux/${{ matrix.arch }} as $digest"
+        mkdir -p "$RUNNER_TEMP/digests" && touch "$RUNNER_TEMP/digests/${digest#sha256:}"
 
-    - name: Show published candidate tags
+    - name: Save digest
+      uses: actions/upload-artifact@v4
+      with:
+        name: digest-${{ matrix.arch }}
+        path: ${{ runner.temp }}/digests/*
+        if-no-files-found: error
+        retention-days: 1
+
+  merge:
+    needs: build
+    runs-on: ubuntu-24.04
+    env:
+      CANDIDATE_TAG: ${{ needs.build.outputs.candidate_tag }}
+    steps:
+    - name: Collect digests
+      uses: actions/download-artifact@v4
+      with:
+        pattern: digest-*
+        merge-multiple: true
+        path: ${{ runner.temp }}/digests
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GHCR
+      uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Create multi-arch candidate tags
+      working-directory: ${{ runner.temp }}/digests
       run: |
-        echo "Published ${GHCR_IMAGE}:${CANDIDATE_TAG}"
-        echo "Published ${DOCKERHUB_IMAGE}:${CANDIDATE_TAG}"
+        set -euo pipefail
+        for image in "$GHCR_IMAGE" "$DOCKERHUB_IMAGE"; do
+          sources=()
+          for d in *; do sources+=("${image}@sha256:${d}"); done
+          docker buildx imagetools create -t "${image}:${CANDIDATE_TAG}" "${sources[@]}"
+          docker buildx imagetools inspect "${image}:${CANDIDATE_TAG}"
+        done

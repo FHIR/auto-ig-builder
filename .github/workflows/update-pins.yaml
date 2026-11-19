@@ -1,0 +1,63 @@
+name: Update Toolchain Pins
+
+# Daily: move the IG publisher image's toolchain pins (Ruby, JDK, Node, Jekyll,
+# picomatch) to the latest upstream releases. When anything changed, keep one
+# PR (branch auto/update-pins) up to date and run the image tests on it.
+on:
+  schedule:
+    - cron: '23 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: update-pins
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    env:
+      BRANCH: auto/update-pins
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Update pins
+      id: pins
+      run: |
+        set -euo pipefail
+        images/ig-publisher/update-pins.sh | tee "$RUNNER_TEMP/pins.txt"
+        if git diff --quiet; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Open or update the PR
+      if: steps.pins.outputs.changed == 'true'
+      run: |
+        set -euo pipefail
+        git config user.name "github-actions[bot]"
+        git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+        git checkout -B "$BRANCH"
+        git commit -qam "Update IG publisher toolchain pins"
+        # The branch is always master + one pin commit; skip the push when
+        # it already holds exactly these pins.
+        if git fetch -q origin "$BRANCH" 2>/dev/null &&
+           git diff --quiet FETCH_HEAD HEAD -- images/ig-publisher/Dockerfile &&
+           [ "$(git merge-base FETCH_HEAD origin/master)" = "$(git rev-parse origin/master)" ]; then
+          echo "PR branch already up to date"; exit 0
+        fi
+        git push -f origin "$BRANCH"
+        body=$(printf 'Automated daily pin update (`images/ig-publisher/update-pins.sh`).\n\n```\n%s\n```\n\nReview `git diff` of the Dockerfile and the image test results below, then merge. After merging, roll out per k8s/dev-setup.md step 5.\n' "$(cat "$RUNNER_TEMP/pins.txt")")
+        if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+          gh pr create --head "$BRANCH" --base master --title "Update IG publisher toolchain pins" --body "$body"
+        else
+          gh pr edit "$BRANCH" --body "$body"
+        fi
+        # Pushes and PRs made with GITHUB_TOKEN don't start other workflows,
+        # but an explicit dispatch does; its checks show on the PR.
+        gh workflow run ig-publisher-test.yaml --ref "$BRANCH"

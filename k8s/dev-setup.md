@@ -134,7 +134,12 @@ how the job runs, such as env vars or JVM flags, belong in
 with no rebuild.
 
 Toolchain versions are pinned in the Dockerfile; `images/ig-publisher/update-pins.sh`
-moves them to the latest upstream releases. Before pushing, compare the
+moves them to the latest upstream releases. The "Update Toolchain Pins" GitHub
+workflow runs it daily and keeps one PR (`auto/update-pins`) open with any
+changes and the image test results; merge it by hand. GitHub only builds and
+pushes the localdev images (native amd64 and arm64 runners); `ig-build` is
+built and pushed by hand as below, so GitHub holds no credentials for the
+production registry. Before pushing, compare the
 candidate with the current image on real IGs with `images/ig-publisher/ab-test.sh`
 (CI runs the same comparison natively on amd64 and arm64 for every change under
 `images/ig-publisher/`).
