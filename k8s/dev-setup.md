@@ -136,25 +136,35 @@ with no rebuild.
 Toolchain versions are pinned in the Dockerfile; `images/ig-publisher/update-pins.sh`
 moves them to the latest upstream releases. The "Update Toolchain Pins" GitHub
 workflow runs it daily and keeps one PR (`auto/update-pins`) open with any
-changes and the image test results; merge it by hand. GitHub only builds and
-pushes the localdev images (native amd64 and arm64 runners); `ig-build` is
-built and pushed by hand as below, so GitHub holds no credentials for the
-production registry. Before pushing, compare the
-candidate with the current image on real IGs with `images/ig-publisher/ab-test.sh`
-(CI runs the same comparison natively on amd64 and arm64 for every change under
-`images/ig-publisher/`).
+changes and the image test results; merge it by hand. Before shipping any
+image change, compare the candidate with the current image on real IGs with
+`images/ig-publisher/ab-test.sh` (CI runs the same comparison natively on amd64
+and arm64 for every change under `images/ig-publisher/`).
 
-Push under a dated tag, test that tag in isolation (see "Isolated test against
-production" in `triggers/ig-commit-trigger/README.md`), then retag it as
-`latest`. Jobs use `imagePullPolicy: Always`, so the next build picks it up, and
-the older tags stay as a rollback.
+Every merge to master that touches `images/ig-publisher/` makes GitHub build
+both images natively for amd64 and arm64 and publish them to GHCR as
+`ghcr.io/fhir/ig-build:candidate-<12-char sha>` (and the localdev image as
+`ghcr.io/fhir/ig-publisher-localdev:candidate-<sha>`). GitHub holds no
+credentials for the production registry: getting an image there is always a
+step on an operator's machine. Source it either from that GitHub candidate
+or from a local build, push it under a dated tag, test that tag in isolation
+(see "Isolated test against production" in
+`triggers/ig-commit-trigger/README.md`), then retag it as `latest`. Jobs use
+`imagePullPolicy: Always`, so the next build picks it up, and the older tags
+stay as a rollback.
 
 ```
 gcloud auth configure-docker gcr.io
-cd images/ig-publisher
 TAG=gcr.io/fhir-org-starter-project/ig-build:<what>-$(date +%Y%m%d)
+
+# Either: copy GitHub's candidate (all architectures, same digest in both registries)
+docker buildx imagetools create -t $TAG ghcr.io/fhir/ig-build:candidate-<sha>
+
+# Or: build it here (on Apple Silicon this amd64 build is emulated and slow)
+cd images/ig-publisher
 docker build --pull --platform linux/amd64 --target ci -t $TAG .
 docker push $TAG
+
 # after the isolated test passes:
 gcloud container images add-tag $TAG gcr.io/fhir-org-starter-project/ig-build:latest
 ```
