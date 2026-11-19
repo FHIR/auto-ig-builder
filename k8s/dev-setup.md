@@ -133,6 +133,12 @@ how the job runs, such as env vars or JVM flags, belong in
 `triggers/ig-commit-trigger/job.json` and ship with a trigger deploy instead,
 with no rebuild.
 
+Toolchain versions are pinned in the Dockerfile; `images/ig-publisher/update-pins.sh`
+moves them to the latest upstream releases. Before pushing, compare the
+candidate with the current image on real IGs with `images/ig-publisher/ab-test.sh`
+(CI runs the same comparison natively on amd64 and arm64 for every change under
+`images/ig-publisher/`).
+
 Push under a dated tag, test that tag in isolation (see "Isolated test against
 production" in `triggers/ig-commit-trigger/README.md`), then retag it as
 `latest`. Jobs use `imagePullPolicy: Always`, so the next build picks it up, and

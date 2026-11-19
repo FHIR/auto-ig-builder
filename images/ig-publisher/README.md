@@ -10,7 +10,27 @@ This project provides Docker images for the FHIR IG Publisher, designed to suppo
 #### Base Image
 
 - **Purpose**: Contains common dependencies required for both local development and CI builds.
-- **Dependencies**: Java, Node.js, Ruby, Jekyll, AsciiDoctor.
+- **Dependencies**: Java, Node.js, Ruby, Jekyll.
+
+### Where the toolchains come from
+
+Each toolchain comes straight from its upstream, pinned to an exact release and
+verified by checksum at build time. The pins are the `ARG` lines at the top of
+the `Dockerfile`.
+
+| Toolchain | Source | Pinned by |
+|---|---|---|
+| Ruby (and the Debian base) | official `ruby:<version>-slim-trixie` image, built by the Ruby team | tag and multi-arch digest |
+| Java | Eclipse Temurin JDK tarball from Adoptium, per architecture | URL and SHA-256 per arch |
+| Node.js | release tarball from nodejs.org | version and SHA-256 per arch |
+| Jekyll | rubygems.org | version |
+| npm's bundled `picomatch` | npm registry, swapped in when Node bundles an older one | version and SHA-256 |
+
+To move every pin to the newest upstream release, run `./update-pins.sh` and
+review `git diff Dockerfile`. Release lines are chosen by env vars
+(`RUBY_LINE=3.4`, `JDK_MAJOR=21`, `NODE_MAJOR=22`, ...). The JDK can differ by
+architecture, because Adoptium sometimes respins a release for one architecture
+only (for example 21.0.13.1, an x64-only fix for an AVX-512 bug).
 
 #### Local Development Image (`localdev`)
 

@@ -27,6 +27,15 @@ and the traps that aren't obvious from them.
 
 Traps:
 
+- A build job "succeeding" means nothing: the `ig-build` container always
+  exits 0 and failed builds are uploaded too, to `branches/<branch>/failure/`.
+  Judge a test build by the published `qa.json` timestamp and the absence of a
+  `failure/` folder, as the trigger README describes.
+- Local stand-ins for the builder must run as the image's own user with its
+  own environment. Overriding the user or `NPM_CONFIG_PREFIX` once hid a
+  permissions bug that broke every cluster build (`images/ig-publisher/ab-test.sh`
+  does this right).
+
 - The production kubectl context is `fhir-org`; there is no default context.
 - The local trigger reads `job.json` only at startup; restart it after edits.
 - `pkill -f functions-framework` run from a shell whose command line contains
