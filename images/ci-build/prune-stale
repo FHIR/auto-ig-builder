@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+"""Remove published IG builds whose GitHub branch or repository is gone.
+
+Runs on ci-build under supervisord. Every PRUNE_INTERVAL_SECONDS it lists each
+published repo's branches and tags on GitHub with `git ls-remote` (the git
+protocol, so no REST API rate limit) and compares them with the published
+folders under ~/uploading/www/ig/<org>/<repo>/branches/<branch>.
+
+Something is removed only after it has been seen missing on GitHub in at least
+two scans spanning PRUNE_GRACE_HOURS, so renames, force-push mishaps and
+GitHub hiccups don't delete anything. A repo whose listing fails for any reason
+other than GitHub's definite "Repository not found" is skipped for that scan.
+
+  - Branch gone (no branch and no tag of that name; tag pushes are published
+    like branches): its folder is removed, except names matching PRUNE_KEEP
+    (main/master of the official orgs).
+  - Repo gone (deleted, or no longer public): the whole repo folder is removed.
+
+PRUNE_MODE=report (default) only records what it would do; PRUNE_MODE=delete
+acts. Every scan writes ~/uploading/www/ig/branch-status.json, served as
+https://build.fhir.org/ig/branch-status.json.
+"""
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+
+HOME = os.path.expanduser("~")
+UPLOADING = os.environ.get("PRUNE_UPLOADING", os.path.join(HOME, "uploading"))
+IG_ROOT = os.path.join(UPLOADING, "www", "ig")
+STATE_FILE = os.path.join(UPLOADING, "prune-state.json")
+STATUS_FILE = os.path.join(IG_ROOT, "branch-status.json")
+TRASH = os.path.join(UPLOADING, "prune-trash")
+REINDEX_QUEUE = os.environ.get("PRUNE_REINDEX_QUEUE", os.path.join(HOME, "reindex_queue"))
+
+MODE = os.environ.get("PRUNE_MODE", "report")
+GRACE_SECONDS = float(os.environ.get("PRUNE_GRACE_HOURS", "24")) * 3600
+INTERVAL = int(os.environ.get("PRUNE_INTERVAL_SECONDS", "3600"))
+KEEP = re.compile(os.environ.get(
+    "PRUNE_KEEP",
+    r"^(HL7|FHIR|IHE|CodeX-HL7-FHIR-Accelerator|argonautproject)/[^/]+/(main|master)$"))
+GITHUB = os.environ.get("PRUNE_GITHUB", "https://github.com")
+WORKERS = 4
+HISTORY = 500
+
+# Same rule as publish-ig and the trigger: one path segment of letters, digits
+# and . _ + , - (any Unicode letter or digit), never . or ..
+SAFE_NAME = re.compile(r"^[\w.+,-]+$")
+
+
+def safe(name):
+    return bool(SAFE_NAME.match(name)) and name not in (".", "..")
+
+
+def now_iso(t):
+    return datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def log(msg):
+    print(f"prune-stale: {msg}", flush=True)
+
+
+# ---------- GitHub ----------
+
+def ls_remote(org, repo):
+    """Return ("ok", heads, tags, head_branch) | ("not_found",) | ("unknown", why)."""
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/bin/true")
+    try:
+        p = subprocess.run(
+            ["git", "ls-remote", "--symref", f"{GITHUB}/{org}/{repo}", "HEAD", "refs/heads/*", "refs/tags/*"],
+            capture_output=True, timeout=60, env=env)
+    except subprocess.TimeoutExpired:
+        return ("unknown", "timeout")
+    out = p.stdout.decode("utf-8", "surrogateescape")
+    err = p.stderr.decode("utf-8", "replace")
+    if p.returncode != 0:
+        if "Repository not found" in err:
+            return ("not_found",)
+        return ("unknown", (err.strip().splitlines() or [f"exit {p.returncode}"])[-1][:200])
+    heads, tags, head = set(), set(), None
+    for line in out.splitlines():
+        if line.startswith("ref: ") and line.endswith("\tHEAD"):
+            target = line[5:].split("\t")[0]
+            if target.startswith("refs/heads/"):
+                head = target[len("refs/heads/"):]
+            continue
+        parts = line.split("\t")
+        if len(parts) != 2:
+            continue
+        ref = parts[1]
+        if ref.startswith("refs/heads/"):
+            heads.add(ref[len("refs/heads/"):])
+        elif ref.startswith("refs/tags/"):
+            tags.add(ref[len("refs/tags/"):].removesuffix("^{}"))
+    if not heads:
+        # An empty listing can't be told apart from trouble; never act on it.
+        return ("unknown", "no branches listed")
+    return ("ok", heads, tags, head)
+
+
+# ---------- published tree ----------
+
+def published():
+    """{(org, repo): {branch, ...}} for real branch folders (symlinks ignored)."""
+    result = {}
+    for org in sorted(os.listdir(IG_ROOT)):
+        org_dir = os.path.join(IG_ROOT, org)
+        if not safe(org) or os.path.islink(org_dir) or not os.path.isdir(org_dir):
+            continue
+        for repo in sorted(os.listdir(org_dir)):
+            branches_dir = os.path.join(org_dir, repo, "branches")
+            if not safe(repo) or os.path.islink(os.path.join(org_dir, repo)) or not os.path.isdir(branches_dir):
+                continue
+            names = {b for b in os.listdir(branches_dir)
+                     if b != "__default" and safe(b)
+                     and not os.path.islink(os.path.join(branches_dir, b))
+                     and os.path.isdir(os.path.join(branches_dir, b))}
+            if names:
+                result[(org, repo)] = names
+    return result
+
+
+# ---------- decisions (pure, unit-tested) ----------
+
+def decide(pub, listings, state, now, grace=GRACE_SECONDS, keep=KEEP):
+    """Update `state` with this scan's observations and return actions.
+
+    pub: {(org, repo): {branch}}; listings: {(org, repo): ls_remote result}.
+    state: {"branches": {key: {"first": t, "seen": n}}, "repos": {...}}.
+    Returns dict with lists: delete_branches, delete_repos, pending, kept, unknown.
+    """
+    sb, sr = state.setdefault("branches", {}), state.setdefault("repos", {})
+    out = {"delete_branches": [], "delete_repos": [], "pending": [], "kept": [], "unknown": []}
+    gone_b, gone_r = set(), set()
+    for (org, repo), branches in sorted(pub.items()):
+        listing = listings.get((org, repo), ("unknown", "not checked"))
+        rkey = f"{org}/{repo}"
+        if listing[0] == "unknown":
+            out["unknown"].append({"repo": rkey, "why": listing[1]})
+            # keep whatever we knew; neither confirm nor clear
+            gone_r.update(k for k in sr if k == rkey)
+            gone_b.update(k for k in sb if k.startswith(rkey + "/"))
+            continue
+        if listing[0] == "not_found":
+            gone_r.add(rkey)
+            entry = sr.setdefault(rkey, {"first": now, "seen": 0})
+            entry["seen"] += 1
+            if now - entry["first"] >= grace and entry["seen"] >= 2:
+                out["delete_repos"].append({"repo": rkey, "first_missing": now_iso(entry["first"])})
+            else:
+                out["pending"].append({"repo": rkey, "branch": None, "first_missing": now_iso(entry["first"]),
+                                       "eligible_after": now_iso(entry["first"] + grace)})
+            continue
+        _, heads, tags, head = listing
+        for b in sorted(branches):
+            if b in heads or b in tags:
+                continue
+            bkey = f"{rkey}/{b}"
+            if keep.match(bkey):
+                out["kept"].append({"repo": rkey, "branch": b})
+                continue
+            gone_b.add(bkey)
+            entry = sb.setdefault(bkey, {"first": now, "seen": 0})
+            entry["seen"] += 1
+            if now - entry["first"] >= grace and entry["seen"] >= 2:
+                out["delete_branches"].append({"repo": rkey, "branch": b, "github_default": head,
+                                               "first_missing": now_iso(entry["first"])})
+            else:
+                out["pending"].append({"repo": rkey, "branch": b, "first_missing": now_iso(entry["first"]),
+                                       "eligible_after": now_iso(entry["first"] + grace)})
+    # forget anything that came back or is no longer published
+    for k in list(sb):
+        if k not in gone_b:
+            del sb[k]
+    for k in list(sr):
+        if k not in gone_r:
+            del sr[k]
+    return out
+
+
+# ---------- actions ----------
+
+def inside_root(path):
+    root = os.path.realpath(IG_ROOT)
+    real = os.path.realpath(path)
+    return real.startswith(root + os.sep) and not os.path.islink(path)
+
+
+def remove(path):
+    """Move out of the web root first (atomic on one filesystem), then delete."""
+    if not inside_root(path) or not os.path.isdir(path):
+        raise RuntimeError(f"refusing to remove {path}")
+    os.makedirs(TRASH, exist_ok=True)
+    tmp = os.path.join(TRASH, uuid.uuid4().hex)
+    os.rename(path, tmp)
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
+def delete_branch(org, repo, branch, github_default):
+    branches_dir = os.path.join(IG_ROOT, org, repo, "branches")
+    default_link = os.path.join(branches_dir, "__default")
+    # publish-ig creates it as `ln -s ./<branch>`
+    pointed_here = (os.path.islink(default_link)
+                    and os.path.basename(os.path.normpath(os.readlink(default_link))) == branch)
+    remove(os.path.join(branches_dir, branch))
+    if pointed_here:
+        target = os.path.join(branches_dir, github_default or "")
+        if github_default and safe(github_default) and os.path.isdir(target) and not os.path.islink(target):
+            tmp_link = default_link + ".tmp"
+            if os.path.lexists(tmp_link):
+                os.remove(tmp_link)
+            os.symlink(f"./{github_default}", tmp_link)
+            os.replace(tmp_link, default_link)
+            return f"__default now -> {github_default}"
+        os.remove(default_link)
+        return "__default removed (GitHub default branch has no build)"
+    return ""
+
+
+def request_reindex():
+    os.makedirs(REINDEX_QUEUE, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+    open(os.path.join(REINDEX_QUEUE, f"reindex_request_{stamp}.sem"), "w").close()
+
+
+def load_state():
+    try:
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_json(path, data):
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=1, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+def scan_once():
+    started = time.time()
+    pub = published()
+    with ThreadPoolExecutor(WORKERS) as pool:
+        results = pool.map(lambda key: (key, ls_remote(*key)), pub)
+        listings = dict(results)
+    state = load_state()
+    actions = decide(pub, listings, state, started)
+    done = []
+    if MODE == "delete":
+        for d in actions["delete_branches"]:
+            org, repo = d["repo"].split("/")
+            try:
+                note = delete_branch(org, repo, d["branch"], d["github_default"])
+                done.append({**d, "removed": now_iso(time.time()), "note": note})
+                log(f"removed {d['repo']}/{d['branch']} (gone on GitHub since {d['first_missing']}) {note}")
+                state["branches"].pop(f"{d['repo']}/{d['branch']}", None)
+            except Exception as e:  # keep going; report it
+                log(f"failed to remove {d['repo']}/{d['branch']}: {e}")
+        for d in actions["delete_repos"]:
+            org, repo = d["repo"].split("/")
+            try:
+                remove(os.path.join(IG_ROOT, org, repo))
+                done.append({**d, "branch": None, "removed": now_iso(time.time())})
+                log(f"removed repo {d['repo']} (not found on GitHub since {d['first_missing']})")
+                state["repos"].pop(d["repo"], None)
+            except Exception as e:
+                log(f"failed to remove repo {d['repo']}: {e}")
+        if done:
+            request_reindex()
+    state["history"] = (done + state.get("history", []))[:HISTORY]
+    save_json(STATE_FILE, state)
+    due = actions["delete_branches"] + actions["delete_repos"]
+    status = {
+        "generated": now_iso(time.time()),
+        "mode": MODE,
+        "grace_hours": GRACE_SECONDS / 3600,
+        "scanned_repos": len(pub),
+        # in report mode: what delete mode would have removed this scan
+        "due": due,
+        "removed_this_scan": done,
+        "pending": actions["pending"],
+        "kept": actions["kept"],
+        "unknown": actions["unknown"],
+        "recently_removed": state["history"],
+    }
+    save_json(STATUS_FILE, status)
+    log(f"scanned {len(pub)} repos in {time.time() - started:.0f}s: "
+        f"{len(actions['delete_branches'])} branches and {len(actions['delete_repos'])} repos "
+        f"{'removed' if MODE == 'delete' else 'would be removed'}, {len(actions['pending'])} pending, "
+        f"{len(actions['unknown'])} repos unknown")
+
+
+def main():
+    if MODE not in ("report", "delete"):
+        sys.exit(f"PRUNE_MODE must be report or delete, not {MODE!r}")
+    log(f"mode={MODE} grace={GRACE_SECONDS / 3600:g}h interval={INTERVAL}s")
+    once = "--once" in sys.argv
+    while True:
+        try:
+            scan_once()
+        except Exception as e:
+            log(f"scan failed: {e!r}")
+        if once:
+            return
+        time.sleep(INTERVAL)
+
+
+if __name__ == "__main__":
+    main()

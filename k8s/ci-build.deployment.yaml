@@ -29,6 +29,10 @@ spec:
           value: "1"
         - name: AUTOCLEAN_EXEMPTION_REGEX
           value: ./\(HL7\|FHIR\|IHE\|CodeX-HL7-FHIR-Accelerator\|argonautproject\)/[^/]*/branches/\(main\|master\)
+        # prune-stale: report | delete (see k8s/dev-setup.md, "Pruning builds of
+        # deleted branches and repos")
+        - name: PRUNE_MODE
+          value: report
         - name: SSH_AUTHORIZED_KEY
           valueFrom:
             configMapKeyRef:

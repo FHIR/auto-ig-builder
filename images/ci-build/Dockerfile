@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 RUN apt-get update
-RUN apt-get install -y openssh-server supervisor curl jq
+RUN apt-get install -y openssh-server supervisor curl jq python3-minimal git
 
 RUN mkdir /var/run/sshd
 RUN useradd -m -r -s /bin/bash fhir_upload && \
@@ -15,8 +15,8 @@ RUN useradd -m -r -s /bin/bash fhir_upload && \
 
 VOLUME /home/fhir_upload/uploading
 
-ADD publish publish-ig reindex /home/fhir_upload/
-RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish
+ADD publish publish-ig reindex prune-stale /home/fhir_upload/
+RUN chown fhir_upload /home/fhir_upload/publish && chmod +x /home/fhir_upload/publish /home/fhir_upload/prune-stale
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY --chmod=755 ssh-dispatch /usr/local/bin/ssh-dispatch

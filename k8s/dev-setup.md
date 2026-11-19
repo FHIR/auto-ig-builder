@@ -106,6 +106,33 @@ dollars. To see or remove it: `gcloud logging sinks describe _Default` /
 Absolute request counts from the logs must be multiplied by 100 after the cutover;
 shares are unaffected (`dashboard-stats/pull/caddy_sample.py` accounts for it).
 
+## Pruning builds of deleted branches and repos
+
+`images/ci-build/prune-stale` runs in the ci-build container (supervisord) and
+keeps published builds from outliving their source. Hourly it lists each
+published repo's branches and tags with `git ls-remote` and compares them with
+`www/ig/<org>/<repo>/branches/*`:
+
+- A published branch with no GitHub branch or tag of that name (tag pushes are
+  published like branches) is removed once it has been missing on two scans at
+  least `PRUNE_GRACE_HOURS` (24) apart. `main`/`master` in the official orgs
+  (`PRUNE_KEEP`) are never removed this way. If `__default` pointed at it, it is
+  re-pointed to GitHub's current default branch when that has a build.
+- A repo GitHub reports as "Repository not found" (deleted, or no longer
+  public) is removed whole, with the same two-scan rule.
+- Any other failure (timeout, empty listing) skips that repo for the scan.
+
+`PRUNE_MODE` in `k8s/ci-build.deployment.yaml` is `report` (record only) or
+`delete`. Each scan writes https://build.fhir.org/ig/branch-status.json: what is
+pending with first-missing times, what is due (in report mode, what delete mode
+would remove), what was kept and what couldn't be checked, plus recent
+removals. State lives in `~/uploading/prune-state.json` on the site disk. Logs:
+`kubectl -n fhir logs deploy/ci-build-deployment -c ci-build | grep prune-stale`.
+Tests: `python3 -I images/ci-build/test_prune_stale.py`.
+
+The age-based cleanup in `reindex` (90 days without a new build, official
+`main`/`master` exempt) still runs as well.
+
 ## Growing the site disk
 
 `fhir-ci-build-disk` holds everything build.fhir.org serves; check it with
@@ -188,9 +215,16 @@ versions, base OS) in the committers/announce channel when promoting.
 
 ```
 cd images/ci-build
+python3 -I test_prune_stale.py
 docker build -t gcr.io/fhir-org-starter-project/ci-build  -f Dockerfile .
 docker push gcr.io/fhir-org-starter-project/ci-build   # after gcloud auth configure-docker gcr.io
+kubectl -n fhir apply -f ../../k8s/ci-build.deployment.yaml   # if the manifest changed
+kubectl -n fhir rollout restart deployment/ci-build-deployment
 ```
+
+Restarting ci-build takes build.fhir.org down briefly (one replica, and the
+site disk can only be attached to one node at a time). Pick a quiet moment and
+check `kubectl -n fhir get jobs` for uploads in flight.
 
 7. Deploy updates to `caddy-ratelimit` image (custom Caddy with rate limiting plugin)
 
