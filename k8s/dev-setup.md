@@ -109,8 +109,9 @@ shares are unaffected (`dashboard-stats/pull/caddy_sample.py` accounts for it).
 ## Pruning builds of deleted branches and repos
 
 `images/ci-build/prune-stale` runs in the ci-build container (supervisord) and
-keeps published builds from outliving their source. Hourly it lists each
-published repo's branches and tags with `git ls-remote` and compares them with
+keeps published builds from outliving their source. Every 3 hours it lists
+each published repo's branches and tags with `git ls-remote` (about 720 repos,
+two at a time, a minute or two per scan) and compares them with
 `www/ig/<org>/<repo>/branches/*`:
 
 - A published branch with no GitHub branch or tag of that name (tag pushes are

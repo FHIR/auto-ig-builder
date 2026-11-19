@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Remove published IG builds whose GitHub branch or repository is gone.
 
-Runs on ci-build under supervisord. Every PRUNE_INTERVAL_SECONDS it lists each
+Runs on ci-build under supervisord. Every PRUNE_INTERVAL_SECONDS (3 hours) it lists each
 published repo's branches and tags on GitHub with `git ls-remote` (the git
 protocol, so no REST API rate limit) and compares them with the published
 folders under ~/uploading/www/ig/<org>/<repo>/branches/<branch>.
@@ -42,7 +42,7 @@ REINDEX_QUEUE = os.environ.get("PRUNE_REINDEX_QUEUE", os.path.join(HOME, "reinde
 
 MODE = os.environ.get("PRUNE_MODE", "report")
 GRACE_SECONDS = float(os.environ.get("PRUNE_GRACE_HOURS", "24")) * 3600
-INTERVAL = int(os.environ.get("PRUNE_INTERVAL_SECONDS", "3600"))
+INTERVAL = int(os.environ.get("PRUNE_INTERVAL_SECONDS", "10800"))
 KEEP = re.compile(os.environ.get(
     "PRUNE_KEEP",
     r"^(HL7|FHIR|IHE|CodeX-HL7-FHIR-Accelerator|argonautproject)/[^/]+/(main|master)$"))
@@ -53,7 +53,7 @@ CANARIES = os.environ.get("PRUNE_CANARIES", "HL7/fhir FHIR/auto-ig-builder").spl
 # Real deletions trickle in; an outage hits many repos at once. If more than
 # this share of scanned repos come back "not found", the scan is ignored.
 MAX_NOT_FOUND_SHARE = float(os.environ.get("PRUNE_MAX_NOT_FOUND_SHARE", "0.10"))
-WORKERS = 4
+WORKERS = 2
 HISTORY = 500
 
 # Same rule as publish-ig and the trigger: one path segment of letters, digits
