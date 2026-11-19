@@ -12,12 +12,15 @@
   "author": "Josh Mandel",
   "license": "Apache-2.0",
   "dependencies": {
-    "@google-cloud/functions-framework": "^4.0.0",
+    "@google-cloud/functions-framework": "^5.0.5",
     "@kubernetes/client-node": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/ws": "^8.18.1",
     "typescript": "^6.0.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }
