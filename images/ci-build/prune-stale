@@ -47,6 +47,12 @@ KEEP = re.compile(os.environ.get(
     "PRUNE_KEEP",
     r"^(HL7|FHIR|IHE|CodeX-HL7-FHIR-Accelerator|argonautproject)/[^/]+/(main|master)$"))
 GITHUB = os.environ.get("PRUNE_GITHUB", "https://github.com")
+# Repos that certainly exist. If any of them doesn't list normally, GitHub
+# isn't answering reliably and the whole scan is ignored.
+CANARIES = os.environ.get("PRUNE_CANARIES", "HL7/fhir FHIR/auto-ig-builder").split()
+# Real deletions trickle in; an outage hits many repos at once. If more than
+# this share of scanned repos come back "not found", the scan is ignored.
+MAX_NOT_FOUND_SHARE = float(os.environ.get("PRUNE_MAX_NOT_FOUND_SHARE", "0.10"))
 WORKERS = 4
 HISTORY = 500
 
@@ -245,13 +251,40 @@ def save_json(path, data):
     os.replace(tmp, path)
 
 
+def untrustworthy(canary_results, listings, max_share=MAX_NOT_FOUND_SHARE):
+    """Reason to ignore this whole scan, or None. Pure; unit-tested."""
+    bad = [name for name, result in canary_results.items() if result[0] != "ok"]
+    if bad:
+        return f"canary repos did not list normally: {', '.join(sorted(bad))}"
+    if listings:
+        not_found = sum(1 for r in listings.values() if r[0] == "not_found")
+        if not_found / len(listings) > max_share:
+            return (f"{not_found} of {len(listings)} repos reported not found "
+                    f"(over {max_share:.0%}); GitHub may be having trouble")
+    return None
+
+
 def scan_once():
     started = time.time()
     pub = published()
     with ThreadPoolExecutor(WORKERS) as pool:
+        canary_results = {c: ls_remote(*c.split("/", 1)) for c in CANARIES}
         results = pool.map(lambda key: (key, ls_remote(*key)), pub)
         listings = dict(results)
+    reason = untrustworthy(canary_results, listings)
     state = load_state()
+    if reason:
+        # Change nothing: no deletions, no state updates (first-seen times and
+        # scan counts stay as they were).
+        log(f"ignoring this scan: {reason}")
+        save_json(STATUS_FILE, {
+            "generated": now_iso(time.time()),
+            "mode": MODE,
+            "ignored_scan": reason,
+            "scanned_repos": len(pub),
+            "recently_removed": state.get("history", []),
+        })
+        return
     actions = decide(pub, listings, state, started)
     done = []
     if MODE == "delete":

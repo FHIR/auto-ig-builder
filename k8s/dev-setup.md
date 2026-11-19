@@ -121,6 +121,10 @@ published repo's branches and tags with `git ls-remote` and compares them with
 - A repo GitHub reports as "Repository not found" (deleted, or no longer
   public) is removed whole, with the same two-scan rule.
 - Any other failure (timeout, empty listing) skips that repo for the scan.
+- The whole scan is ignored (no removals, no state changes) if a canary repo
+  (`PRUNE_CANARIES`: `HL7/fhir`, `FHIR/auto-ig-builder`) doesn't list
+  normally, or if more than 10% of repos come back "not found"
+  (`PRUNE_MAX_NOT_FOUND_SHARE`). `branch-status.json` then says why.
 
 `PRUNE_MODE` in `k8s/ci-build.deployment.yaml` is `report` (record only) or
 `delete`. Each scan writes https://build.fhir.org/ig/branch-status.json: what is

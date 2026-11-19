@@ -102,6 +102,63 @@ class Decide(unittest.TestCase):
         self.assertEqual(out["delete_repos"], [])
 
 
+class Trust(unittest.TestCase):
+    def listings(self, n_ok, n_not_found, n_unknown=0):
+        d = {}
+        for i in range(n_ok):
+            d[("o", f"ok{i}")] = ok(["main"])
+        for i in range(n_not_found):
+            d[("o", f"nf{i}")] = ("not_found",)
+        for i in range(n_unknown):
+            d[("o", f"u{i}")] = ("unknown", "timeout")
+        return d
+
+    def test_healthy_scan_trusted(self):
+        canaries = {"HL7/fhir": ok(["master"]), "FHIR/auto-ig-builder": ok(["master"])}
+        self.assertIsNone(ps.untrustworthy(canaries, self.listings(95, 5)))
+
+    def test_canary_failure_or_not_found_distrusts(self):
+        for bad in (("unknown", "timeout"), ("not_found",)):
+            canaries = {"HL7/fhir": ok(["master"]), "FHIR/auto-ig-builder": bad}
+            self.assertIn("FHIR/auto-ig-builder", ps.untrustworthy(canaries, self.listings(100, 0)))
+
+    def test_too_many_not_found_distrusts(self):
+        canaries = {"HL7/fhir": ok(["master"])}
+        self.assertIsNone(ps.untrustworthy(canaries, self.listings(90, 10)))   # exactly 10%: ok
+        self.assertIn("11 of 100", ps.untrustworthy(canaries, self.listings(89, 11)))
+
+    def test_unknowns_dont_count_as_not_found(self):
+        canaries = {"HL7/fhir": ok(["master"])}
+        self.assertIsNone(ps.untrustworthy(canaries, self.listings(50, 1, n_unknown=49)))
+
+
+class IgnoredScan(unittest.TestCase):
+    """A distrusted scan must not delete anything or touch the saved state."""
+
+    def setUp(self):
+        import shutil
+        if os.path.exists(ps.IG_ROOT):
+            shutil.rmtree(ps.IG_ROOT)
+        for r in ("a", "b"):
+            os.makedirs(os.path.join(ps.IG_ROOT, "o", r, "branches", "main"))
+        self.saved = {"branches": {"o/a/old": {"first": 0, "seen": 5}}, "repos": {}, "history": []}
+        ps.save_json(ps.STATE_FILE, self.saved)
+        self.real = ps.ls_remote, ps.MODE
+
+    def tearDown(self):
+        ps.ls_remote, ps.MODE = self.real
+
+    def test_canary_down_changes_nothing(self):
+        ps.MODE = "delete"
+        ps.ls_remote = lambda org, repo: ("not_found",)  # canaries included
+        before = open(ps.STATE_FILE).read()
+        ps.scan_once()
+        self.assertEqual(open(ps.STATE_FILE).read(), before)
+        self.assertTrue(os.path.isdir(os.path.join(ps.IG_ROOT, "o", "a", "branches", "main")))
+        with open(ps.STATUS_FILE) as f:
+            self.assertIn("canary", __import__("json").load(f)["ignored_scan"])
+
+
 class Filesystem(unittest.TestCase):
     def setUp(self):
         self.root = ps.IG_ROOT
