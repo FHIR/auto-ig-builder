@@ -43,7 +43,7 @@ ADD --checksum=sha256:${NODE_SHA256_ARM64} https://nodejs.org/dist/${NODE_VERSIO
 ARG PICOMATCH_VERSION PICOMATCH_SHA256
 ADD --checksum=sha256:${PICOMATCH_SHA256} https://registry.npmjs.org/picomatch/-/picomatch-${PICOMATCH_VERSION}.tgz /tmp/picomatch.tgz
 RUN mkdir -p /opt/node && \
-    tar -xzf /tmp/node-${TARGETARCH}.tar.gz -C /opt/node --strip-components=1 --exclude='*/CHANGELOG.md' --exclude='*/README.md' && \
+    tar -xzf /tmp/node-${TARGETARCH}.tar.gz -C /opt/node --strip-components=1 --no-same-owner --exclude='*/CHANGELOG.md' --exclude='*/README.md' && \
     PM=/opt/node/lib/node_modules/npm/node_modules/picomatch && \
     if [ "$(printf '%s\n' "$(/opt/node/bin/node -p "require('$PM/package.json').version")" "${PICOMATCH_VERSION}" | sort -V | head -1)" != "${PICOMATCH_VERSION}" ]; then \
         tar -xzf /tmp/picomatch.tgz -C $PM --strip-components=1; \
@@ -113,6 +113,12 @@ RUN groupadd -r fhirgroup -g 2000 && \
     ln -s /var/lib/.fhir /home/fhiruser/.fhir
 
 USER fhiruser
+
+# builder.py runs `npm -g install fsh-sushi` as this user; give global
+# installs a home of its own instead of making /usr/local writable.
+ENV NPM_CONFIG_PREFIX=/home/fhiruser/.npm-global
+ENV PATH="/home/fhiruser/.npm-global/bin:${PATH}"
+RUN mkdir -p /home/fhiruser/.npm-global
 
 # Configure SSH for non-root user
 RUN mkdir -p /home/fhiruser/.ssh && \

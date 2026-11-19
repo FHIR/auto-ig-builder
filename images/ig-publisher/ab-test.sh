@@ -16,24 +16,25 @@ IGS=${*:-"jmandel/ig-build-test HL7/smart-app-launch IHE/ITI.PDQm"}
 cd "$W"
 
 if [ ! -f publisher.jar ]; then
-  url=$(curl -fsSL "https://api.github.com/repos/HL7/fhir-ig-publisher/releases/$([ "$PUBLISHER" = latest ] && echo latest || echo "tags/$PUBLISHER")" |
-    jq -r '.assets[] | select(.name=="publisher.jar") | .browser_download_url')
-  curl -fsSL -o publisher.jar "$url"
+  base=https://github.com/HL7/fhir-ig-publisher/releases
+  curl -fsSL -o publisher.jar "$([ "$PUBLISHER" = latest ] && echo "$base/latest/download" || echo "$base/download/$PUBLISHER")/publisher.jar"
 fi
 for ig in $IGS; do d=src/${ig//\//__}; [ -d "$d" ] || git clone -q --depth 1 "https://github.com/$ig" "$d"; done
 
 run_one() {  # A|B org/repo
   local v=$1 ig=$2 n=${2//\//__} img; img=$([ "$1" = A ] && echo "$A" || echo "$B")
   local d=runs/$v/$n t0=$SECONDS
-  rm -rf "$d"; mkdir -p "runs/$v"; cp -r "src/$n" "$d"
-  # Same steps as builder.py: global sushi install, then the publisher.
-  docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp/home -e NPM_CONFIG_PREFIX=/tmp/home/.npm \
-    -v "$W/$d:/ig" -v "$W/publisher.jar:/publisher.jar:ro" -w /ig --entrypoint sh "$img" -c '
-      mkdir -p /tmp/home && export PATH=/tmp/home/.npm/bin:$PATH
+  rm -rf "$d"; mkdir -p "runs/$v"; cp -r "src/$n" "$d"; chmod -R a+rwX "$d"
+  # Same steps as builder.py, as the image's own user with its own npm
+  # settings: global sushi install, then the publisher.
+  docker run --rm -v "$W/$d:/ig" -v "$W/publisher.jar:/publisher.jar:ro" -w /ig --entrypoint sh "$img" -c '
       npm -g install fsh-sushi >/tmp/npm.log 2>&1 || { cat /tmp/npm.log; exit 3; }
       java -Xmx8g -jar /publisher.jar -ig . -no-sushi-update -tx https://tx.fhir.org' \
     > "runs/$v/$n.log" 2>&1
-  echo "$v exit=$? secs=$((SECONDS-t0)) $(grep -m1 -oE 'Errors: [0-9]+, Warnings: [0-9]+, Info: [0-9]+, Broken Links: [0-9]+' "runs/$v/$n.log")"
+  local rc=$?
+  # hand the outputs back to the invoking user
+  docker run --rm --user 0 -v "$W/$d:/ig" --entrypoint chown "$img" -R "$(id -u):$(id -g)" /ig
+  echo "$v exit=$rc secs=$((SECONDS-t0)) $(grep -m1 -oE 'Errors: [0-9]+, Warnings: [0-9]+, Info: [0-9]+, Broken Links: [0-9]+' "runs/$v/$n.log")"
 }
 
 norm() {  # strip per-run UUIDs and timestamps
