@@ -69,11 +69,23 @@ curl -s -X POST localhost:8080 -H 'Content-Type: application/json' \
 ```
 
 Then check that the job spec has the change
-(`kubectl --context fhir-org -n fhir get job <jobId> -o json`), the pod ran the
-intended image digest (`.status.containerStatuses[].imageID`), `ig-build` exited
-0, and `https://build.fhir.org/ig/jmandel/ig-build-test/branches/master/qa.json`
-shows the new build. The publisher's own output is not in the container log;
-it is published as `.../branches/master/build.log`. A build takes several minutes, mostly node scale-up and
+(`kubectl --context fhir-org -n fhir get job <jobId> -o json`) and the pod ran
+the intended image digest (`.status.containerStatuses[].imageID`).
+
+The job's status does not tell you whether the build worked: the `ig-build`
+container always exits 0 (its entrypoint ends in `|| touch /scratch/done`), and
+the upload sidecar logs "Publish completed" for failed builds too, because a
+failed build is published as well, under `branches/<branch>/failure/`. Check
+the published site instead:
+
+```bash
+B=https://build.fhir.org/ig/jmandel/ig-build-test/branches/master
+curl -sI "$B/qa.json" | grep -i last-modified           # must be after you triggered
+curl -s -o /dev/null -w '%{http_code}\n' "$B/failure/build.log"   # 404 when the build succeeded
+```
+
+The publisher's own output is not in the container log; it is published as
+`$B/build.log` (or `$B/failure/build.log`). A build takes several minutes, mostly node scale-up and
 image pull.
 
 ## Deploy
