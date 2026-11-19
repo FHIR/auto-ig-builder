@@ -90,6 +90,10 @@ Latest summary/stats of the ci ig builds are available at [https://fhir.github.i
 
 ## Developer Overview
 
-* [Dev Setup](./k8s/dev-setup.md)
+* [Dev Setup](./k8s/dev-setup.md): cluster access, security settings, and how to roll out each component
+* [IG publisher images](./images/ig-publisher/README.md): toolchain pins, published images, testing image changes
+* [IG commit trigger](./triggers/ig-commit-trigger/README.md): the webhook function, including isolated tests against production
+* [Local copy of the stack](./k8s/local/README.md): minikube
+* [Notes for coding agents](./AGENTS.md) and their skills in [`.agents/skills/`](./.agents/skills/)
 * [Architecture Overview Slide](https://docs.google.com/presentation/d/12JykZwSdQ1pwSuzP2fGZSXr3jYMmvEcwVgNAy3dWr_U/present)
 * [Accompanying Video](https://youtu.be/VVbF1O4pgQA)

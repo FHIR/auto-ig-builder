@@ -10,7 +10,7 @@ This project provides Docker images for the FHIR IG Publisher, designed to suppo
 #### Base Image
 
 - **Purpose**: Contains common dependencies required for both local development and CI builds.
-- **Dependencies**: Java, Node.js, Ruby, Jekyll.
+- **Dependencies**: Java, Node.js, Ruby, Jekyll and Graphviz on Debian 13 (trixie).
 
 ### Where the toolchains come from
 
@@ -41,37 +41,50 @@ only (for example 21.0.13.1, an x64-only fix for an AVX-512 bug).
 #### CI Build Image (`ci`)
 
 - **Purpose**: Designed for continuous integration pipelines, automating the build and publishing of FHIR Implementation Guides.
-- **Dependencies**: Inherits from the base image and includes Python, necessary scripts, and configurations for CI builds.
+- **Dependencies**: Inherits from the base image and includes Python, necessary scripts, and configurations for CI builds. Runs as `fhiruser` (uid 1000); global npm installs (the builder installs SUSHI this way) go to `~/.npm-global`.
 - **Entry Point**: Executes `builder.py` script.
 
-### Building the Images
+### Published images and releases
 
-You can build and tag each image using Docker's multi-stage build feature.
+| Image | Where | Tags |
+|---|---|---|
+| `ci` target (build jobs) | `ghcr.io/fhir/ig-build` | `candidate-<sha>`, built by GitHub |
+| | `gcr.io/fhir-org-starter-project/ig-build` (what the cluster runs) | dated tags and `latest`, pushed by an operator |
+| `localdev` target | `ghcr.io/fhir/ig-publisher-localdev`, `hl7fhir/ig-publisher-base` | `candidate-<sha>`, built by GitHub; `latest` by promotion |
 
-1. **Build the Base Image**
+Every merge to `master` that touches this folder runs the "Build and Push
+Candidate Docker Images" workflow (`.github/workflows/localdev.yaml`). It builds
+both targets natively on amd64 and arm64 runners and publishes multi-arch
+`candidate-<12-char sha>` tags. Then:
+
+- **localdev:** run the "Promote Tested Docker Candidate" workflow
+  (`promote-localdev.yaml`) with the candidate tag to move `latest`.
+- **ig-build:** GitHub has no credentials for the production registry. An
+  operator copies the candidate there (or builds locally), tests it in
+  isolation and retags `latest`; see step 5 of [`k8s/dev-setup.md`](../../k8s/dev-setup.md).
+
+### Testing an image change
+
+- Every PR or branch push that touches this folder runs "Test IG Publisher
+  Image" (`.github/workflows/ig-publisher-test.yaml`): a native build on amd64
+  and on arm64 (what Docker on Apple Silicon runs), then `ab-test.sh` against
+  the published localdev image.
+- `./ab-test.sh` does the same on your machine: it builds real IGs with two
+  images and compares exit status, QA counts and rendered HTML, ignoring
+  per-run IDs and dates.
+
+  ```sh
+  A=gcr.io/fhir-org-starter-project/ig-build:latest B=ig-build:mine ./ab-test.sh ~/ab-work
+  ```
+
+### Building locally
 
 ```sh
-docker build --target base -t ghcr.io/fhir/ig-publisher-base .
+docker build --target localdev -t ig-publisher-localdev .
+docker build --target ci -t ig-build .
+# both architectures (needs a buildx builder with arm64 or emulation)
+docker buildx build --platform linux/amd64,linux/arm64 --target localdev .
 ```
-
-2. **Build the Local Development Image**
-
-```sh
-docker build --target localdev -t ghcr.io/fhir/ig-publisher-localdev .
-```
-
-3. **Build the CI Build Image**
-
-```sh
-docker build --target ci -t ghcr.io/fhir/ig-publisher-ci .
-```
-
-### Multiplatform build
-
-```sh
-docker buildx build   --platform linux/arm64,linux/amd64 .
-```
-
 
 ### Usage
 

@@ -127,8 +127,9 @@ hide space.
 ## Recurring tasks
 5. Deploy updates to the `ig-build` image
 
-Production is the `ci` target of `images/ig-publisher/Dockerfile`, for amd64
-(`images/ig-publisher/ci-files/Dockerfile` is legacy). Settings that only change
+Production is the `ci` target of `images/ig-publisher/Dockerfile`, run on amd64
+nodes. See `images/ig-publisher/README.md` for where each image is published.
+Settings that only change
 how the job runs, such as env vars or JVM flags, belong in
 `triggers/ig-commit-trigger/job.json` and ship with a trigger deploy instead,
 with no rebuild.
@@ -169,12 +170,26 @@ docker push $TAG
 gcloud container images add-tag $TAG gcr.io/fhir-org-starter-project/ig-build:latest
 ```
 
+5b. Release the localdev image
+
+GitHub publishes `ghcr.io/fhir/ig-publisher-localdev:candidate-<sha>` and
+`hl7fhir/ig-publisher-base:candidate-<sha>` on every merge that touches
+`images/ig-publisher/`. Once a candidate has passed its tests, run the
+"Promote Tested Docker Candidate" workflow with that tag:
+
+```
+gh workflow run promote-localdev.yaml -f candidate_tag=candidate-<sha>
+```
+
+IG authors pull `latest`, so mention toolchain changes (Ruby, Java or Node
+versions, base OS) in the committers/announce channel when promoting.
+
 6. Deploy updates to `ci-build` image
 
 ```
 cd images/ci-build
 docker build -t gcr.io/fhir-org-starter-project/ci-build  -f Dockerfile .
-gcloud docker -- push gcr.io/fhir-org-starter-project/ci-build
+docker push gcr.io/fhir-org-starter-project/ci-build   # after gcloud auth configure-docker gcr.io
 ```
 
 7. Deploy updates to `caddy-ratelimit` image (custom Caddy with rate limiting plugin)
