@@ -1,0 +1,54 @@
+name: Test IG Publisher Image
+
+# Builds the image natively on amd64 and arm64 (arm64 is what Docker on Apple
+# Silicon Macs runs) and A/B-tests it against the published image on a real IG.
+on:
+  pull_request:
+    paths: ['images/ig-publisher/**', '.github/workflows/ig-publisher-test.yaml']
+  push:
+    branches-ignore: [master]
+    paths: ['images/ig-publisher/**', '.github/workflows/ig-publisher-test.yaml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    name: test (${{ matrix.arch }})
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build localdev and ci targets
+      run: |
+        set -euo pipefail
+        cd images/ig-publisher
+        docker buildx build --load --target localdev -t ig-publisher:candidate .
+        docker buildx build --load --target ci -t ig-build:candidate .
+
+    - name: Toolchain versions
+      run: |
+        docker run --rm --entrypoint sh ig-publisher:candidate -c \
+          'uname -m; java -version 2>&1 | sed -n 2p; ruby -v; node -v; npm -v; jekyll -v; dot -V 2>&1'
+
+    - name: A/B test against the published localdev image
+      run: |
+        A=ghcr.io/fhir/ig-publisher-localdev:latest B=ig-publisher:candidate \
+          images/ig-publisher/ab-test.sh "$RUNNER_TEMP/ab" jmandel/ig-build-test
+
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ab-logs-${{ matrix.arch }}
+        path: ${{ runner.temp }}/ab/runs/*/*.log
+        if-no-files-found: ignore
