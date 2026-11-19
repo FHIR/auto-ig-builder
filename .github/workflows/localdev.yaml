@@ -1,8 +1,11 @@
 name: Build and Push Candidate Docker Images
 
-# Builds the localdev image natively per architecture (no emulation), pushes
-# each by digest, then joins them into one multi-arch candidate tag on GHCR and
-# Docker Hub. Promote a tested candidate with promote-localdev.yaml.
+# Builds both images natively per architecture (no emulation), pushes each by
+# digest, then joins them into multi-arch candidate tags:
+#   localdev -> ghcr.io/fhir/ig-publisher-localdev and hl7fhir/ig-publisher-base
+#   ci       -> ghcr.io/fhir/ig-build (copied to the production registry by
+#               hand; GitHub holds no credentials for it, see k8s/dev-setup.md)
+# Promote a tested localdev candidate with promote-localdev.yaml.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +22,7 @@ on:
 env:
   GHCR_IMAGE: ghcr.io/fhir/ig-publisher-localdev
   DOCKERHUB_IMAGE: docker.io/hl7fhir/ig-publisher-base
+  GHCR_CI_IMAGE: ghcr.io/fhir/ig-build
 
 permissions:
   contents: read
@@ -66,21 +70,25 @@ jobs:
     - name: Build and push by digest
       run: |
         set -euo pipefail
-        docker buildx build \
-          --platform linux/${{ matrix.arch }} \
-          --target localdev \
-          --metadata-file "$RUNNER_TEMP/meta.json" \
-          --output "type=image,\"name=${GHCR_IMAGE},${DOCKERHUB_IMAGE}\",push-by-digest=true,name-canonical=true,push=true" \
-          images/ig-publisher
-        digest=$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/meta.json")
-        echo "pushed linux/${{ matrix.arch }} as $digest"
-        mkdir -p "$RUNNER_TEMP/digests" && touch "$RUNNER_TEMP/digests/${digest#sha256:}"
+        push() {  # target, comma-separated image names
+          docker buildx build \
+            --platform linux/${{ matrix.arch }} \
+            --target "$1" \
+            --metadata-file "$RUNNER_TEMP/meta-$1.json" \
+            --output "type=image,\"name=$2\",push-by-digest=true,name-canonical=true,push=true" \
+            images/ig-publisher
+          digest=$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/meta-$1.json")
+          echo "pushed $1 linux/${{ matrix.arch }} as $digest"
+          mkdir -p "$RUNNER_TEMP/digests/$1" && touch "$RUNNER_TEMP/digests/$1/${digest#sha256:}"
+        }
+        push localdev "${GHCR_IMAGE},${DOCKERHUB_IMAGE}"
+        push ci "${GHCR_CI_IMAGE}"
 
     - name: Save digest
       uses: actions/upload-artifact@v4
       with:
         name: digest-${{ matrix.arch }}
-        path: ${{ runner.temp }}/digests/*
+        path: ${{ runner.temp }}/digests/
         if-no-files-found: error
         retention-days: 1
 
@@ -117,9 +125,12 @@ jobs:
       working-directory: ${{ runner.temp }}/digests
       run: |
         set -euo pipefail
-        for image in "$GHCR_IMAGE" "$DOCKERHUB_IMAGE"; do
+        tag() {  # target dir, image
           sources=()
-          for d in *; do sources+=("${image}@sha256:${d}"); done
-          docker buildx imagetools create -t "${image}:${CANDIDATE_TAG}" "${sources[@]}"
-          docker buildx imagetools inspect "${image}:${CANDIDATE_TAG}"
-        done
+          for d in "$1"/*; do sources+=("${2}@sha256:${d##*/}"); done
+          docker buildx imagetools create -t "${2}:${CANDIDATE_TAG}" "${sources[@]}"
+          docker buildx imagetools inspect "${2}:${CANDIDATE_TAG}"
+        }
+        tag localdev "$GHCR_IMAGE"
+        tag localdev "$DOCKERHUB_IMAGE"
+        tag ci "$GHCR_CI_IMAGE"

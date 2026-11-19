@@ -53,6 +53,7 @@ RUN mkdir -p /opt/node && \
 # ------- Runtime base -------
 FROM ${RUBY_IMAGE} AS base
 LABEL maintainer="Josh Mandel"
+LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
         curl wget git openssl openssh-client graphviz \
@@ -72,7 +73,6 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 # ------- Begin Local Dev -------
 FROM base AS localdev
 LABEL maintainer="Josh Mandel"
-LABEL org.opencontainers.image.source=https://github.com/fhir/auto-ig-builder
 COPY ./localdev-files/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN apt-get update && apt-get -y --no-install-recommends install gosu && \
