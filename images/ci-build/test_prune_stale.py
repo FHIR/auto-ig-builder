@@ -132,6 +132,42 @@ class Trust(unittest.TestCase):
         self.assertIsNone(ps.untrustworthy(canaries, self.listings(50, 1, n_unknown=49)))
 
 
+class Backoff(unittest.TestCase):
+    def test_levels(self):
+        f = ps.next_backoff_level
+        self.assertEqual(f(0, 0.06), 1)
+        self.assertEqual(f(2, 0.5), 3)
+        self.assertEqual(f(3, 1.0), 3)          # capped (24h)
+        self.assertEqual(f(2, 0.03), 2)         # in between: hold
+        self.assertEqual(f(3, 0.005), 0)        # clean scan: back to 3h
+        self.assertEqual(f(0, 0.0), 0)
+
+    def test_stops_after_run_of_unknowns(self):
+        calls = []
+        real = ps.ls_remote
+        try:
+            ps.ls_remote = lambda org, repo: (calls.append(repo), ("unknown", "timeout"))[1]
+            keys = [("o", f"r{i}") for i in range(500)]
+            listings, stopped = ps.list_all(keys)
+        finally:
+            ps.ls_remote = real
+        self.assertTrue(stopped)
+        self.assertLessEqual(len(calls), ps.STOP_AFTER_CONSECUTIVE_UNKNOWN + ps.WORKERS)
+        self.assertEqual(len(listings), 500)
+        self.assertTrue(all(r[0] == "unknown" for r in listings.values()))
+
+    def test_successes_reset_the_run(self):
+        real = ps.ls_remote
+        try:
+            # every 10th repo times out: never 20 in a row
+            ps.ls_remote = lambda org, repo: ("unknown", "t") if int(repo[1:]) % 10 == 0 else ok(["main"])
+            listings, stopped = ps.list_all([("o", f"r{i}") for i in range(300)])
+        finally:
+            ps.ls_remote = real
+        self.assertFalse(stopped)
+        self.assertEqual(sum(1 for r in listings.values() if r[0] == "ok"), 270)
+
+
 class IgnoredScan(unittest.TestCase):
     """A distrusted scan must not delete anything or touch the saved state."""
 
