@@ -49,10 +49,6 @@
               {
                 "name": "JAVA_MEMORY",
                 "value": "19000m"
-              },
-              {
-                "name": "JAVA_TOOL_OPTIONS",
-                "value": "-XX:-UseBASE64Intrinsics"
               }
             ],
             "image": "gcr.io/fhir-org-starter-project/ig-build",
