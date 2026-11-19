@@ -55,6 +55,13 @@ CANARIES = os.environ.get("PRUNE_CANARIES", "HL7/fhir FHIR/auto-ig-builder").spl
 MAX_NOT_FOUND_SHARE = float(os.environ.get("PRUNE_MAX_NOT_FOUND_SHARE", "0.10"))
 WORKERS = 2
 HISTORY = 500
+# Be gentle when GitHub is slow or throttling: stop a scan after this many
+# unknown answers in a row, and stretch the interval while scans are unhealthy.
+STOP_AFTER_CONSECUTIVE_UNKNOWN = 20
+BACKOFF_ABOVE_UNKNOWN_SHARE = 0.05
+RECOVER_BELOW_UNKNOWN_SHARE = 0.01
+MAX_BACKOFF_LEVEL = 3  # 3h -> 6h -> 12h -> 24h
+backoff = {"level": 0}
 
 # Same rule as publish-ig and the trigger: one path segment of letters, digits
 # and . _ + , - (any Unicode letter or digit), never . or ..
@@ -264,24 +271,68 @@ def untrustworthy(canary_results, listings, max_share=MAX_NOT_FOUND_SHARE):
     return None
 
 
+def next_backoff_level(level, unknown_share):
+    """Pure; unit-tested. Unhealthy scan: back off one step. Clean: reset."""
+    if unknown_share > BACKOFF_ABOVE_UNKNOWN_SHARE:
+        return min(level + 1, MAX_BACKOFF_LEVEL)
+    if unknown_share < RECOVER_BELOW_UNKNOWN_SHARE:
+        return 0
+    return level
+
+
+def list_all(keys):
+    """ls_remote every repo, giving up on the rest after a run of unknowns."""
+    import threading
+    lock = threading.Lock()
+    run = {"consecutive": 0, "stopped": False}
+
+    def one(key):
+        if run["stopped"]:
+            return key, ("unknown", "not checked: scan stopped early")
+        result = ls_remote(*key)
+        with lock:
+            if result[0] == "unknown":
+                run["consecutive"] += 1
+                if run["consecutive"] >= STOP_AFTER_CONSECUTIVE_UNKNOWN and not run["stopped"]:
+                    run["stopped"] = True
+                    log(f"{STOP_AFTER_CONSECUTIVE_UNKNOWN} unknown answers in a row; "
+                        "stopping this scan early")
+            else:
+                run["consecutive"] = 0
+        return key, result
+
+    with ThreadPoolExecutor(WORKERS) as pool:
+        return dict(pool.map(one, keys)), run["stopped"]
+
+
 def scan_once():
     started = time.time()
     pub = published()
-    with ThreadPoolExecutor(WORKERS) as pool:
-        canary_results = {c: ls_remote(*c.split("/", 1)) for c in CANARIES}
-        results = pool.map(lambda key: (key, ls_remote(*key)), pub)
-        listings = dict(results)
+    canary_results = {c: ls_remote(*c.split("/", 1)) for c in CANARIES}
+    if any(r[0] != "ok" for r in canary_results.values()):
+        listings, stopped = {}, False  # don't bother GitHub with the rest
+    else:
+        listings, stopped = list_all(list(pub))
     reason = untrustworthy(canary_results, listings)
+    unknown_share = 1.0 if reason else (
+        sum(1 for r in listings.values() if r[0] == "unknown") / len(listings) if listings else 0.0)
+    backoff["level"] = next_backoff_level(backoff["level"], unknown_share)
+    schedule = {
+        "unknown_share": round(unknown_share, 3),
+        "stopped_early": stopped,
+        "next_scan_in_hours": INTERVAL * 2 ** backoff["level"] / 3600,
+    }
     state = load_state()
     if reason:
         # Change nothing: no deletions, no state updates (first-seen times and
         # scan counts stay as they were).
-        log(f"ignoring this scan: {reason}")
+        log(f"ignoring this scan: {reason}; next scan in {schedule['next_scan_in_hours']:g}h")
         save_json(STATUS_FILE, {
             "generated": now_iso(time.time()),
             "mode": MODE,
             "ignored_scan": reason,
             "scanned_repos": len(pub),
+            **schedule,
             "recently_removed": state.get("history", []),
         })
         return
@@ -316,6 +367,7 @@ def scan_once():
         "mode": MODE,
         "grace_hours": GRACE_SECONDS / 3600,
         "scanned_repos": len(pub),
+        **schedule,
         # in report mode: what delete mode would have removed this scan
         "due": due,
         "removed_this_scan": done,
@@ -328,7 +380,7 @@ def scan_once():
     log(f"scanned {len(pub)} repos in {time.time() - started:.0f}s: "
         f"{len(actions['delete_branches'])} branches and {len(actions['delete_repos'])} repos "
         f"{'removed' if MODE == 'delete' else 'would be removed'}, {len(actions['pending'])} pending, "
-        f"{len(actions['unknown'])} repos unknown")
+        f"{len(actions['unknown'])} repos unknown; next scan in {schedule['next_scan_in_hours']:g}h")
 
 
 def main():
@@ -343,7 +395,7 @@ def main():
             log(f"scan failed: {e!r}")
         if once:
             return
-        time.sleep(INTERVAL)
+        time.sleep(INTERVAL * 2 ** backoff["level"])
 
 
 if __name__ == "__main__":

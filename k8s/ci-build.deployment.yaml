@@ -41,6 +41,11 @@ spec:
         image: gcr.io/fhir-org-starter-project/ci-build
         imagePullPolicy: Always
         name: ci-build
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 1Gi
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
@@ -48,6 +53,16 @@ spec:
           name: fhir-ci-build-disk
       - image: gcr.io/fhir-org-starter-project/caddy-ratelimit:latest
         name: caddy
+        # Caddy itself needs ~300Mi, but the kernel charges it for the page
+        # cache of every file it serves (2-5Gi), and Kubernetes counts active
+        # cache when deciding evictions. Unlimited, that evicted this pod from
+        # its ~6Gi node (2026-11-13). The limit makes the kernel trim Caddy's
+        # cache inside its own cgroup first; only cache is dropped.
+        resources:
+          requests:
+            memory: 512Mi
+          limits:
+            memory: 3Gi
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:

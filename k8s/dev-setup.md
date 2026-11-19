@@ -106,6 +106,19 @@ dollars. To see or remove it: `gcloud logging sinks describe _Default` /
 Absolute request counts from the logs must be multiplied by 100 after the cutover;
 shares are unaffected (`dashboard-stats/pull/caddy_sample.py` accounts for it).
 
+## ci-build memory
+
+The ci-build pod runs on a single e2-standard-2 node (~6Gi allocatable, ~1Gi
+of it taken by GKE system pods). Caddy's own memory is small, but the kernel
+charges it for the page cache of the files it serves, and Kubernetes counts
+active cache when deciding evictions; unlimited, its apparent usage peaked
+at 4.8Gi and the pod was evicted on 2026-11-13. The manifest therefore limits
+Caddy to 3Gi (the kernel trims its cache within that) and gives both
+containers memory requests. Check with
+`kubectl top pod -n fhir -l run=ci-build --containers`; if Caddy's real
+(anon) memory ever approaches the limit, move the `build-fhir-org` pool to a
+16Gi machine type instead of raising the limit.
+
 ## Pruning builds of deleted branches and repos
 
 `images/ci-build/prune-stale` runs in the ci-build container (supervisord) and
@@ -122,6 +135,9 @@ two at a time, a minute or two per scan) and compares them with
 - A repo GitHub reports as "Repository not found" (deleted, or no longer
   public) is removed whole, with the same two-scan rule.
 - Any other failure (timeout, empty listing) skips that repo for the scan.
+- If more than 5% of a scan's repos can't be checked, the next scan waits
+  twice as long (up to 24 hours), returning to 3 hours after a clean scan; a
+  scan also stops asking GitHub after 20 failures in a row.
 - The whole scan is ignored (no removals, no state changes) if a canary repo
   (`PRUNE_CANARIES`: `HL7/fhir`, `FHIR/auto-ig-builder`) doesn't list
   normally, or if more than 10% of repos come back "not found"
