@@ -16,7 +16,11 @@ while true; do
     echo "Starting publish attempt ${attempt}/${attempts} for $* from $(pwd)"
     # ssh joins its arguments into one string for the remote shell, so quote
     # each one or text from the build (or a branch name) could run commands.
-    if tar czf - * | ssh ci-build ./publish-ig $(printf '%q ' "$@"); then
+    # `-- ` ends tar's option parsing: the build's output can contain a file
+    # whose name begins with `-` (an IG can write input/images/--x, which the
+    # publisher copies to the output root), and without the `--` the glob would
+    # hand that name to tar as an option.
+    if tar czf - -- * | ssh ci-build ./publish-ig $(printf '%q ' "$@"); then
         echo "Publish completed on attempt ${attempt}/${attempts}"
         exit 0
     else
