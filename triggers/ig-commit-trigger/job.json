@@ -68,11 +68,6 @@
                 "name": "scratch"
               },
               {
-                "mountPath": "/etc/ig.builder.keyfile.ini",
-                "name": "fhir-settings",
-                "subPath": "ig.builder.keyfile.ini"
-              },
-              {
                 "mountPath": "/etc/fhir-settings.json",
                 "name": "fhir-settings",
                 "subPath": "fhir-settings.json"

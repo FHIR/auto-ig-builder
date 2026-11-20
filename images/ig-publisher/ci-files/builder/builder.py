@@ -113,7 +113,6 @@ def build(config):
          '-Xms%s'%java_memory, '-Xmx%s'%java_memory,
          '-jar', '../publisher.jar',
          '-ig', 'ig.json',
-         '-api-key-file', '/etc/ig.builder.keyfile.ini',
          '-fhir-settings', '/etc/fhir-settings.json',
          '-auto-ig-build',
          '-tx', TX_SERVER_URL,

@@ -365,9 +365,8 @@ kubectl  create ns fhir
 ssh-keygen -t rsa -f id
 kubectl  -n fhir create secret generic ci-build-keys --from-file=id --from-file=id.pub
 
-echo "" > keyfile.ini
 echo "{}" > fhir-settings.json
-kubectl  -n fhir create secret generic fhir-settings --from-file=keyfile.ini --from-file=fhir-settings.json
+kubectl  -n fhir create secret generic fhir-settings --from-file=fhir-settings.json
 
 kubectl  -n fhir create secret generic zulip-secrets --from-literal=email=bot@hsot --from-literal=api_key=zapi
 ```

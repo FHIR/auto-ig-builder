@@ -7,7 +7,7 @@ ssh-keygen -t rsa -f id
 kubectl  -n fhir create secret generic ci-build-keys --from-file=id --from-file=id.pub
 
 # get these from Grahame ;-)
-kubectl  -n fhir create secret generic fhir-settings --from-file=keyfile.ini --from-file=fhir-settings.json
+kubectl  -n fhir create secret generic fhir-settings --from-file=fhir-settings.json
 
 gcloud compute disks create caddy-cert-disk --size=10GB --zone=us-east1-d
 kubectl -n fhir create configmap caddy-conf-volume --from-file Caddyfile --dry-run=client -o yaml | kubectl apply -f -
