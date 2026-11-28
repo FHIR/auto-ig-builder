@@ -5,12 +5,12 @@
 # Run ./update-pins.sh to move every pin below to the latest upstream release.
 
 # --- pins (managed by update-pins.sh) ---
-ARG RUBY_IMAGE=ruby:3.4.13-slim-trixie@sha256:03e203fab47d495a1d0046d10040db89367b361328ecd4af469f0433e2dd9ce1
+ARG RUBY_IMAGE=ruby:3.4.13-slim-trixie@sha256:d1495ff8630c2f86d61f9bda1b8951851f90274aa840c7e62e97876f7c4b3130
 ARG JEKYLL_VERSION=4.4.1
 ARG JDK_URL_AMD64=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13.1%2B2/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13.1_2.tar.gz
 ARG JDK_SHA256_AMD64=bb8a93f9ae6e7a693b2b721e85dbeff26ae1a77447985a8d7afcdd9c7cf6222e
-ARG JDK_URL_ARM64=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.13_9.tar.gz
-ARG JDK_SHA256_ARM64=e3522e707fc7dbe2a72c30746b1e7068301a0213ecd213d4491f35a14eb55578
+ARG JDK_URL_ARM64=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13.1%2B2/OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.13.1_2.tar.gz
+ARG JDK_SHA256_ARM64=8c72816a6b308842d5ed1f13e5826b69c567da4784f7238d7e800efa71fe54b1
 ARG NODE_VERSION=v22.23.5
 ARG NODE_SHA256_AMD64=c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1
 ARG NODE_SHA256_ARM64=8bd3dc69eee8f3f226315a80d7d1d4faccf217a4c8fae500168ac2e38f3bdba3
